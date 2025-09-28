@@ -1,0 +1,37 @@
+# ---- Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# ---- Node / Vite
+node_modules/
+dist/
+.vite/
+*.log
+
+# ---- Frontend build (nginx)
+frontend/build/
+frontend/dist/
+
+# ---- Docker / Compose
+*.pid
+*.seed
+mongo_data/
+data/
+data/letsencrypt/acme.json
+
+# ---- IDE / OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# ---- Coverage / temp
+coverage/
+.pytest_cache/
+tmp/
