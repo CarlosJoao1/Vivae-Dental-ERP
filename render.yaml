@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: vivae-backend
+    env: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -b 0.0.0.0:$PORT app:create_app()
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MONGO_URI
+        sync: false
+
+  - type: static
+    name: vivae-frontend
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE
+        fromService:
+          name: vivae-backend
+          type: web
+          property: url
