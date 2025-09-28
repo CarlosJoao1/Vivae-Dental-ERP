@@ -1,0 +1,19 @@
+{
+  "customer": "Vivae Dental Lab",
+  "expires": "2027-12-31",
+  "features": {
+    "faturacao": false,
+    "producao": true,
+    "compras": false,
+    "recursos_humanos": false,
+    "gestao_financeira": false,
+    "etiquetas": true,
+    "inventario": false,
+    "sequenciamento_producao": false,
+    "mes": false,
+    "guias_remessa": false,
+    "etiquetagem": true,
+    "webservices": true,
+    "crm": true
+  }
+}

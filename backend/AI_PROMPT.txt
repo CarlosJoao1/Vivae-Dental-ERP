@@ -1,0 +1,17 @@
+You are extending a modular, multi-tenant Dental Lab ERP.
+Backend: Flask + MongoDB (MongoEngine) + JWT (access+refresh).
+Frontend: React + Tailwind + i18next.
+Languages: pt, en, es, fr, zh.
+
+Rules:
+1) All business documents MUST include a lab reference (multi-tenant isolation).
+2) Authenticated requests MUST be scoped to the user's lab (use /api/auth/me payload).
+3) License feature gates with current_app.license.require('<feature>').
+4) Use i18n keys in UI and backend messages where applicable.
+5) Keep endpoints RESTful and return JSON.
+
+Tasks you can generate:
+- New modules (inventory, MES, HR, purchasing) with models and routes
+- Role-based permission checks on endpoints
+- Pagination and filtering utilities
+- Alembic-like migration notes for MongoDB (migration scripts)

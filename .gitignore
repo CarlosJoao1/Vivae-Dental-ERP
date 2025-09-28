@@ -1,11 +1,14 @@
+@"
+# ---- Secrets / env
+.env
+.env.*
+
 # ---- Python
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
 venv/
-.env
-.env.*
 
 # ---- Node / Vite
 node_modules/
@@ -13,13 +16,11 @@ dist/
 .vite/
 *.log
 
-# ---- Frontend build (nginx)
+# ---- Frontend build
 frontend/build/
 frontend/dist/
 
-# ---- Docker / Compose
-*.pid
-*.seed
+# ---- Docker / dados locais
 mongo_data/
 data/
 data/letsencrypt/acme.json
@@ -35,3 +36,7 @@ Thumbs.db
 coverage/
 .pytest_cache/
 tmp/
+"@ | Out-File -Encoding utf8 -NoNewline .gitignore
+
+# confirma que .env será ignorado
+git check-ignore -v .env

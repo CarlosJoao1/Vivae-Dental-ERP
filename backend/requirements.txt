@@ -1,0 +1,6 @@
+flask==3.0.3
+flask-cors==4.0.1
+flask-jwt-extended==4.6.0
+mongoengine==0.29.1
+pymongo==4.15.1
+Werkzeug==3.0.3

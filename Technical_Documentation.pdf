@@ -1,0 +1,80 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1944 >>
+stream
+BT
+/F1 14 Tf
+72 760 Td
+(Vivae Dental ERP  Technical Documentation) Tj
+T* T* 
+/F1 10 Tf
+(Generated: 2025-09-26T23:10:11.840064Z) Tj
+T* T*
+(# Vivae Dental ERP  Technical Documentation) Tj T* 
+() Tj T* 
+(## Architecture) Tj T* 
+(- **App Factory** pattern) Tj T* 
+(- Blueprints per domain: `auth`, `masterdata`, `tenants`, `health`) Tj T* 
+(- MongoEngine models: `User`, `Laboratory`) Tj T* 
+(- JWT with access/refresh tokens; claims include `role` and `tenant_id`) Tj T* 
+() Tj T* 
+(## JWT Flow) Tj T* 
+(1. `/api/auth/login`  returns `access_token` \(30m\), `refresh_token` \(7d\)) Tj T* 
+(2. Frontend stores tokens \(access in memory, refresh in httpOnly if applicable\)) Tj T* 
+(3. Use `Authorization: Bearer <access>` in API calls) Tj T* 
+(4. When 401/expired, call `/api/auth/refresh` with refresh token) Tj T* 
+() Tj T* 
+(## Multi-Tenant) Tj T* 
+(- Tenant = `Laboratory`) Tj T* 
+(- Users reference `tenant_id`) Tj T* 
+(- Future: per-tenant query scoping, roles per tenant) Tj T* 
+() Tj T* 
+(## Feature Licensing \(stub\)) Tj T* 
+(- `core/license.py` exposes `LicenseManager`) Tj T* 
+(- Decorator `@current_app.license.require\("feature"\)` \(to be wired in app\)) Tj T* 
+() Tj T* 
+(## Data Model \(initial\)) Tj T* 
+(### Laboratory) Tj T* 
+(- name \(unique\), address, country, postal_code, city, tax_id, phone, email, active) Tj T* 
+() Tj T* 
+(### User) Tj T* 
+(- username \(unique\), email, role, password_hash, tenant_id \(ref Laboratory\)) Tj T* 
+() Tj T* 
+(## API) Tj T* 
+(- `/api` \(root info\), `/api/health`) Tj T* 
+(- `/api/auth/login`, `/api/auth/refresh`, `/api/auth/me`) Tj T* 
+(- `/api/tenants`) Tj T* 
+(- `/api/masterdata/laboratories` \(list/create/update\)) Tj T* 
+(- stubs: patients, technicians, services, document-types) Tj T* 
+() Tj T* 
+(## Deployment Notes) Tj T* 
+(- Set `SECRET_KEY` and `JWT_SECRET_KEY` via env) Tj T* 
+(- Use Gunicorn behind reverse proxy \(Nginx\)) Tj T* 
+(- Configure CORS per environment) Tj T* 
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000002237 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+2307
+%%EOF
