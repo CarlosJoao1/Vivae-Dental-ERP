@@ -12,11 +12,11 @@ bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 def _parse_credentials():
     """
-    Tenta extrair username/password de:
+    Extrai username/password de:
       1) JSON (application/json)
       2) Form (application/x-www-form-urlencoded ou multipart)
-      3) request.data (fallback)
-      4) querystring (último recurso)
+      3) request.data (fallback bruto)
+      4) Querystring (último recurso)
     """
     data = request.get_json(silent=True) or {}
 
@@ -32,7 +32,7 @@ def _parse_credentials():
     username = (data.get("username") or request.args.get("username") or "").strip()
     password = data.get("password") or request.args.get("password") or ""
 
-    # logs leves p/ troubleshooting (sem password)
+    # Log leve p/ diagnosticar payload inesperado (sem password)
     if not username or not password:
         try:
             preview = {k: ("***" if k.lower() == "password" else v) for k, v in dict(data).items()}
@@ -46,9 +46,9 @@ def _parse_credentials():
     return username, password
 
 
-@bp.options("/login")
+# (Opcional) Responder explicitamente ao preflight, sem usar @bp.options
+@bp.route("/login", methods=["OPTIONS"])
 def login_options():
-    # Responde ao preflight do browser
     return ("", 204)
 
 
@@ -75,7 +75,7 @@ def login():
     return jsonify({"access_token": access, "refresh_token": refresh})
 
 
-@bp.options("/refresh")
+@bp.route("/refresh", methods=["OPTIONS"])
 def refresh_options():
     return ("", 204)
 
@@ -93,7 +93,7 @@ def refresh():
     return jsonify({"access_token": access})
 
 
-@bp.options("/me")
+@bp.route("/me", methods=["OPTIONS"])
 def me_options():
     return ("", 204)
 
