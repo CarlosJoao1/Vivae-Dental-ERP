@@ -1,3 +1,4 @@
+import { login as authLogin, refreshWithHeader as authRefresh, me as authMe } from "@/api/auth";
 import React, {
   createContext,
   useCallback,
@@ -8,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import AuthAPI from "@/api/api"; // <-- default import para corrigir TS2614
+
 
 // Tipos
 export type Tenant = { id?: string; _id?: string; name?: string };
