@@ -5,57 +5,77 @@ from flask_jwt_extended import (
 )
 from models.user import User
 from mongoengine.errors import DoesNotExist
-import json
+import json, base64
 
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
-
-def _parse_credentials():
+def _parse_json_body() -> dict:
     """
-    Extrai username/password de:
-      1) JSON (application/json)
-      2) Form (application/x-www-form-urlencoded ou multipart)
-      3) request.data (fallback bruto)
-      4) Querystring (último recurso)
+    Tenta obter JSON do body de forma robusta. Se falhar, tenta fazer
+    loads do raw body. Devolve {} se nada útil for encontrado.
     """
-    data = request.get_json(silent=True) or {}
-
-    if not data and request.form:
-        data = request.form.to_dict()
-
-    if not data and request.data:
+    data = request.get_json(silent=True)
+    if isinstance(data, dict) and data:
+        return data
+    raw = request.get_data(cache=False, as_text=True)
+    if raw:
         try:
-            data = json.loads(request.data.decode("utf-8"))
-        except Exception:
-            data = {}
-
-    username = (data.get("username") or request.args.get("username") or "").strip()
-    password = data.get("password") or request.args.get("password") or ""
-
-    # Log leve p/ diagnosticar payload inesperado (sem password)
-    if not username or not password:
-        try:
-            preview = {k: ("***" if k.lower() == "password" else v) for k, v in dict(data).items()}
-            current_app.logger.warning(
-                "Login payload vazio/inesperado. CT=%s, data=%s",
-                request.headers.get("Content-Type"), preview
-            )
+            obj = json.loads(raw)
+            if isinstance(obj, dict):
+                return obj
         except Exception:
             pass
+    return {}
+
+def _basic_auth_creds() -> dict:
+    """Lê credenciais de Authorization: Basic ... (apenas para debug/testes)."""
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(auth.split(" ", 1)[1]).decode("utf-8")
+            user, pwd = decoded.split(":", 1)
+            return {"username": user, "password": pwd}
+        except Exception:
+            pass
+    return {}
+
+def _get_credentials():
+    """
+    Extrai username/password por esta ordem:
+    - JSON body
+    - form/multipart (request.form)
+    - Basic Auth (Authorization: Basic ...)
+    """
+    data = _parse_json_body()
+    username = data.get("username")
+    password = data.get("password")
+
+    if not username or not password:
+        f = request.form or {}
+        username = username or f.get("username")
+        password = password or f.get("password")
+
+    if not username or not password:
+        ba = _basic_auth_creds()
+        username = username or ba.get("username")
+        password = password or ba.get("password")
 
     return username, password
 
-
-# (Opcional) Responder explicitamente ao preflight, sem usar @bp.options
-@bp.route("/login", methods=["OPTIONS"])
-def login_options():
-    return ("", 204)
-
-
 @bp.post("/login")
 def login():
-    username, password = _parse_credentials()
+    username, password = _get_credentials()
     if not username or not password:
+        # Log útil para diagnosticar em produção
+        ct = request.headers.get("Content-Type")
+        try:
+            raw_len = len(request.get_data(cache=False) or b"")
+        except Exception:
+            raw_len = -1
+        current_app.logger.warning(
+            "Login payload vazio/inesperado. CT=%s raw_len=%s form_keys=%s",
+            ct, raw_len, list(request.form.keys())
+        )
         return jsonify({"error": "missing credentials"}), 400
 
     try:
@@ -67,18 +87,12 @@ def login():
         return jsonify({"error": "invalid credentials"}), 401
 
     claims = {
-        "role": getattr(user, "role", None),
-        "tenant_id": str(getattr(user, "tenant_id", None)) if getattr(user, "tenant_id", None) else None
+        "role": user.role,
+        "tenant_id": str(user.tenant_id) if getattr(user, "tenant_id", None) else None
     }
     access = create_access_token(identity=str(user.id), additional_claims=claims)
     refresh = create_refresh_token(identity=str(user.id), additional_claims=claims)
     return jsonify({"access_token": access, "refresh_token": refresh})
-
-
-@bp.route("/refresh", methods=["OPTIONS"])
-def refresh_options():
-    return ("", 204)
-
 
 @bp.post("/refresh")
 @jwt_required(refresh=True)
@@ -86,17 +100,11 @@ def refresh():
     user_id = get_jwt_identity()
     user = User.objects.get(id=user_id)
     claims = {
-        "role": getattr(user, "role", None),
-        "tenant_id": str(getattr(user, "tenant_id", None)) if getattr(user, "tenant_id", None) else None
+        "role": user.role,
+        "tenant_id": str(user.tenant_id) if getattr(user, "tenant_id", None) else None
     }
     access = create_access_token(identity=str(user.id), additional_claims=claims)
     return jsonify({"access_token": access})
-
-
-@bp.route("/me", methods=["OPTIONS"])
-def me_options():
-    return ("", 204)
-
 
 @bp.get("/me")
 @jwt_required()
@@ -106,24 +114,25 @@ def me():
     return jsonify({
         "id": str(user.id),
         "username": user.username,
-        "email": getattr(user, "email", None),
-        "role": getattr(user, "role", None),
-        "tenant_id": str(getattr(user, "tenant_id", None)) if getattr(user, "tenant_id", None) else None
+        "email": user.email,
+        "role": user.role,
+        "tenant_id": str(user.tenant_id) if getattr(user, "tenant_id", None) else None
     })
-
 
 @bp.post("/register")
 def register():
-    data = request.get_json(force=True, silent=True) or request.form.to_dict() or {}
-    if not data.get("username") or not data.get("password"):
+    data = _parse_json_body()
+    username = data.get("username")
+    password = data.get("password")
+    if not username or not password:
         return jsonify({"error": "username & password required"}), 400
-    if User.objects(username=data["username"]).first():
+    if User.objects(username=username).first():
         return jsonify({"error": "username exists"}), 409
     u = User(
-        username=data["username"],
+        username=username,
         email=data.get("email"),
         role=data.get("role", "user"),
     )
-    u.set_password(data["password"])
+    u.set_password(password)
     u.save()
     return jsonify({"id": str(u.id), "username": u.username}), 201
