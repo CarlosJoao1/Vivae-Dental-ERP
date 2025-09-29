@@ -173,7 +173,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // tenta carregar o utilizador
         let me: User | null = null;
         try {
-          const meResp = await AuthAPI.me(acc);
+          //const meResp = await AuthAPI.me(acc);
+          const meResp = await authMe(acc);
           me = (meResp?.user ?? meResp ?? null) as User | null;
           setUser(me ?? { username });
         } catch {
@@ -227,7 +228,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       try {
-        const meResp = await AuthAPI.me(accessToken);
+        //const meResp = await AuthAPI.me(accessToken);
+        const meResp = await authMe(accessToken);
         const me = (meResp?.user ?? meResp ?? null) as User | null;
         setUser(me);
 
@@ -251,7 +253,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // access inválido → tenta refresh
         try {
           const newAcc = await doRefresh();
-          const me2Resp = await AuthAPI.me(newAcc);
+          //const me2Resp = await AuthAPI.me(newAcc);
+          const me2Resp = await authMe(newAcc);
           const me2 = (me2Resp?.user ?? me2Resp ?? null) as User | null;
           setUser(me2);
 
