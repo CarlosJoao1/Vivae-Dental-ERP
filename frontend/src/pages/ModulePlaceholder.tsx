@@ -1,13 +1,23 @@
-import React from 'react'
-import DashboardLayout from '@/layouts/DashboardLayout'
-import { useParams } from 'react-router-dom'
+// src/pages/ModulePlaceholder.tsx
+import React, { PropsWithChildren } from "react";
 
-export default function ModulePlaceholder(){
-  const { module } = useParams()
+type ModulePlaceholderProps = PropsWithChildren<{
+  title?: string;
+  description?: string;
+}>;
+
+const ModulePlaceholder: React.FC<ModulePlaceholderProps> = ({
+  title,
+  description,
+  children,
+}) => {
   return (
-    <DashboardLayout>
-      <h1 className="text-2xl font-bold mb-4">Módulo: {module}</h1>
-      <p className="text-gray-600 dark:text-gray-300">Conteúdo em desenvolvimento.</p>
-    </DashboardLayout>
-  )
-}
+    <div className="p-6">
+      {title && <h2 className="text-xl font-semibold">{title}</h2>}
+      {description && <p className="text-gray-600 mt-1">{description}</p>}
+      {children && <div className="mt-4">{children}</div>}
+    </div>
+  );
+};
+
+export default ModulePlaceholder;
