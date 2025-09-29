@@ -1,11 +1,23 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { AuthAPI } from "@/api/api";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import AuthAPI from "@/api/api"; // <-- default import para corrigir TS2614
+
+// Tipos
+export type Tenant = { id?: string; _id?: string; name?: string };
 
 type User = {
   id?: string;
   username?: string;
   roles?: string[];
   tenantId?: string;
+  tenants?: Tenant[]; // caso venha no payload do /me
   [k: string]: any;
 };
 
@@ -16,25 +28,36 @@ type AuthContextType = {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   authRequest: <T>(fn: (token: string) => Promise<T>) => Promise<T>;
+
+  // --- Multi-tenant exposto ao Topbar ---
+  tenants: Tenant[];
+  tenantId: string | null;
+  setTenant: (tenantId: string) => void;
 };
 
+// Contexto
 const AuthContext = createContext<AuthContextType | null>(null);
 
+// LocalStorage keys
 const LS_ACCESS = "access_token";
 const LS_REFRESH = "refresh_token";
+const LS_TENANT = "tenant_id";
 
-/** Decodifica JWT sem validar assinatura, só para ler o payload (exp). */
+/** Decodifica JWT (sem validar assinatura) para ler `exp`. */
 function decodeJwt<T = any>(token: string | null): (T & { exp?: number }) | null {
   if (!token) return null;
   const parts = token.split(".");
   if (parts.length !== 3) return null;
+  const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
   try {
-    const json = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    // Browser
+    const json = atob(b64);
     return JSON.parse(decodeURIComponent(escape(json)));
   } catch {
     try {
-      // fallback para ambientes sem escape/unescape
-      return JSON.parse(atob(parts[1]));
+      // Node/SSR fallback
+      const json = Buffer.from(b64, "base64").toString("utf8");
+      return JSON.parse(json);
     } catch {
       return null;
     }
@@ -42,10 +65,18 @@ function decodeJwt<T = any>(token: string | null): (T & { exp?: number }) | null
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [accessToken, setAccessToken] = useState<string | null>(() => localStorage.getItem(LS_ACCESS));
-  const [refreshToken, setRefreshToken] = useState<string | null>(() => localStorage.getItem(LS_REFRESH));
+  const [accessToken, setAccessToken] = useState<string | null>(() =>
+    localStorage.getItem(LS_ACCESS),
+  );
+  const [refreshToken, setRefreshToken] = useState<string | null>(() =>
+    localStorage.getItem(LS_REFRESH),
+  );
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // --- Multi-tenant ---
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenantId, setTenantId] = useState<string | null>(() => localStorage.getItem(LS_TENANT));
 
   // timer para refresh automático
   const refreshTimer = useRef<number | null>(null);
@@ -79,7 +110,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /** Faz refresh via API e atualiza estado/localStorage. */
   const doRefresh = useCallback(async () => {
     if (!refreshToken) throw new Error("No refresh token");
-    // Backend pode aceitar refresh no body (modelo atual do nosso api.ts)
     const res = await AuthAPI.refresh(refreshToken);
     const newAccess = res?.access_token;
     const newRefresh = res?.refresh_token ?? refreshToken; // alguns backends não devolvem novo refresh
@@ -98,40 +128,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearTimer();
     localStorage.removeItem(LS_ACCESS);
     localStorage.removeItem(LS_REFRESH);
+    localStorage.removeItem(LS_TENANT);
     setAccessToken(null);
     setRefreshToken(null);
     setUser(null);
+    setTenants([]);
+    setTenantId(null);
     if (hard) {
-      // redireciono só se o router estiver ativo na página de login; opcional
+      // opcional: redirecionar para /login
       // window.location.href = "/login";
     }
   }, []);
 
+  /** Helper: escolher tenantId a partir dos dados recebidos */
+  const pickTenantId = (me: User | null, list: Tenant[]): string | null => {
+    const candidate =
+      me?.tenantId ||
+      (list[0]?.id as string | undefined) ||
+      (list[0]?._id as string | undefined) ||
+      null;
+    return candidate ?? null;
+  };
+
   /** Login + carregar /auth/me */
-  const login = useCallback(async (username: string, password: string) => {
-    setLoading(true);
-    try {
-      const res = await AuthAPI.login(username, password);
-      const acc = res?.access_token;
-      const ref = res?.refresh_token;
-      if (!acc || !ref) throw new Error("Credenciais inválidas (tokens não recebidos)");
-      localStorage.setItem(LS_ACCESS, acc);
-      localStorage.setItem(LS_REFRESH, ref);
-      setAccessToken(acc);
-      setRefreshToken(ref);
-      // tenta carregar o utilizador
+  const login = useCallback(
+    async (username: string, password: string) => {
+      setLoading(true);
       try {
-        const me = await AuthAPI.me(acc);
-        setUser(me?.user ?? me ?? { username });
-      } catch {
-        // se /me falhar, mantemos tokens mas user nulo
-        setUser({ username });
+        const res = await AuthAPI.login(username, password);
+        const acc = res?.access_token;
+        const ref = res?.refresh_token;
+        if (!acc || !ref) throw new Error("Credenciais inválidas (tokens não recebidos)");
+        localStorage.setItem(LS_ACCESS, acc);
+        localStorage.setItem(LS_REFRESH, ref);
+        setAccessToken(acc);
+        setRefreshToken(ref);
+
+        // tenta carregar o utilizador
+        let me: User | null = null;
+        try {
+          const meResp = await AuthAPI.me(acc);
+          me = (meResp?.user ?? meResp ?? null) as User | null;
+          setUser(me ?? { username });
+        } catch {
+          setUser({ username });
+        }
+
+        // multi-tenant
+        const ts: Tenant[] =
+          (res?.tenants as Tenant[] | undefined) ||
+          (me?.tenants as Tenant[] | undefined) ||
+          [];
+        setTenants(ts);
+        const chosen = pickTenantId(me, ts);
+        if (chosen) {
+          setTenantId(chosen);
+          localStorage.setItem(LS_TENANT, chosen);
+        }
+
+        scheduleRefresh();
+      } finally {
+        setLoading(false);
       }
-      scheduleRefresh();
-    } finally {
-      setLoading(false);
-    }
-  }, [scheduleRefresh]);
+    },
+    [scheduleRefresh],
+  );
 
   /** Wrapper para chamadas autenticadas com retry em 401 */
   const authRequest = useCallback(
@@ -140,7 +201,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         return await fn(accessToken);
       } catch (err: any) {
-        // tenta refresh só se 401 (quando usares fetch puro, podes propagar o status)
         const needsRetry =
           err?.message?.includes("401") ||
           err?.message?.toLowerCase?.().includes("unauthorized") ||
@@ -150,7 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return fn(newToken);
       }
     },
-    [accessToken, doRefresh]
+    [accessToken, doRefresh],
   );
 
   /** Carrega /auth/me no arranque se houver token */
@@ -161,14 +221,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       try {
-        const me = await AuthAPI.me(accessToken);
-        setUser(me?.user ?? me ?? null);
+        const meResp = await AuthAPI.me(accessToken);
+        const me = (meResp?.user ?? meResp ?? null) as User | null;
+        setUser(me);
+
+        // multi-tenant na inicialização
+        const ts: Tenant[] = (me?.tenants as Tenant[] | undefined) ?? [];
+        setTenants(ts);
+
+        const stored = localStorage.getItem(LS_TENANT);
+        const validStored =
+          stored && ts.some((t) => (t.id ?? t._id) === stored) ? stored : null;
+
+        const chosen = validStored ?? pickTenantId(me, ts);
+        if (chosen) {
+          setTenantId(chosen);
+          localStorage.setItem(LS_TENANT, chosen);
+        } else {
+          setTenantId(null);
+          localStorage.removeItem(LS_TENANT);
+        }
       } catch {
         // access inválido → tenta refresh
         try {
           const newAcc = await doRefresh();
-          const me2 = await AuthAPI.me(newAcc);
-          setUser(me2?.user ?? me2 ?? null);
+          const me2Resp = await AuthAPI.me(newAcc);
+          const me2 = (me2Resp?.user ?? me2Resp ?? null) as User | null;
+          setUser(me2);
+
+          const ts: Tenant[] = (me2?.tenants as Tenant[] | undefined) ?? [];
+          setTenants(ts);
+
+          const stored = localStorage.getItem(LS_TENANT);
+          const validStored =
+            stored && ts.some((t) => (t.id ?? t._id) === stored) ? stored : null;
+
+          const chosen = validStored ?? pickTenantId(me2, ts);
+          if (chosen) {
+            setTenantId(chosen);
+            localStorage.setItem(LS_TENANT, chosen);
+          } else {
+            setTenantId(null);
+            localStorage.removeItem(LS_TENANT);
+          }
         } catch {
           doLogout(false);
         }
@@ -176,9 +271,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     })();
-    // limpar timer ao desmontar
     return () => clearTimer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // setter público de tenant
+  const setTenant = useCallback((id: string) => {
+    setTenantId(id);
+    localStorage.setItem(LS_TENANT, id);
   }, []);
 
   const value = useMemo<AuthContextType>(
@@ -189,8 +289,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       logout: doLogout,
       authRequest,
+      tenants,
+      tenantId,
+      setTenant,
     }),
-    [loading, user, accessToken, login, doLogout, authRequest]
+    [loading, user, accessToken, login, doLogout, authRequest, tenants, tenantId, setTenant],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
