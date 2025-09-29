@@ -7,13 +7,19 @@ from models.user import User
 from mongoengine.errors import DoesNotExist
 import json, base64
 
+# Imports opcionais para montar a lista de tenants em /me
+try:
+    from models.tenant import Tenant  # type: ignore
+except Exception:
+    Tenant = None  # type: ignore
+try:
+    from models.laboratory import Laboratory  # type: ignore
+except Exception:
+    Laboratory = None  # type: ignore
+
 bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 def _parse_json_body() -> dict:
-    """
-    Tenta obter JSON do body de forma robusta. Se falhar, tenta fazer
-    loads do raw body. Devolve {} se nada útil for encontrado.
-    """
     data = request.get_json(silent=True)
     if isinstance(data, dict) and data:
         return data
@@ -28,7 +34,6 @@ def _parse_json_body() -> dict:
     return {}
 
 def _basic_auth_creds() -> dict:
-    """Lê credenciais de Authorization: Basic ... (apenas para debug/testes)."""
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Basic "):
         try:
@@ -40,12 +45,6 @@ def _basic_auth_creds() -> dict:
     return {}
 
 def _get_credentials():
-    """
-    Extrai username/password por esta ordem:
-    - JSON body
-    - form/multipart (request.form)
-    - Basic Auth (Authorization: Basic ...)
-    """
     data = _parse_json_body()
     username = data.get("username")
     password = data.get("password")
@@ -62,11 +61,56 @@ def _get_credentials():
 
     return username, password
 
+def _doc_to_tenant(doc) -> dict:
+    if not doc:
+        return {"id": "default", "_id": "default", "name": "Default"}
+    doc_id = str(getattr(doc, "id", "default"))
+    name = (
+        getattr(doc, "name", None)
+        or getattr(doc, "title", None)
+        or getattr(doc, "label", None)
+        or "Tenant"
+    )
+    return {"id": doc_id, "_id": doc_id, "name": name}
+
+def _resolve_tenants_for_user(user: User):
+    items = []
+    # Se existir um modelo Tenant, carrega todos (ou filtra como precisares)
+    if Tenant:
+        try:
+            qs = Tenant.objects  # type: ignore[attr-defined]
+            for t in qs:
+                items.append(_doc_to_tenant(t))
+        except Exception as e:
+            current_app.logger.warning("Falha a listar Tenant: %s", e)
+
+    # Caso não haja Tenant, usa Laboratory (o seed cria um)
+    if not items and Laboratory:
+        try:
+            qs = Laboratory.objects  # type: ignore[attr-defined]
+            for lab in qs:
+                items.append(_doc_to_tenant(lab))
+        except Exception as e:
+            current_app.logger.warning("Falha a listar Laboratory: %s", e)
+
+    # Se mesmo assim nada, devolve um default
+    if not items:
+        items = [{"id": "default", "_id": "default", "name": "Default"}]
+
+    # Se o utilizador tiver tenant_id, tenta pô-lo como o primeiro da lista
+    try:
+        tid = str(getattr(user, "tenant_id", "") or "")
+        if tid:
+            items.sort(key=lambda it: 0 if it.get("id") == tid else 1)
+    except Exception:
+        pass
+
+    return items
+
 @bp.post("/login")
 def login():
     username, password = _get_credentials()
     if not username or not password:
-        # Log útil para diagnosticar em produção
         ct = request.headers.get("Content-Type")
         try:
             raw_len = len(request.get_data(cache=False) or b"")
@@ -86,23 +130,21 @@ def login():
     if not user.check_password(password):
         return jsonify({"error": "invalid credentials"}), 401
 
-    claims = {
-        "role": user.role,
-        "tenant_id": str(user.tenant_id) if getattr(user, "tenant_id", None) else None
-    }
+    claims = {"role": user.role, "tenant_id": str(user.tenant_id) if user.tenant_id else None}
     access = create_access_token(identity=str(user.id), additional_claims=claims)
     refresh = create_refresh_token(identity=str(user.id), additional_claims=claims)
-    return jsonify({"access_token": access, "refresh_token": refresh})
+
+    # Opcional: já devolver tenants no login (útil para o AuthContext)
+    tenants = _resolve_tenants_for_user(user)
+
+    return jsonify({"access_token": access, "refresh_token": refresh, "tenants": tenants})
 
 @bp.post("/refresh")
 @jwt_required(refresh=True)
 def refresh():
     user_id = get_jwt_identity()
     user = User.objects.get(id=user_id)
-    claims = {
-        "role": user.role,
-        "tenant_id": str(user.tenant_id) if getattr(user, "tenant_id", None) else None
-    }
+    claims = {"role": user.role, "tenant_id": str(user.tenant_id) if user.tenant_id else None}
     access = create_access_token(identity=str(user.id), additional_claims=claims)
     return jsonify({"access_token": access})
 
@@ -111,12 +153,15 @@ def refresh():
 def me():
     user_id = get_jwt_identity()
     user = User.objects.get(id=user_id)
+    # Enriquecemos com `tenants` para o frontend ter tudo num só request
+    tenants = _resolve_tenants_for_user(user)
     return jsonify({
         "id": str(user.id),
         "username": user.username,
         "email": user.email,
         "role": user.role,
-        "tenant_id": str(user.tenant_id) if getattr(user, "tenant_id", None) else None
+        "tenant_id": str(user.tenant_id) if user.tenant_id else None,
+        "tenants": tenants,
     })
 
 @bp.post("/register")
@@ -131,7 +176,7 @@ def register():
     u = User(
         username=username,
         email=data.get("email"),
-        role=data.get("role", "user"),
+        role=data.get("role","user")
     )
     u.set_password(password)
     u.save()
