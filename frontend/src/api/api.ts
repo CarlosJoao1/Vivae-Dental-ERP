@@ -13,20 +13,26 @@ const base =
   "http://localhost:5000/api";
 
 const api = axios.create({
-  baseURL: base.replace(/\/+$/, ""), // remove / no fim
+  baseURL: base.replace(/\/+$/, ""),
   withCredentials: false,
 });
 
-// Estado de refresh em curso + fila de callbacks
+// Estado de refresh + fila de callbacks
 let isRefreshing = false;
 let queue: Array<(token: string | null) => void> = [];
 
 /**
- * Normaliza SEMPRE os headers para AxiosHeaders e define Authorization,
- * sem sobrepor se já existir.
+ * Garante um AxiosHeaders (nunca undefined) e define Authorization
+ * apenas se ainda não existir.
  */
 function ensureAuthHeader(headers: unknown, token?: string | null): AxiosHeaders {
-  const h = AxiosHeaders.from(headers ?? {}); // nunca undefined
+  const h =
+    headers instanceof AxiosHeaders
+      ? headers
+      : headers
+      ? AxiosHeaders.from(headers as any)
+      : new AxiosHeaders(); // <- evita passar {}
+
   if (token && !h.has("Authorization")) {
     h.set("Authorization", `Bearer ${token}`);
   }
@@ -56,39 +62,38 @@ api.interceptors.response.use(
     if (status === 401 && !isAuthPath && !original._retry) {
       original._retry = true;
 
-      // Se já há um refresh a decorrer, aguarda na fila
+      // Se já há refresh a decorrer, aguarda
       if (isRefreshing) {
         const token = await new Promise<string | null>((resolve) => queue.push(resolve));
         original.headers = ensureAuthHeader(original.headers, token ?? undefined);
         return api(original);
       }
 
-      // Começa refresh
+      // Inicia refresh
       isRefreshing = true;
       try {
         const refresh = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null;
         if (!refresh) throw new Error("no refresh token");
 
-        // Faz refresh passando o refresh_token no Authorization (não é pisado pelo request interceptor)
+        // Faz refresh com header explícito (não é pisado pelo request interceptor)
         const { data } = await api.post("/auth/refresh", null, {
           headers: { Authorization: `Bearer ${refresh}` },
         });
 
-        // Guarda novos tokens (se vier novo refresh_token, atualiza)
+        // Guarda novos tokens
         if (typeof window !== "undefined") {
           localStorage.setItem("access_token", data.access_token);
           if (data.refresh_token) localStorage.setItem("refresh_token", data.refresh_token);
         }
 
-        // Liberta a fila com o novo access_token
+        // Desbloqueia fila
         queue.forEach((fn) => fn(data.access_token));
         queue = [];
 
-        // Reenvia a request original com o novo access_token
+        // Reenvia original com novo access token
         original.headers = ensureAuthHeader(original.headers, data.access_token);
         return api(original);
       } catch (e) {
-        // Falhou refresh: limpa tokens e falha todas as pendentes
         if (typeof window !== "undefined") {
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
@@ -101,7 +106,6 @@ api.interceptors.response.use(
       }
     }
 
-    // Outro erro qualquer
     return Promise.reject(error);
   }
 );
