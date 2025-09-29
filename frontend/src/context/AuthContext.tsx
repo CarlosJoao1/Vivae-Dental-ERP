@@ -1,4 +1,6 @@
+// import AuthAPI from "@/api/api";
 import { login as authLogin, refreshWithHeader as authRefresh, me as authMe } from "@/api/auth";
+
 import React, {
   createContext,
   useCallback,
@@ -112,7 +114,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /** Faz refresh via API e atualiza estado/localStorage. */
   const doRefresh = useCallback(async () => {
     if (!refreshToken) throw new Error("No refresh token");
-    const res = await AuthAPI.refresh(refreshToken);
+    // const res = await AuthAPI.refresh(refreshToken);
+    const res = await authRefresh(refreshToken);
     const newAccess = res?.access_token;
     const newRefresh = res?.refresh_token ?? refreshToken; // alguns backends não devolvem novo refresh
     if (!newAccess) throw new Error("No access token from refresh");
@@ -157,7 +160,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (username: string, password: string) => {
       setLoading(true);
       try {
-        const res = await AuthAPI.login(username, password);
+        //const res = await AuthAPI.login(username, password);
+        const res = await authLogin(username, password);
         const acc = res?.access_token;
         const ref = res?.refresh_token;
         if (!acc || !ref) throw new Error("Credenciais inválidas (tokens não recebidos)");
