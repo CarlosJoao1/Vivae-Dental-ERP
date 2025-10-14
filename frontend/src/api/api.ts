@@ -7,15 +7,25 @@ import axios, { AxiosHeaders } from "axios";
  * - Fallback para http://localhost:5000/api (dev local)
  */
 const env = import.meta.env as any;
-const base =
-  (env?.VITE_API_BASE as string) ||
-  (env?.VITE_API_BASE_URL as string) ||
-  "http://localhost:5000/api";
+
+// Use relative URL in development (Vite proxy) or env variable in production
+const isDev = env?.DEV === true;
+const rawProdBase = (env?.VITE_API_BASE as string) || (env?.VITE_API_BASE_URL as string) || "http://localhost:5000/api";
+// Garante que produção termina com /api
+const normalizedProdBase = rawProdBase.replace(/\/+$/, "").endsWith("/api")
+  ? rawProdBase.replace(/\/+$/, "")
+  : `${rawProdBase.replace(/\/+$/, "")}/api`;
+
+const base = isDev ? "/api" : normalizedProdBase;
 
 const api = axios.create({
   baseURL: base.replace(/\/+$/, ""),
   withCredentials: false,
+  timeout: 10000,
 });
+
+console.log('[API] Environment:', isDev ? 'development' : 'production');
+console.log('[API] Base URL configured:', base.replace(/\/+$/, ""));
 
 // Estado de refresh + fila de callbacks
 let isRefreshing = false;
@@ -35,25 +45,41 @@ function ensureAuthHeader(headers: unknown, token?: string | null): AxiosHeaders
 
   if (token && !h.has("Authorization")) {
     h.set("Authorization", `Bearer ${token}`);
-  }
+    }
   return h;
 }
 
 /** Interceptor de request:
  *  - injeta Bearer access_token se não houver Authorization já definido
  */
-api.interceptors.request.use((config) => {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  config.headers = ensureAuthHeader(config.headers, token);
-  return config;
-});
+api.interceptors.request.use(
+  (config) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    config.headers = ensureAuthHeader(config.headers, token);
+    console.log(`[API] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('[API] Request error:', error);
+    return Promise.reject(error);
+  }
+);
 
 /** Interceptor de response:
  *  - Em 401 (fora de /auth/login e /auth/refresh), tenta refresh com fila
  */
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    console.log(`[API] Response ${res.status} from ${res.config.url}`);
+    return res;
+  },
   async (error) => {
+    console.error('[API] Response error:', {
+      message: error.message,
+      status: error.response?.status,
+      url: error.config?.url,
+      data: error.response?.data
+    });
     const original: any = error.config || {};
     const status: number | undefined = error?.response?.status;
     const url: string = original?.url || "";

@@ -1,5 +1,5 @@
 # backend/app.py
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 
@@ -16,7 +16,7 @@ def create_app():
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
     app.config["JSON_SORT_KEYS"] = False
 
-    # ---- CORS (dinâmico por env) ----
+        # ---- CORS (dinâmico por env) ----
     # Define no Render (backend): FRONTEND_ORIGINS="https://<frontend>.onrender.com,http://localhost:5173,http://0.0.0.0:5173"
     try:
         from flask_cors import CORS
@@ -29,15 +29,15 @@ def create_app():
 
         CORS(
             app,
-            resources={r"/api/*": {"origins": origins}},
-            supports_credentials=True,                       # ok manter True; não usas cookies, mas não prejudica
+            resources={r"/*": {"origins": origins}},
+            supports_credentials=True,
             allow_headers=["Content-Type", "Authorization"],
             expose_headers=["Authorization"],
             methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             max_age=86400,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        app.logger.warning(f"CORS setup failed: {e}")
 
     # Respeitar cabeçalhos X-Forwarded-* atrás do proxy
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
@@ -46,8 +46,33 @@ def create_app():
     init_db(app)
     init_auth(app)
 
-    # Blueprints
+        # Blueprints
     register_blueprints(app)
+
+        # Log incoming requests
+    @app.before_request
+    def log_request():
+        app.logger.info(f"[REQUEST] {request.method} {request.path} from {request.remote_addr} Origin: {request.headers.get('Origin', 'None')}")
+
+    # Ensure CORS headers are always present (backup for preflight OPTIONS)
+    @app.after_request
+    def after_request(response):
+        origin = request.headers.get('Origin')
+        raw_origins = os.getenv(
+            "FRONTEND_ORIGINS",
+            "http://localhost:5173,http://127.0.0.1:5173,http://0.0.0.0:5173"
+        )
+        allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+        
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            response.headers['Access-Control-Expose-Headers'] = 'Authorization'
+        
+        app.logger.info(f"[RESPONSE] {response.status_code} for {request.path}")
+        return response
 
     # Errors
     @app.errorhandler(404)

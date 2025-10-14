@@ -1,5 +1,6 @@
-
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import Topbar from '@/components/Topbar';
+
 export default function DashboardLayout() {
   const { pathname } = useLocation();
   const nav = [
@@ -21,10 +22,8 @@ export default function DashboardLayout() {
         </nav>
       </aside>
       <div className="flex-1 flex flex-col">
-        <header className="h-14 bg-white border-b flex items-center justify-between px-4">
-          <div className="md:hidden font-bold">Vivae ERP</div>
-          <div className="flex items-center gap-3"><span className="badge">PT · EN · ES · FR · CN</span></div>
-        </header>
+        {/* Use Topbar with greeting, language and tenant selector */}
+        <Topbar />
         <main className="p-4"><Outlet /></main>
       </div>
     </div>

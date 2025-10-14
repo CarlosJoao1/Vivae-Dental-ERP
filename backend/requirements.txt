@@ -3,5 +3,16 @@ flask-cors==4.0.1
 flask-jwt-extended==4.6.0
 mongoengine==0.29.1
 pymongo==4.15.1
+# Required for mongodb+srv URIs (MongoDB Atlas)
+dnspython>=2.4
 Werkzeug==3.0.3
 gunicorn==22.0.0
+boto3
+python-magic
+filetype
+Pillow
+PyMuPDF
+pytesseract
+redis
+rq
+python-dotenv
