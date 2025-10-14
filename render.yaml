@@ -9,12 +9,15 @@ services:
     envVars:
       - key: FLASK_ENV
         value: production
-      - key: JWT_SECRET
+      - key: JWT_SECRET_KEY  # app.py expects JWT_SECRET_KEY
         sync: false
-      - key: JWT_REFRESH_SECRET
+      - key: MONGO_URI       # set your Atlas connection string in Render dashboard
         sync: false
-      - key: MONGO_URI
-        sync: false
+      - key: FRONTEND_ORIGINS  # allow CORS from the static site origin
+        fromService:
+          name: vivae-frontend
+          type: static
+          property: url
 
   - type: static
     name: vivae-frontend

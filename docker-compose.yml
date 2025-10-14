@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   mongo:
     image: mongo:7
@@ -33,6 +31,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - VITE_API_BASE_URL=http://localhost:5000/api
+      - VITE_PROXY_TARGET=http://backend:5000  # use backend service DNS inside Docker
     ports:
       - "5173:5173"
     # monta o código mas preserva node_modules dentro do container

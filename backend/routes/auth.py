@@ -109,35 +109,45 @@ def _resolve_tenants_for_user(user: User):
 
 @bp.post("/login")
 def login():
-    username, password = _get_credentials()
-    if not username or not password:
-        ct = request.headers.get("Content-Type")
-        try:
-            raw_len = len(request.get_data(cache=False) or b"")
-        except Exception:
-            raw_len = -1
-        current_app.logger.warning(
-            "Login payload vazio/inesperado. CT=%s raw_len=%s form_keys=%s",
-            ct, raw_len, list(request.form.keys())
-        )
-        return jsonify({"error": "missing credentials"}), 400
-
     try:
-        user = User.objects.get(username=username)
-    except DoesNotExist:
-        return jsonify({"error": "invalid credentials"}), 401
+        current_app.logger.info("Login attempt - Content-Type: %s", request.headers.get("Content-Type"))
+        username, password = _get_credentials()
+        
+        if not username or not password:
+            ct = request.headers.get("Content-Type")
+            try:
+                raw_len = len(request.get_data(cache=False) or b"")
+            except Exception:
+                raw_len = -1
+            current_app.logger.warning(
+                "Login payload vazio/inesperado. CT=%s raw_len=%s form_keys=%s",
+                ct, raw_len, list(request.form.keys())
+            )
+            return jsonify({"error": "missing credentials"}), 400
 
-    if not user.check_password(password):
-        return jsonify({"error": "invalid credentials"}), 401
+        try:
+            user = User.objects.get(username=username)
+        except DoesNotExist:
+            current_app.logger.warning("Login failed: user not found - %s", username)
+            return jsonify({"error": "invalid credentials"}), 401
 
-    claims = {"role": user.role, "tenant_id": str(user.tenant_id) if user.tenant_id else None}
-    access = create_access_token(identity=str(user.id), additional_claims=claims)
-    refresh = create_refresh_token(identity=str(user.id), additional_claims=claims)
+        if not user.check_password(password):
+            current_app.logger.warning("Login failed: invalid password - %s", username)
+            return jsonify({"error": "invalid credentials"}), 401
 
-    # Opcional: já devolver tenants no login (útil para o AuthContext)
-    tenants = _resolve_tenants_for_user(user)
+        claims = {"role": user.role, "tenant_id": str(user.tenant_id) if user.tenant_id else None}
+        access = create_access_token(identity=str(user.id), additional_claims=claims)
+        refresh = create_refresh_token(identity=str(user.id), additional_claims=claims)
 
-    return jsonify({"access_token": access, "refresh_token": refresh, "tenants": tenants})
+        # Opcional: já devolver tenants no login (útil para o AuthContext)
+        tenants = _resolve_tenants_for_user(user)
+
+        current_app.logger.info("Login successful for user: %s", username)
+        return jsonify({"access_token": access, "refresh_token": refresh, "tenants": tenants})
+    
+    except Exception as e:
+        current_app.logger.exception("Login error: %s", str(e))
+        return jsonify({"error": "internal server error", "details": str(e)}), 500
 
 @bp.post("/refresh")
 @jwt_required(refresh=True)

@@ -6,7 +6,9 @@ import { useTranslation } from 'react-i18next'
 
 export default function Topbar(){
   const { user, logout, tenants, tenantId, setTenant } = useAuth()
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  // Normaliza idioma para código de 2 letras (ex.: 'pt-PT' -> 'PT')
+  const lang = ((i18n.language || 'pt').split('-')[0] || 'pt').toUpperCase()
   return (
     <header className="w-full border-b bg-white/70 dark:bg-gray-900/70 backdrop-blur sticky top-0 z-10">
       <div className="h-14 px-4 flex items-center justify-between">
@@ -17,9 +19,12 @@ export default function Topbar(){
           </select>
         </div>
         <div className="flex items-center gap-2">
+          {/* Saudação no canto superior direito */}
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-200 mr-2">
+            {t('Bem-vindo')}, {user?.username || 'user'} ({lang})
+          </span>
           <LanguageSwitcher />
           <ThemeToggle />
-          <div className="px-3 py-1 rounded bg-gray-100 dark:bg-gray-800">{user?.username || 'user'}</div>
           <button onClick={logout} className="px-3 py-1 rounded bg-gray-900 text-white dark:bg-gray-700">{t('logout')}</button>
         </div>
       </div>

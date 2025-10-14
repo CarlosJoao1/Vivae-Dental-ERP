@@ -19,4 +19,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # O Start Command da Render vai sobrepor a porta para $PORT
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "app:create_app()"]
+CMD gunicorn -b 0.0.0.0:${PORT:-5000} --timeout 120  "app:create_app()"
