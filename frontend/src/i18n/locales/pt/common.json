@@ -2,5 +2,87 @@
   "Bem-vindo": "Bem-vindo",
   "Entrar": "Entrar",
   "search": "Pesquisar",
-  "logout": "Sair"
+  "logout": "Sair",
+  "masterdata": "Master Data",
+  "clients": "Clientes",
+  "patients": "Pacientes",
+  "technicians": "Técnicos",
+  "services": "Serviços",
+  "document_types": "Tipos de Documento",
+  "reload": "Recarregar",
+  "create": "Criar",
+  "remove": "Remover",
+  "edit": "Editar",
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "client_exists": "Cliente já existe ({field})",
+  "name": "Nome",
+  "first_name": "Nome",
+  "last_name": "Apelido",
+  "gender": "Género",
+  "male": "Masculino",
+  "female": "Feminino",
+  "other": "Outro",
+  "birthdate": "Data de Nascimento",
+  "age": "idade",
+  "email": "Email",
+  "phone": "Telefone",
+  "tax_id": "NIF",
+  "address": "Morada",
+  "code": "Código",
+  "price": "Preço",
+  "extension": "Extensão"
+  ,"financial": "Financeiro"
+  ,"currencies": "Moedas"
+  ,"payment_types": "Tipos de Pagamento"
+  ,"payment_forms": "Formas de Pagamento"
+  ,"payment_methods": "Métodos de Pagamento"
+  ,"symbol": "Símbolo"
+  ,"is_default": "Padrão"
+  ,"sales_orders": "Encomendas"
+  ,"sales_invoices": "Faturas"
+  ,"number": "Número"
+  ,"client": "Cliente"
+  ,"currency": "Moeda"
+  ,"description": "Descrição"
+  ,"qty": "Qtd"
+  ,"total": "Total"
+  ,"add_line": "Adicionar linha"
+  ,"list": "Lista"
+  ,"date": "Data"
+  ,"status": "Estado"
+  ,"dashboard": "Dashboard"
+  ,"master_data": "Master Data"
+  ,"production": "Produção"
+  ,"crm": "CRM"
+  ,"series": "Séries"
+  ,"prefix": "Prefixo"
+  ,"next_number": "Próximo nº"
+  ,"padding": "Zeros à esquerda"
+  ,"active": "Ativo"
+  ,"all_clients": "Todos os Clientes"
+  ,"unlicensed": "Sem licenciamento para o utilizador."
+  ,"production_admin": "Administração"
+  ,"work_centers": "Centros de Trabalho"
+  ,"machine_centers": "Centro Máquina"
+  ,"sales": "Vendas"
+  ,"smtp_settings": "Configuração SMTP"
+  ,"server": "Servidor"
+  ,"port": "Porta"
+  ,"username": "Utilizador"
+  ,"password": "Senha"
+  ,"from_name": "Nome de Remetente"
+  ,"from_email": "Email de Remetente"
+  ,"email_label": "Email"
+  ,"send": "Enviar"
+  ,"to": "Para"
+  ,"cc": "Cc"
+  ,"bcc": "Bcc"
+  ,"emails_semicolon": "Separe múltiplos emails com ;"
+  ,"print": "Imprimir"
+  ,"save_pdf": "Guardar PDF"
+  ,"test": "Testar"
+  ,"smtp_ok": "SMTP OK"
+  ,"smtp_error": "Erro SMTP"
+  ,"doc_type_locked": "Tipo bloqueado (já utilizado)"
 }

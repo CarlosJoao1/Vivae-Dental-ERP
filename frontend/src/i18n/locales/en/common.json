@@ -2,5 +2,60 @@
   "Bem-vindo": "Welcome",
   "Entrar": "Sign in",
   "search": "Search",
-  "logout": "Logout"
+  "logout": "Logout",
+  "masterdata": "Master Data",
+  "clients": "Clients",
+  "patients": "Patients",
+  "technicians": "Technicians",
+  "services": "Services",
+  "document_types": "Document Types",
+  "reload": "Reload",
+  "create": "Create",
+  "remove": "Remove",
+  "name": "Name",
+  "first_name": "First name",
+  "last_name": "Last name",
+  "gender": "Gender",
+  "male": "Male",
+  "female": "Female",
+  "other": "Other",
+  "birthdate": "Birthdate",
+  "age": "age",
+  "email": "Email",
+  "phone": "Phone",
+  "tax_id": "Tax ID",
+  "address": "Address",
+  "code": "Code",
+  "price": "Price",
+  "extension": "Extension"
+  ,"financial": "Financial"
+  ,"currencies": "Currencies"
+  ,"payment_types": "Payment Types"
+  ,"payment_forms": "Payment Forms"
+  ,"payment_methods": "Payment Methods"
+  ,"symbol": "Symbol"
+  ,"is_default": "Default"
+  ,"dashboard": "Dashboard"
+  ,"master_data": "Master Data"
+  ,"production": "Production"
+  ,"crm": "CRM"
+  ,"sales_orders": "Sales Orders"
+  ,"sales_invoices": "Sales Invoices"
+  ,"number": "Number"
+  ,"client": "Client"
+  ,"currency": "Currency"
+  ,"description": "Description"
+  ,"qty": "Qty"
+  ,"total": "Total"
+  ,"add_line": "Add line"
+  ,"list": "List"
+  ,"date": "Date"
+  ,"status": "Status"
+  ,"sales": "Sales"
+  ,"print": "Print"
+  ,"save_pdf": "Save PDF"
+  ,"test": "Test"
+  ,"smtp_ok": "SMTP OK"
+  ,"smtp_error": "SMTP error"
+  ,"doc_type_locked": "Type locked (already used)"
 }

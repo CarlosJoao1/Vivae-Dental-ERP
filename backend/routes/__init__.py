@@ -32,6 +32,24 @@ def register_blueprints(app):
     except Exception as e:
         app.logger.warning("tenants not registered: %s", e)
 
+    # 4) /api/masterdata  (CRUD básico de master data)
+    try:
+        from .masterdata import bp as masterdata_bp  # type: ignore
+        app.register_blueprint(masterdata_bp)
+        app.logger.info("✔ registered blueprint: masterdata -> %s",
+                        getattr(masterdata_bp, "url_prefix", "/api/masterdata"))
+    except Exception as e:
+        app.logger.warning("masterdata not registered: %s", e)
+
+    # 5) /api/sales  (orders/invoices)
+    try:
+        from .sales import bp as sales_bp  # type: ignore
+        app.register_blueprint(sales_bp)
+        app.logger.info("✔ registered blueprint: sales -> %s",
+                        getattr(sales_bp, "url_prefix", "/api/sales"))
+    except Exception as e:
+        app.logger.warning("sales not registered: %s", e)
+
     # (exemplos para outros módulos)
     # try:
     #     from .patients import bp as patients_bp

@@ -3,25 +3,31 @@ import axios, { AxiosHeaders } from "axios";
 
 /**
  * Base URL da API:
- * - Usa VITE_API_BASE ou VITE_API_BASE_URL (Render/produção)
- * - Fallback para http://localhost:5000/api (dev local)
+ * - Preferir VITE_API_BASE ou VITE_API_BASE_URL (mesmo em dev)
+ * - Se não existir, em dev usa "/api" (Vite proxy)
+ * - Fallback: http://localhost:5000/api
  */
 const env = import.meta.env as any;
 
-// Use relative URL in development (Vite proxy) or env variable in production
 const isDev = env?.DEV === true;
-const rawProdBase = (env?.VITE_API_BASE as string) || (env?.VITE_API_BASE_URL as string) || "http://localhost:5000/api";
-// Garante que produção termina com /api
-const normalizedProdBase = rawProdBase.replace(/\/+$/, "").endsWith("/api")
-  ? rawProdBase.replace(/\/+$/, "")
-  : `${rawProdBase.replace(/\/+$/, "")}/api`;
+const rawEnvBase = (env?.VITE_API_BASE as string) || (env?.VITE_API_BASE_URL as string) || "";
 
-const base = isDev ? "/api" : normalizedProdBase;
+function withApiSuffix(u: string): string {
+  const clean = (u || "").replace(/\/+$/, "");
+  return clean.endsWith("/api") ? clean : `${clean}/api`;
+}
+
+// Determine base
+// - DEV: prefer env; if missing, fallback to localhost:5000/api
+// - PROD: require env; if missing, use relative '/api' (never localhost)
+const base = rawEnvBase
+  ? withApiSuffix(rawEnvBase)
+  : (isDev ? "http://localhost:5000/api" : "/api");
 
 const api = axios.create({
   baseURL: base.replace(/\/+$/, ""),
   withCredentials: false,
-  timeout: 10000,
+  timeout: 20000,
 });
 
 console.log('[API] Environment:', isDev ? 'development' : 'production');

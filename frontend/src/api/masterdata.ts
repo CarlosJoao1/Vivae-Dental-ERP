@@ -1,0 +1,243 @@
+import api from '@/api/api'
+
+// Generic types
+export type Id = string
+
+// Clients
+export type Client = {
+  id?: Id
+  code?: string
+  name: string
+  first_name?: string
+  last_name?: string
+  gender?: 'male'|'female'|'other'
+  birthdate?: string
+  age?: number
+  email?: string
+  phone?: string
+  address?: string
+  type?: 'clinic'|'dentist'|'other'
+  tax_id?: string
+  billing_address?: Record<string, any>
+  shipping_address?: Record<string, any>
+  payment_terms?: string
+  notes?: string
+  active?: boolean
+  contacts?: Array<Record<string, any>>
+  created_at?: string
+  // Financial preferences (ids)
+  preferred_currency?: Id
+  payment_type?: Id
+  payment_form?: Id
+  payment_method?: Id
+}
+
+export async function listClients(q = '', page = 1, page_size = 20) {
+  const { data } = await api.get(`/masterdata/clients`, { params: { q, page, page_size } })
+  return data as { total: number, items: Client[] }
+}
+export async function createClient(body: Partial<Client>) {
+  const { data } = await api.post(`/masterdata/clients`, body)
+  return data.client as Client
+}
+export async function updateClient(id: Id, body: Partial<Client>) {
+  const { data } = await api.put(`/masterdata/clients/${id}`, body)
+  return data.client as Client
+}
+export async function deleteClient(id: Id) {
+  const { data } = await api.delete(`/masterdata/clients/${id}`)
+  return data
+}
+export async function getClient(id: Id) {
+  const { data } = await api.get(`/masterdata/clients/${id}`)
+  return data.client as Client
+}
+
+// Patients
+export type Patient = {
+  id?: Id
+  name: string
+  first_name?: string
+  last_name?: string
+  gender?: 'male'|'female'|'other'
+  birthdate?: string
+  age?: number
+  email?: string
+  phone?: string
+  address?: string
+  notes?: string
+  created_at?: string
+}
+export async function listPatients(q = '', page = 1, page_size = 20) {
+  const { data } = await api.get(`/masterdata/patients`, { params: { q, page, page_size } })
+  return data as { total: number, items: Patient[] }
+}
+export async function createPatient(body: Partial<Patient>) {
+  const { data } = await api.post(`/masterdata/patients`, body)
+  return data.patient as Patient
+}
+export async function updatePatient(id: Id, body: Partial<Patient>) {
+  const { data } = await api.put(`/masterdata/patients/${id}`, body)
+  return data.patient as Patient
+}
+export async function deletePatient(id: Id) {
+  const { data } = await api.delete(`/masterdata/patients/${id}`)
+  return data
+}
+
+// Technicians
+export type Technician = {
+  id?: Id
+  name: string
+  email?: string
+  phone?: string
+  workcenter?: string
+}
+export async function listTechnicians(q = '', page = 1, page_size = 20) {
+  const { data } = await api.get(`/masterdata/technicians`, { params: { q, page, page_size } })
+  return data as { total: number, items: Technician[] }
+}
+export async function createTechnician(body: Partial<Technician>) {
+  const { data } = await api.post(`/masterdata/technicians`, body)
+  return data.technician as Technician
+}
+export async function updateTechnician(id: Id, body: Partial<Technician>) {
+  const { data } = await api.put(`/masterdata/technicians/${id}`, body)
+  return data.technician as Technician
+}
+export async function deleteTechnician(id: Id) {
+  const { data } = await api.delete(`/masterdata/technicians/${id}`)
+  return data
+}
+
+// Services
+export type Service = {
+  id?: Id
+  name: string
+  code?: string
+  price?: number
+  description?: string
+}
+export async function listServices(q = '', page = 1, page_size = 20) {
+  const { data } = await api.get(`/masterdata/services`, { params: { q, page, page_size } })
+  return data as { total: number, items: Service[] }
+}
+export async function createService(body: Partial<Service>) {
+  const { data } = await api.post(`/masterdata/services`, body)
+  return data.service as Service
+}
+export async function updateService(id: Id, body: Partial<Service>) {
+  const { data } = await api.put(`/masterdata/services/${id}`, body)
+  return data.service as Service
+}
+export async function deleteService(id: Id) {
+  const { data } = await api.delete(`/masterdata/services/${id}`)
+  return data
+}
+
+// Document Types
+export type DocumentType = {
+  id?: Id
+  name: string
+  extension?: string
+}
+export async function listDocumentTypes(q = '', page = 1, page_size = 20) {
+  const { data } = await api.get(`/masterdata/document-types`, { params: { q, page, page_size } })
+  return data as { total: number, items: DocumentType[] }
+}
+export async function createDocumentType(body: Partial<DocumentType>) {
+  const { data } = await api.post(`/masterdata/document-types`, body)
+  return data.document_type as DocumentType
+}
+export async function updateDocumentType(id: Id, body: Partial<DocumentType>) {
+  const { data } = await api.put(`/masterdata/document-types/${id}`, body)
+  return data.document_type as DocumentType
+}
+export async function deleteDocumentType(id: Id) {
+  const { data } = await api.delete(`/masterdata/document-types/${id}`)
+  return data
+}
+
+// Financial
+export type Currency = {
+  id?: Id
+  code: string
+  name?: string
+  symbol?: string
+  is_default?: boolean
+  active?: boolean
+}
+export async function listCurrencies() {
+  const { data } = await api.get(`/masterdata/financial/currencies`)
+  return data as { items: Currency[] }
+}
+export async function createCurrency(body: Partial<Currency>) {
+  const { data } = await api.post(`/masterdata/financial/currencies`, body)
+  return data.currency as Currency
+}
+
+export type SimpleNamed = { id?: Id; code?: string; name: string; active?: boolean }
+export async function listPaymentTypes() {
+  const { data } = await api.get(`/masterdata/financial/payment-types`)
+  return data as { items: SimpleNamed[] }
+}
+export async function createPaymentType(body: Partial<SimpleNamed>) {
+  const { data } = await api.post(`/masterdata/financial/payment-types`, body)
+  return data.payment_type as SimpleNamed
+}
+
+export async function listPaymentForms() {
+  const { data } = await api.get(`/masterdata/financial/payment-forms`)
+  return data as { items: SimpleNamed[] }
+}
+export async function createPaymentForm(body: Partial<SimpleNamed>) {
+  const { data } = await api.post(`/masterdata/financial/payment-forms`, body)
+  return data.payment_form as SimpleNamed
+}
+
+export async function listPaymentMethods() {
+  const { data } = await api.get(`/masterdata/financial/payment-methods`)
+  return data as { items: SimpleNamed[] }
+}
+export async function createPaymentMethod(body: Partial<SimpleNamed>) {
+  const { data } = await api.post(`/masterdata/financial/payment-methods`, body)
+  return data.payment_method as SimpleNamed
+}
+
+// Series
+export type Series = { id?: Id; doc_type: 'order'|'invoice'|'client'; prefix?: string; next_number?: number; padding?: number; active?: boolean }
+export async function listSeries() {
+  const { data } = await api.get(`/masterdata/financial/series`)
+  return data as { items: Series[] }
+}
+export async function createSeries(body: Partial<Series>) {
+  const { data } = await api.post(`/masterdata/financial/series`, body)
+  return data.series as Series
+}
+export async function updateSeries(id: Id, body: Partial<Series>) {
+  const { data } = await api.put(`/masterdata/financial/series/${id}`, body)
+  return data.series as Series
+}
+
+// SMTP Config
+export type SmtpConfig = {
+  server: string
+  port: number
+  use_tls?: boolean
+  use_ssl?: boolean
+  username?: string
+  password?: string
+  has_password?: boolean
+}
+export async function getSmtpConfig() {
+  const { data } = await api.get(`/masterdata/financial/smtp`)
+  return data.smtp as SmtpConfig | null
+}
+export async function updateSmtpConfig(body: Partial<SmtpConfig>) {
+  const { data } = await api.put(`/masterdata/financial/smtp`, body)
+  return data.smtp as SmtpConfig
+}
+export async function testSmtp(to: string) {
+  const { data } = await api.post(`/masterdata/financial/smtp/test`, { to })
+  return data as { ok?: boolean; error?: string }
+}
