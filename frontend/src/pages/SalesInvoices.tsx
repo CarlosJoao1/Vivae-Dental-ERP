@@ -1,4 +1,5 @@
 import React from 'react'
+import { useLocation } from 'react-router-dom'
 import i18n from '@/i18n'
 import { listInvoices, createInvoice, type Line, invoicePdfUrl, getInvoice, sendInvoiceEmail, updateInvoice } from '@/api/sales'
 import { searchClientsBrief, type Client, listServices, type Service, getClient, listSeries } from '@/api/masterdata'
@@ -28,6 +29,22 @@ export default function SalesInvoices(){
 
   const reload = async ()=>{ const { items } = await listInvoices(); setItems(items) }
   React.useEffect(()=>{ reload(); (async ()=>{ const { items } = await listSeries(); setSeries(items as any) })() }, [])
+  // Auto-open edit if ?open=id
+  const location = useLocation()
+  React.useEffect(()=>{
+    const p = new URLSearchParams(location.search)
+    const openId = p.get('open')
+    if (openId){
+      (async()=>{
+        try{
+          const invoice = await getInvoice(openId)
+          setEditing({ id: openId })
+          setEditHdr({ number:invoice.number||'', date:invoice.date||'', currency:invoice.currency||'EUR', client:invoice.client||'', client_name:'', status:invoice.status||'draft', notes:(invoice as any).notes||'', discount_rate:(invoice as any).discount_rate||0, discount_amount:(invoice as any).discount_amount||0, tax_rate:(invoice as any).tax_rate||0 })
+          setEditLines((invoice.lines as any)||[])
+        } catch {}
+      })()
+    }
+  }, [location.search])
 
   const addLine = ()=> setLines([...lines, { description:'', qty:1, price:0 }])
   const setLine = (i:number, patch: Partial<Line>)=> setLines(lines.map((ln,idx)=> idx===i ? { ...ln, ...patch } : ln ))
@@ -220,7 +237,7 @@ export default function SalesInvoices(){
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3"><h3 className="text-lg font-semibold">{t('edit')||'Edit'}</h3><button onClick={()=>setEditing(null)}>✕</button></div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
-          <input placeholder={t('number')||'Number'} value={editHdr.number||''} onChange={e=>setEditHdr({...editHdr, number:e.target.value})} className="input" />
+          <input placeholder={t('number')||'Number'} value={editHdr.number||''} readOnly className="input bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
           <input type="date" value={editHdr.date||''} onChange={e=>setEditHdr({...editHdr, date:e.target.value})} className="input" />
           <div className="relative col-span-2">
             <input placeholder={t('client')||'Client'} value={editHdr.client_name||''} onChange={e=>{ setEditHdr({...editHdr, client_name:e.target.value}); setEditClientQ(e.target.value) }} className="input w-full" />

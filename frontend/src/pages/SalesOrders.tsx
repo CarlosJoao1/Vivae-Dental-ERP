@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import i18n from '@/i18n'
 import { listOrders, createOrder, type Line, orderPdfUrl, sendOrderEmail, getOrder, updateOrder, convertOrderToInvoice } from '@/api/sales'
 import { searchClientsBrief, type Client, listServices, type Service, getClient, listSeries } from '@/api/masterdata'
@@ -9,6 +10,7 @@ import TotalsSummary, { GrandTotal } from '@/components/TotalsSummary'
 
 export default function SalesOrders(){
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [items, setItems] = React.useState<any[]>([])
   const [hdr, setHdr] = React.useState({ number:'', date:'', client:'', client_name:'', currency:'EUR', notes:'', discount_rate: 0, discount_amount: 0, tax_rate: 0 })
   const [clientOpts, setClientOpts] = React.useState<Client[]>([])
@@ -29,6 +31,20 @@ export default function SalesOrders(){
 
   const reload = async ()=>{ const { items } = await listOrders(); setItems(items) }
   React.useEffect(()=>{ reload(); (async ()=>{ const { items } = await listSeries(); setSeries(items as any) })() }, [])
+  // Convert to Invoice dialog
+  const [convertDlg, setConvertDlg] = React.useState<{ open: boolean; orderId?: string; seriesId?: string }>({ open: false })
+  const startConvert = (orderId: string)=> setConvertDlg({ open: true, orderId, seriesId: '' })
+  const doConvert = async ()=>{
+    if (!convertDlg.orderId) { setConvertDlg({ open:false }); return }
+    try{
+      const res = await convertOrderToInvoice(convertDlg.orderId, convertDlg.seriesId ? { series: convertDlg.seriesId } : undefined)
+      setConvertDlg({ open:false })
+      // Navigate to invoices and open edit modal
+      navigate(`/sales/invoices?open=${encodeURIComponent(res.invoice_id as any)}`)
+    } catch(e:any){
+      alert(e?.response?.data?.error || e?.message || 'convert error')
+    }
+  }
 
   const addLine = ()=> setLines([...lines, { description:'', qty:1, price:0 }])
   const setLine = (i:number, patch: Partial<Line>)=> setLines(lines.map((ln,idx)=> idx===i ? { ...ln, ...patch } : ln ))
@@ -194,7 +210,7 @@ export default function SalesOrders(){
             <td className="text-center">{o.total?.toFixed? o.total.toFixed(2): o.total ?? ''}</td>
             <td className="text-right flex gap-2 justify-end px-2 py-1">
               <button className="px-2 py-1 rounded border" onClick={async()=>{ try{ const { order } = await (async()=>({ order: await getOrder(o.id) }))(); setEditing({ id:o.id }); setEditHdr({ number:order.number||'', date:order.date||'', currency:order.currency||'EUR', client:order.client||'', client_name:'', notes:(order as any).notes||'', discount_rate:(order as any).discount_rate||0, discount_amount:(order as any).discount_amount||0, tax_rate:(order as any).tax_rate||0 }); const linesAny = (order.lines as any)||[]; setEditLines(linesAny); const mm: Record<number,'rate'|'amount'> = {}; (linesAny||[]).forEach((ln:any, idx:number)=>{ mm[idx] = (ln?.discount_amount||0) > 0 ? 'amount' : 'rate' }); setEditDiscMode(mm); } catch(e:any){ alert(e?.message||'') } }}>{t('edit')||'Edit'}</button>
-              <button className="px-2 py-1 rounded border" onClick={async()=>{ try{ const res = await convertOrderToInvoice(o.id); alert(`${t('sales_invoices')||'Invoice'}: ${res.number}`) } catch(e:any){ alert(e?.message||'') } }}>{t('convert_to_invoice')||'To Invoice'}</button>
+              <button className="px-2 py-1 rounded border" onClick={()=> startConvert(o.id)}>{t('convert_to_invoice')||'To Invoice'}</button>
               <button className="px-2 py-1 rounded border" onClick={async()=>{
                 // fetch PDF with auth and save
                 try {
@@ -246,7 +262,7 @@ export default function SalesOrders(){
       <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl p-4">
         <div className="flex items-center justify-between mb-3"><h3 className="text-lg font-semibold">{t('edit')||'Edit'}</h3><button onClick={()=>setEditing(null)}>✕</button></div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-          <input placeholder={t('number')||'Number'} value={editHdr.number||''} onChange={e=>setEditHdr({...editHdr, number:e.target.value})} className="input" />
+          <input placeholder={t('number')||'Number'} value={editHdr.number||''} readOnly className="input bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
           <input type="date" value={editHdr.date||''} onChange={e=>setEditHdr({...editHdr, date:e.target.value})} className="input" />
           <div className="relative col-span-2">
             <input placeholder={t('client')||'Client'} value={editHdr.client_name||''} onChange={e=>{ setEditHdr({...editHdr, client_name:e.target.value}); setEditClientQ(e.target.value) }} className="input w-full" />
@@ -290,6 +306,27 @@ export default function SalesOrders(){
         <div className="flex justify-end gap-2">
           <button className="px-3 py-1 rounded border" onClick={()=>setEditing(null)}>{t('cancel') as string}</button>
           <button className="px-3 py-1 rounded bg-gray-900 text-white dark:bg-gray-700" onClick={async()=>{ try{ await updateOrder(editing.id, { ...editHdr, lines: editLines }); setEditing(null); reload() } catch(e:any){ alert(e?.message||'') } }}>{t('save') as string}</button>
+        </div>
+      </div>
+    </div>
+  )}
+  {/* Convert dialog */}
+  {convertDlg.open && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-4">
+        <div className="flex items-center justify-between mb-3"><h3 className="text-lg font-semibold">{t('convert_to_invoice')||'Convert to Invoice'}</h3><button onClick={()=>setConvertDlg({ open:false })}>✕</button></div>
+        <div className="space-y-2">
+          <label className="text-sm">{t('choose_series')||'Choose series'}</label>
+          <select value={convertDlg.seriesId||''} onChange={(e)=>setConvertDlg(prev=> ({ ...prev, seriesId: e.target.value }))} className="input w-full">
+            <option value="">{t('series') || 'Series'}</option>
+            {series.filter((s:any)=> s.doc_type==='invoice').map((s:any)=> (
+              <option key={s.id} value={s.id}>{s.prefix}{String(s.next_number).padStart(s.padding, '0')}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <button className="px-3 py-1 rounded border" onClick={()=>setConvertDlg({ open:false })}>{t('cancel')||'Cancel'}</button>
+          <button className="px-3 py-1 rounded bg-gray-900 text-white dark:bg-gray-700" onClick={doConvert}>{t('convert_to_invoice')||'Convert'}</button>
         </div>
       </div>
     </div>
