@@ -84,7 +84,7 @@ def create_app():
     # Errors
     @app.errorhandler(404)
     def _nf(e):
-        # If non-API path was requested on the backend host, redirect to frontend homepage
+        # If non-API path was requested on the backend host, redirect to frontend preserving path
         try:
             path = request.path or ""
             if not path.startswith("/api"):
@@ -94,7 +94,12 @@ def create_app():
                 )
                 origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
                 if origins:
-                    return redirect(origins[0], code=302)
+                    base = origins[0].rstrip("/")
+                    # Preserve the requested path and query string for SPA routing
+                    dest = f"{base}{path}"
+                    if request.query_string:
+                        dest = f"{dest}?{request.query_string.decode('utf-8', 'ignore')}"
+                    return redirect(dest, code=302)
         except Exception:
             pass
         return jsonify({"error": "not found"}), 404
