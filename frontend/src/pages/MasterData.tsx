@@ -7,7 +7,7 @@ import {
   listDocumentTypes, createDocumentType, updateDocumentType, deleteDocumentType,
   Client, Patient, Laboratory, listLaboratories, updateLaboratory,
   listCurrencies, createCurrency, listPaymentTypes, createPaymentType, listPaymentForms, createPaymentForm, listPaymentMethods, createPaymentMethod,
-  listSeries, createSeries, updateSeries, getSmtpConfig, updateSmtpConfig, testSmtp, type SmtpConfig
+  listSeries, createSeries, updateSeries, getSmtpConfig, updateSmtpConfig, testSmtp, diagnoseSmtp, type SmtpConfig
 } from '@/api/masterdata'
 import { useTranslation } from 'react-i18next'
 import ClientsManager from '@/pages/ClientsManager'
@@ -543,6 +543,7 @@ function SmtpTab(){
   const [cfg, setCfg] = React.useState<SmtpConfig>({ server:'', port:587, use_tls:true, use_ssl:false, username:'', password:'' })
   const [loading, setLoading] = React.useState(false)
   const [testEmail, setTestEmail] = React.useState('')
+  const [diag, setDiag] = React.useState<any | null>(null)
   React.useEffect(()=>{ (async ()=>{ setLoading(true); try{ const c = await getSmtpConfig(); if (c) setCfg({ ...cfg, ...c }) } finally { setLoading(false) } })() }, [])
   const save = async (e: React.FormEvent)=>{ e.preventDefault(); setLoading(true); try{ const body: any = { ...cfg }; if (!body.password) delete body.password; const saved = await updateSmtpConfig(body); setCfg({ ...cfg, ...saved, password: '' }) } finally { setLoading(false) } }
   return (
@@ -556,7 +557,16 @@ function SmtpTab(){
         <input placeholder={(t('username') as string) || 'Username'} value={cfg.username||''} onChange={e=>setCfg({...cfg, username:e.target.value})} className="input" />
         <input type="password" placeholder={(t('password') as string) || 'Password'} value={cfg.password||''} onChange={e=>setCfg({...cfg, password:e.target.value})} className="input" />
   {/* From fields removed as per requirements; sender will be the SMTP username */}
-        <div className="col-span-2 md:col-span-4 flex flex-wrap items-center justify-end gap-2">
+        <div className="col-span-2 md:col-span-4 flex flex-wrap items-center justify-between gap-2">
+          <button type="button" disabled={loading} className="px-3 py-1 rounded border" onClick={async()=>{
+            setLoading(true); setDiag(null);
+            try {
+              const d = await diagnoseSmtp();
+              setDiag(d);
+            } catch (e:any) {
+              setDiag({ error: e?.response?.data?.error || e?.message || String(e) })
+            } finally { setLoading(false) }
+          }}>{t('diagnose')||'Diagnosticar'}</button>
           <input placeholder={(t('email') as string) || 'Email'} value={testEmail} onChange={e=>setTestEmail(e.target.value)} className="input w-64" />
           <button type="button" disabled={loading || !testEmail} className="px-3 py-1 rounded border" onClick={async()=>{
             setLoading(true);
@@ -580,6 +590,12 @@ function SmtpTab(){
           }}> {t('test')||'Testar'} </button>
           <button disabled={loading} className="btn btn-primary">{t('save') as string}</button>
         </div>
+        {diag && (
+          <div className="col-span-2 md:col-span-4 mt-3">
+            <div className="text-sm font-medium mb-1">{t('diagnose_report')||'Diagnóstico'}</div>
+            <pre className="text-xs whitespace-pre-wrap bg-gray-50 p-2 rounded border max-h-80 overflow-auto">{JSON.stringify(diag, null, 2)}</pre>
+          </div>
+        )}
       </form>
     </div>
   )

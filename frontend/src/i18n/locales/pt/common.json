@@ -86,6 +86,8 @@
   ,"test": "Testar"
   ,"smtp_ok": "SMTP OK"
   ,"smtp_error": "Erro SMTP"
+  ,"diagnose": "Diagnosticar"
+  ,"diagnose_report": "Relatório de Diagnóstico"
   ,"doc_type_locked": "Tipo bloqueado (já utilizado)"
   ,"discount": "Desconto"
   ,"global_discount": "Desconto global"

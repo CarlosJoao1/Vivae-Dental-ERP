@@ -62,6 +62,8 @@
   ,"test": "Testen"
   ,"smtp_ok": "SMTP OK"
   ,"smtp_error": "SMTP-Fehler"
+  ,"diagnose": "Diagnose"
+  ,"diagnose_report": "Diagnosebericht"
   ,"discount": "Rabatt"
   ,"global_discount": "Globaler Rabatt"
   ,"line_discount": "Positionsrabatt"

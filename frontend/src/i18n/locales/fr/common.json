@@ -58,6 +58,8 @@
   ,"test": "Tester"
   ,"smtp_ok": "SMTP OK"
   ,"smtp_error": "Erreur SMTP"
+  ,"diagnose": "Diagnostiquer"
+  ,"diagnose_report": "Rapport de diagnostic"
   ,"discount": "Remise"
   ,"global_discount": "Remise globale"
   ,"line_discount": "Remise lignes"

@@ -58,6 +58,8 @@
   ,"test": "测试"
   ,"smtp_ok": "SMTP 正常"
   ,"smtp_error": "SMTP 错误"
+  ,"diagnose": "诊断"
+  ,"diagnose_report": "诊断报告"
   ,"discount": "折扣"
   ,"global_discount": "总折扣"
   ,"line_discount": "行折扣"

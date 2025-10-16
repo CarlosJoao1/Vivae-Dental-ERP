@@ -268,3 +268,8 @@ export async function testSmtp(to: string) {
   const { data } = await api.post(`/masterdata/financial/smtp/test`, { to })
   return data as { ok?: boolean; error?: string }
 }
+
+export async function diagnoseSmtp() {
+  const { data } = await api.post(`/masterdata/financial/smtp/diagnose`, {})
+  return data as any
+}

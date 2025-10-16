@@ -59,6 +59,8 @@
   ,"test": "Test"
   ,"smtp_ok": "SMTP OK"
   ,"smtp_error": "SMTP error"
+  ,"diagnose": "Diagnose"
+  ,"diagnose_report": "Diagnosis report"
   ,"doc_type_locked": "Type locked (already used)"
   ,"discount": "Discount"
   ,"global_discount": "Global discount"

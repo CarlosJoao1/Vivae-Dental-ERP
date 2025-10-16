@@ -20,6 +20,8 @@ from models.series import Series
 from models.smtp_config import SmtpConfig
 import smtplib
 from email.message import EmailMessage
+import socket
+import os
 
 bp = Blueprint("masterdata", __name__, url_prefix="/api/masterdata")
 
@@ -971,3 +973,143 @@ def smtp_test():
                 pass
 
     return jsonify({"error": "; ".join(errors) or "unknown smtp error"}), 500
+
+@bp.post("/financial/smtp/diagnose")
+@jwt_required()
+def smtp_diagnose():
+    """Diagnóstico detalhado SMTP: resolve DNS, testa conectividade a portas comuns,
+    verifica EHLO/STARTTLS e AUTH, e tenta login (sem enviar email).
+
+    Retorna um relatório estruturado útil para comparar DEV vs PRODUÇÃO.
+    """
+    lab = _lab()
+    cfg = SmtpConfig.objects(lab=lab).first()
+    if not cfg or not cfg.server:
+        return jsonify({"error": "smtp not configured"}), 400
+
+    host = cfg.server
+    result: dict = {
+        "host": host,
+        "env": {
+            "render": (current_app.config.get('RENDER') or (os.getenv('RENDER') == 'true')) if 'os' in globals() else (os.getenv('RENDER') == 'true'),
+            "env": (os.getenv('ENV') or os.getenv('FLASK_ENV')) if 'os' in globals() else None,
+        }
+    }
+
+    # DNS resolution
+    try:
+        infos = socket.getaddrinfo(host, None)
+        addrs = []
+        for fam, _, _, _, sockaddr in infos:
+            try:
+                fam_name = 'AF_INET6' if fam == socket.AF_INET6 else 'AF_INET' if fam == socket.AF_INET else str(fam)
+            except Exception:
+                fam_name = str(fam)
+            ip = sockaddr[0] if isinstance(sockaddr, tuple) and len(sockaddr) else str(sockaddr)
+            if ip not in [a.get('ip') for a in addrs]:
+                addrs.append({"family": fam_name, "ip": ip})
+        result["resolve"] = {"ok": True, "addresses": addrs}
+    except Exception as e:
+        result["resolve"] = {"ok": False, "error": f"{e.__class__.__name__}: {e}"}
+
+    # Port matrix
+    ports = []
+    def add_port(p):
+        if p and int(p) not in ports:
+            ports.append(int(p))
+    add_port(getattr(cfg, 'port', None))
+    for p in (465, 587, 25):
+        add_port(p)
+
+    tests = []
+    for p in ports:
+        entry = {"port": p, "ssl": (p == 465), "tls": (p == 587 and bool(getattr(cfg, 'use_tls', True))) }
+        # socket connectivity
+        try:
+            s = socket.create_connection((host, p), timeout=8)
+            s.close()
+            entry["connect_ok"] = True
+        except Exception as e:
+            entry["connect_ok"] = False
+            entry["connect_error"] = f"{e.__class__.__name__}: {e}"
+            tests.append(entry)
+            continue
+        # SMTP handshake
+        srv = None
+        banner = None
+        ehlo_ok = False
+        features = {}
+        starttls_ok = None
+        auth_mechs = []
+        login_ok = None
+        login_error = None
+        try:
+            if p == 465 or bool(getattr(cfg, 'use_ssl', False)):
+                srv = smtplib.SMTP_SSL(host, p, timeout=12)
+            else:
+                srv = smtplib.SMTP(host, p, timeout=12)
+            try:
+                code, msg = srv.noop()
+                banner = f"NOOP {code}"
+            except Exception:
+                pass
+            try:
+                srv.ehlo()
+                ehlo_ok = True
+                try:
+                    features = dict(getattr(srv, 'esmtp_features', {}) or {})
+                except Exception:
+                    features = {}
+            except Exception:
+                ehlo_ok = False
+            # STARTTLS if supported and not already SSL
+            if not isinstance(srv, smtplib.SMTP_SSL):
+                if 'starttls' in {k.lower(): v for k, v in (features or {}).items()}:
+                    try:
+                        srv.starttls()
+                        srv.ehlo()
+                        starttls_ok = True
+                        try:
+                            features = dict(getattr(srv, 'esmtp_features', {}) or {})
+                        except Exception:
+                            pass
+                    except Exception as e:
+                        starttls_ok = False
+                        entry["starttls_error"] = f"{e.__class__.__name__}: {e}"
+            # AUTH mechs
+            try:
+                caps = {k.lower(): v for k, v in (features or {}).items()}
+                if 'auth' in caps:
+                    auth_mechs = caps['auth'].split()
+            except Exception:
+                auth_mechs = []
+            # Try login if username
+            if cfg.username:
+                try:
+                    srv.login(cfg.username, cfg.password or '')
+                    login_ok = True
+                except Exception as le:
+                    login_ok = False
+                    login_error = f"{le.__class__.__name__}: {le}"
+        except Exception as e:
+            entry["error"] = f"{e.__class__.__name__}: {e}"
+        finally:
+            try:
+                if srv:
+                    srv.quit()
+            except Exception:
+                pass
+        entry.update({
+            "banner": banner,
+            "ehlo_ok": ehlo_ok,
+            "features": features,
+            "starttls_ok": starttls_ok,
+            "auth_mechs": auth_mechs,
+            "login_ok": login_ok,
+        })
+        if login_error:
+            entry["login_error"] = login_error
+        tests.append(entry)
+
+    result["tests"] = tests
+    return jsonify(result)
