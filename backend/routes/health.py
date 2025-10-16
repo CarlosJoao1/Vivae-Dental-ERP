@@ -1,7 +1,7 @@
 # backend/routes/health.py
 from flask import Blueprint, jsonify
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 bp = Blueprint("health", __name__)
 
@@ -43,7 +43,8 @@ def _compute_version() -> str:
     if ev:
         return ev
     # Default: v[AnoSemana].01 using ISO week
-    base = _iso_year_week(datetime.utcnow())
+    # Use timezone-aware UTC datetime
+    base = _iso_year_week(datetime.now(timezone.utc))
     return f"v{base}.01"
 
 @bp.get("/api/health/info")
