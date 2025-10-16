@@ -138,14 +138,19 @@ export default function SalesInvoices(){
               {lines.map((ln, i)=> (
                 <tr key={i} className="border-t">
                   <td className="relative">
-                    <input value={ln.description} onChange={e=>{ setLine(i,{ description:e.target.value }); onSvcChange(i, e.target.value) }} className="input w-full" />
+                    <input placeholder={t('search_service')||t('services')||'Service'} value={ln.description} onChange={e=>{ setLine(i,{ description:e.target.value }); onSvcChange(i, e.target.value) }} className="input w-full" />
                     {(svcOpts[i]?.length||0) > 0 && (
                       <div className="absolute z-10 bg-white dark:bg-gray-900 border w-full max-h-48 overflow-auto">
-                        {svcOpts[i]!.map((s:any)=> (
-                          <div key={s.id as string} className="px-2 py-1 hover:bg-gray-100 cursor-pointer" onClick={()=>pickService(i, s)}>
-                            {s.name} {s.price!=null? `- ${s.price}`:''}
-                          </div>
-                        ))}
+                        {svcOpts[i]!.map((s:any)=> {
+                          const title = s.code ? `${s.code} — ${s.name}` : s.name
+                          const priceStr = s.price!=null ? `${Number(s.price).toFixed(2)} ${hdr.currency||''}` : ''
+                          return (
+                            <div key={s.id as string} className="px-2 py-1 hover:bg-gray-100 cursor-pointer flex items-center justify-between" onClick={()=>pickService(i, s)}>
+                              <div className="truncate">{title}</div>
+                              <div className="text-xs opacity-70 ml-2 whitespace-nowrap">{priceStr}</div>
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </td>
