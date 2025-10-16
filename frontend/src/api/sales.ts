@@ -21,6 +21,10 @@ export async function updateOrder(id: Id, body: Partial<Order>) {
   const { data } = await api.put(`/sales/orders/${id}`, body)
   return data.order as Order
 }
+export async function convertOrderToInvoice(id: Id, body?: { series?: Id | string }) {
+  const { data } = await api.post(`/sales/orders/${id}/convert`, body||{})
+  return data as { invoice_id: Id; number: string }
+}
 export function orderPdfUrl(id: Id) { return `${api.defaults.baseURL}/sales/orders/${id}/pdf` }
 export async function sendOrderEmail(id: Id, payload: { to?: string; cc?: string; bcc?: string }) {
   const { data } = await api.post(`/sales/orders/${id}/email`, payload)

@@ -92,4 +92,6 @@
   ,"cc": "Cc"
   ,"bcc": "Bcc"
   ,"emails_semicolon": "Mehrere E-Mails mit ; trennen"
+  ,"auto": "auto"
+  ,"convert_to_invoice": "In Rechnung umwandeln"
 }

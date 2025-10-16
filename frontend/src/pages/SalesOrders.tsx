@@ -1,6 +1,6 @@
 import React from 'react'
 import i18n from '@/i18n'
-import { listOrders, createOrder, type Line, orderPdfUrl, sendOrderEmail, getOrder, updateOrder } from '@/api/sales'
+import { listOrders, createOrder, type Line, orderPdfUrl, sendOrderEmail, getOrder, updateOrder, convertOrderToInvoice } from '@/api/sales'
 import { searchClientsBrief, type Client, listServices, type Service, getClient, listSeries } from '@/api/masterdata'
 import { useTranslation } from 'react-i18next'
 import { calcGross, calcDiscount, calcNet, computeGlobalDiscount } from '@/lib/pricing'
@@ -93,10 +93,12 @@ export default function SalesOrders(){
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">{t('sales_orders') || 'Sales Orders'}</h1>
-      <form onSubmit={submit} className="space-y-3 mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <input placeholder={t('number')||'Number'} value={hdr.number} onChange={e=>setHdr({...hdr, number:e.target.value})} className="input" />
-          <input type="date" value={hdr.date} onChange={e=>setHdr({...hdr, date:e.target.value})} className="input" />
+      <form onSubmit={submit} className="space-y-4 mb-6">
+        {/* Header box */}
+        <div className="border rounded-md p-3 space-y-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="text-xs text-gray-500">{t('number')||'Number'}: <span className="font-medium">{hdr.number ? hdr.number : (t('auto')||'auto')}</span></div>
+            <input type="date" value={hdr.date} onChange={e=>setHdr({...hdr, date:e.target.value})} className="input" />
           <div className="relative">
             <input placeholder={t('client')||'Client'} value={hdr.client_name} onChange={e=>{ setHdr({...hdr, client_name:e.target.value}); setClientQ(e.target.value) }} className="input w-full" />
             {clientOpts.length>0 && (
@@ -115,22 +117,32 @@ export default function SalesOrders(){
               </div>
             )}
           </div>
-          <input placeholder={t('currency')||'Currency'} value={hdr.currency} onChange={e=>setHdr({...hdr, currency:e.target.value})} className="input" />
+            <input placeholder={t('currency')||'Currency'} value={hdr.currency} onChange={e=>setHdr({...hdr, currency:e.target.value})} className="input" />
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <select value={seriesId} onChange={(e)=>setSeriesId(e.target.value)} className="input">
+              <option value="">{t('series') || 'Series'}</option>
+              {series.map((s:any)=> (<option key={s.id} value={s.id}>{s.prefix}{String(s.next_number).padStart(s.padding, '0')}</option>))}
+            </select>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500 w-20">{t('discount')||'Discount'} %</label>
+              <input type="number" step="0.01" value={(hdr as any).discount_rate||0} onChange={e=>setHdr({...hdr, discount_rate: Number(e.target.value)||0})} className="input" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500 w-20">{t('discount')||'Discount'} {hdr.currency||''}</label>
+              <input type="number" step="0.01" value={(hdr as any).discount_amount||0} onChange={e=>setHdr({...hdr, discount_amount: Number(e.target.value)||0})} className="input" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500 w-20">IVA %</label>
+              <input type="number" step="0.01" value={(hdr as any).tax_rate||0} onChange={e=>setHdr({...hdr, tax_rate: Number(e.target.value)||0})} className="input" />
+            </div>
+          </div>
+          <textarea placeholder={t('description')||'Notes'} value={(hdr as any).notes} onChange={e=>setHdr({...hdr, notes:e.target.value})} className="input w-full" rows={2} />
+          {hdr.client && (<div className="text-xs text-gray-500">{t('client')}: {hdr.client_name}</div>)}
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <select value={seriesId} onChange={(e)=>setSeriesId(e.target.value)} className="input">
-            <option value="">{t('series') || 'Series'}</option>
-            {series.map((s:any)=> (<option key={s.id} value={s.id}>{s.prefix}{String(s.next_number).padStart(s.padding, '0')}</option>))}
-          </select>
-          <input type="number" step="0.01" placeholder={`${t('discount')||'Discount'} %`} value={(hdr as any).discount_rate||0} onChange={e=>setHdr({...hdr, discount_rate: Number(e.target.value)||0})} className="input" />
-          <input type="number" step="0.01" placeholder={`${t('discount')||'Discount'} ${hdr.currency||''}`} value={(hdr as any).discount_amount||0} onChange={e=>setHdr({...hdr, discount_amount: Number(e.target.value)||0})} className="input" />
-          <input type="number" step="0.01" placeholder={`Tax %`} value={(hdr as any).tax_rate||0} onChange={e=>setHdr({...hdr, tax_rate: Number(e.target.value)||0})} className="input" />
-        </div>
-        <textarea placeholder={t('description')||'Notes'} value={(hdr as any).notes} onChange={e=>setHdr({...hdr, notes:e.target.value})} className="input w-full" rows={2} />
-        {hdr.client && (<div className="text-xs text-gray-500">{t('client')}: {hdr.client_name}</div>)}
         <div>
           <table className="w-full text-sm">
-            <thead><tr><th>{t('description')||'Description'}</th><th>{t('qty')||'Qty'}</th><th>{t('price')||'Price'}</th><th>{t('discount')||'Discount'}</th><th>{t('total')||'Total'}</th></tr></thead>
+            <thead><tr className="border-b"><th className="text-left py-1">{t('description')||'Description'}</th><th className="text-center py-1">{t('qty')||'Qty'}</th><th className="text-center py-1">{t('price')||'Price'}</th><th className="text-center py-1">{t('discount')||'Discount'} (% / {hdr.currency||''})</th><th className="text-center py-1">{t('total')||'Total'}</th></tr></thead>
             <tbody>
               {lines.map((ln, i)=> (
                 <tr key={i} className="border-t">
@@ -162,7 +174,7 @@ export default function SalesOrders(){
             <TotalsSummary hdr={hdr} lines={lines} />
           </div>
         </div>
-        <div className="flex items-center justify-end gap-4">
+        <div className="flex items-center justify-end gap-4 border-t pt-3">
           <GrandTotal hdr={hdr} lines={lines} />
           <button className="btn btn-primary">{t('create')||'Create'}</button>
         </div>
@@ -177,6 +189,7 @@ export default function SalesOrders(){
             <td className="text-center">{o.total?.toFixed? o.total.toFixed(2): o.total ?? ''}</td>
             <td className="text-right flex gap-2 justify-end px-2 py-1">
               <button className="px-2 py-1 rounded border" onClick={async()=>{ try{ const { order } = await (async()=>({ order: await getOrder(o.id) }))(); setEditing({ id:o.id }); setEditHdr({ number:order.number||'', date:order.date||'', currency:order.currency||'EUR', client:order.client||'', client_name:'', notes:(order as any).notes||'', discount_rate:(order as any).discount_rate||0, discount_amount:(order as any).discount_amount||0, tax_rate:(order as any).tax_rate||0 }); const linesAny = (order.lines as any)||[]; setEditLines(linesAny); const mm: Record<number,'rate'|'amount'> = {}; (linesAny||[]).forEach((ln:any, idx:number)=>{ mm[idx] = (ln?.discount_amount||0) > 0 ? 'amount' : 'rate' }); setEditDiscMode(mm); } catch(e:any){ alert(e?.message||'') } }}>{t('edit')||'Edit'}</button>
+              <button className="px-2 py-1 rounded border" onClick={async()=>{ try{ const res = await convertOrderToInvoice(o.id); alert(`${t('sales_invoices')||'Invoice'}: ${res.number}`) } catch(e:any){ alert(e?.message||'') } }}>{t('convert_to_invoice')||'To Invoice'}</button>
               <button className="px-2 py-1 rounded border" onClick={async()=>{
                 // fetch PDF with auth and save
                 try {

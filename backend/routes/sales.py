@@ -722,6 +722,40 @@ def orders_email(oid):
             errors.append(f"ssl={u_ssl} tls={u_tls} port={prt or (465 if u_ssl else 587)} -> {err}")
     return jsonify({"error": "; ".join(errors) or "smtp send failed"}), 500
 
+@bp.post("/orders/<oid>/convert")
+@jwt_required()
+def orders_convert_to_invoice(oid):
+    """Create an invoice from an order, preserving lines, discounts and taxes.
+    Optional payload: { "series": "<series_id>" } to select invoice series.
+    """
+    lab = _lab()
+    try:
+        o = Order.objects.get(id=oid, lab=lab)
+    except Exception:
+        return jsonify({"error": "order not found"}), 404
+    data = request.get_json(force=True, silent=True) or {}
+    # Determine next invoice number
+    series_id = data.get("series")
+    inv_number, _ = _next_number(lab, "invoice", series_id, "INV-")
+    # Build invoice
+    inv = Invoice(
+        lab=lab,
+        number=inv_number,
+        date=date.today(),
+        client=o.client,
+        client_code=getattr(o, 'client_code', None) or '',
+        currency=o.currency or "EUR",
+        lines=getattr(o, 'lines', []) or [],
+        total=float(getattr(o, 'total', 0.0) or 0.0),
+        status="issued",
+        notes=getattr(o, 'notes', '') or '',
+        discount_rate=float(getattr(o, 'discount_rate', 0.0) or 0.0),
+        discount_amount=float(getattr(o, 'discount_amount', 0.0) or 0.0),
+        tax_rate=float(getattr(o, 'tax_rate', 0.0) or 0.0),
+        tax_amount=float(getattr(o, 'tax_amount', 0.0) or 0.0),
+    ).save()
+    return jsonify({"invoice_id": str(inv.id), "number": inv.number}), 201
+
 # Invoices
 @bp.get("/invoices")
 @jwt_required()

@@ -92,4 +92,6 @@
   ,"cc": "抄送"
   ,"bcc": "密送"
   ,"emails_semicolon": "多个邮箱请用分号 ; 分隔"
+  ,"auto": "自动"
+  ,"convert_to_invoice": "转换为发票"
 }

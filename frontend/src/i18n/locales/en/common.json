@@ -65,6 +65,8 @@
   ,"subtotal_after_discount": "Subtotal"
   ,"tax": "Tax"
   ,"grand_total": "Total"
+  ,"auto": "auto"
+  ,"convert_to_invoice": "Convert to Invoice"
   ,"series": "Series"
   ,"prefix": "Prefix"
   ,"next_number": "Next number"

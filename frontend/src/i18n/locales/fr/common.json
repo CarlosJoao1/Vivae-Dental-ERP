@@ -92,4 +92,6 @@
   ,"cc": "Cc"
   ,"bcc": "Cci"
   ,"emails_semicolon": "Séparez plusieurs emails avec ;"
+  ,"auto": "auto"
+  ,"convert_to_invoice": "Convertir en facture"
 }

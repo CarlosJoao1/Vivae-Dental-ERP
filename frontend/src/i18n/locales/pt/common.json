@@ -92,4 +92,6 @@
   ,"subtotal_after_discount": "Subtotal"
   ,"tax": "Imposto"
   ,"grand_total": "Total"
+  ,"auto": "automático"
+  ,"convert_to_invoice": "Converter em Fatura"
 }
