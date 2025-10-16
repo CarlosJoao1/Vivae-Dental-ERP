@@ -2,5 +2,58 @@
   "Bem-vindo": "欢迎",
   "Entrar": "登录",
   "search": "搜索",
-  "logout": "退出登录"
+  "logout": "退出登录",
+  "masterdata": "主数据",
+  "clients": "客户",
+  "patients": "病人",
+  "technicians": "技术员",
+  "services": "服务",
+  "document_types": "文档类型",
+  "reload": "刷新",
+  "create": "创建",
+  "remove": "删除",
+  "name": "名称",
+  "first_name": "名",
+  "last_name": "姓",
+  "gender": "性别",
+  "male": "男",
+  "female": "女",
+  "other": "其他",
+  "birthdate": "出生日期",
+  "age": "年龄",
+  "email": "邮箱",
+  "phone": "电话",
+  "tax_id": "税号",
+  "address": "地址",
+  "code": "编码",
+  "price": "价格",
+  "extension": "扩展名"
+  ,"financial": "财务"
+  ,"currencies": "货币"
+  ,"payment_types": "付款类型"
+  ,"payment_forms": "付款形式"
+  ,"payment_methods": "付款方式"
+  ,"symbol": "符号"
+  ,"is_default": "默认"
+  ,"dashboard": "仪表板"
+  ,"master_data": "主数据"
+  ,"production": "生产"
+  ,"crm": "客户关系"
+  ,"sales_orders": "订单"
+  ,"sales_invoices": "发票"
+  ,"number": "编号"
+  ,"client": "客户"
+  ,"currency": "货币"
+  ,"description": "描述"
+  ,"qty": "数量"
+  ,"total": "总计"
+  ,"add_line": "添加行"
+  ,"list": "列表"
+  ,"date": "日期"
+  ,"status": "状态"
+  ,"sales": "销售"
+  ,"doc_type_locked": "类型已锁定（已使用）"
+  ,"test": "测试"
+  ,"smtp_ok": "SMTP 正常"
+  ,"smtp_error": "SMTP 错误"
 }

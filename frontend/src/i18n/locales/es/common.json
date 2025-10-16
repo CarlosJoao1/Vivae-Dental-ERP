@@ -2,5 +2,58 @@
   "Bem-vindo": "Bienvenido",
   "Entrar": "Entrar",
   "search": "Buscar",
-  "logout": "Salir"
+  "logout": "Salir",
+  "masterdata": "Datos Maestros",
+  "clients": "Clientes",
+  "patients": "Pacientes",
+  "technicians": "Técnicos",
+  "services": "Servicios",
+  "document_types": "Tipos de Documento",
+  "reload": "Recargar",
+  "create": "Crear",
+  "remove": "Eliminar",
+  "name": "Nombre",
+  "first_name": "Nombre",
+  "last_name": "Apellido",
+  "gender": "Género",
+  "male": "Masculino",
+  "female": "Femenino",
+  "other": "Otro",
+  "birthdate": "Fecha de nacimiento",
+  "age": "edad",
+  "email": "Correo",
+  "phone": "Teléfono",
+  "tax_id": "NIF",
+  "address": "Dirección",
+  "code": "Código",
+  "price": "Precio",
+  "extension": "Extensión"
+  ,"financial": "Financiero"
+  ,"currencies": "Monedas"
+  ,"payment_types": "Tipos de Pago"
+  ,"payment_forms": "Formas de Pago"
+  ,"payment_methods": "Métodos de Pago"
+  ,"symbol": "Símbolo"
+  ,"is_default": "Predeterminado"
+  ,"dashboard": "Panel"
+  ,"master_data": "Datos Maestros"
+  ,"production": "Producción"
+  ,"crm": "CRM"
+  ,"sales_orders": "Pedidos"
+  ,"sales_invoices": "Facturas"
+  ,"number": "Número"
+  ,"client": "Cliente"
+  ,"currency": "Moneda"
+  ,"description": "Descripción"
+  ,"qty": "Cant."
+  ,"total": "Total"
+  ,"add_line": "Añadir línea"
+  ,"list": "Lista"
+  ,"date": "Fecha"
+  ,"status": "Estado"
+  ,"sales": "Ventas"
+  ,"doc_type_locked": "Tipo bloqueado (ya utilizado)"
+  ,"test": "Probar"
+  ,"smtp_ok": "SMTP OK"
+  ,"smtp_error": "Error SMTP"
 }

@@ -99,7 +99,8 @@ def _resolve_tenants_for_user(user: User):
 
     # Se o utilizador tiver tenant_id, tenta pô-lo como o primeiro da lista
     try:
-        tid = str(getattr(user, "tenant_id", "") or "")
+        # Normaliza para ObjectId string quando for ReferenceField
+        tid = str(getattr(getattr(user, "tenant_id", None), "id", "") or "")
         if tid:
             items.sort(key=lambda it: 0 if it.get("id") == tid else 1)
     except Exception:
@@ -135,7 +136,9 @@ def login():
             current_app.logger.warning("Login failed: invalid password - %s", username)
             return jsonify({"error": "invalid credentials"}), 401
 
-        claims = {"role": user.role, "tenant_id": str(user.tenant_id) if user.tenant_id else None}
+        # Claims com tenant_id normalizado para ObjectId string
+        lab_id = str(getattr(getattr(user, "tenant_id", None), "id", "") or "")
+        claims = {"role": user.role, "tenant_id": lab_id or None}
         access = create_access_token(identity=str(user.id), additional_claims=claims)
         refresh = create_refresh_token(identity=str(user.id), additional_claims=claims)
 
@@ -154,7 +157,8 @@ def login():
 def refresh():
     user_id = get_jwt_identity()
     user = User.objects.get(id=user_id)
-    claims = {"role": user.role, "tenant_id": str(user.tenant_id) if user.tenant_id else None}
+    lab_id = str(getattr(getattr(user, "tenant_id", None), "id", "") or "")
+    claims = {"role": user.role, "tenant_id": lab_id or None}
     access = create_access_token(identity=str(user.id), additional_claims=claims)
     return jsonify({"access_token": access})
 

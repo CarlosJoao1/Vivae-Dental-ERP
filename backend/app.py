@@ -16,7 +16,7 @@ def create_app():
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
     app.config["JSON_SORT_KEYS"] = False
 
-        # ---- CORS (dinâmico por env) ----
+    # ---- CORS (dinâmico por env) ----
     # Define no Render (backend): FRONTEND_ORIGINS="https://<frontend>.onrender.com,http://localhost:5173,http://0.0.0.0:5173"
     try:
         from flask_cors import CORS
@@ -46,10 +46,10 @@ def create_app():
     init_db(app)
     init_auth(app)
 
-        # Blueprints
+    # Blueprints
     register_blueprints(app)
 
-        # Log incoming requests
+    # Log incoming requests
     @app.before_request
     def log_request():
         app.logger.info(f"[REQUEST] {request.method} {request.path} from {request.remote_addr} Origin: {request.headers.get('Origin', 'None')}")
@@ -83,6 +83,20 @@ def create_app():
     def _ise(e):
         app.logger.exception("Unhandled 500")
         return jsonify({"error": "internal server error"}), 500
+
+    # Production guard: require proper secrets in production-like envs
+    try:
+        env_lower = (os.getenv("ENV", "") or os.getenv("FLASK_ENV", "")).lower()
+        is_prod = env_lower in ("prod", "production") or os.getenv("RENDER") == "true"
+        if is_prod:
+            if app.config.get("SECRET_KEY") == "dev-secret" or not os.getenv("SECRET_KEY"):
+                raise RuntimeError("SECRET_KEY must be set in production")
+            if app.config.get("JWT_SECRET_KEY") == "dev-jwt-secret" or not os.getenv("JWT_SECRET_KEY"):
+                raise RuntimeError("JWT_SECRET_KEY must be set in production")
+    except Exception as e:
+        app.logger.error("Production secrets validation failed: %s", e)
+        # Falhar o arranque em produção para segurança
+        raise
 
     # Seed (idempotent)
     with app.app_context():

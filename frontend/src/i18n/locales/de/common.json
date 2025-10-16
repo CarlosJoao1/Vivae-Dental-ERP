@@ -1,0 +1,63 @@
+{
+  "Bem-vindo": "Willkommen",
+  "Entrar": "Anmelden",
+  "search": "Suchen",
+  "logout": "Abmelden",
+  "masterdata": "Stammdaten",
+  "clients": "Kunden",
+  "patients": "Patienten",
+  "technicians": "Techniker",
+  "services": "Leistungen",
+  "document_types": "Dokumenttypen",
+  "reload": "Aktualisieren",
+  "create": "Erstellen",
+  "remove": "Entfernen",
+  "edit": "Bearbeiten",
+  "save": "Speichern",
+  "cancel": "Abbrechen",
+  "client_exists": "Kunde existiert bereits ({field})",
+  "name": "Name",
+  "first_name": "Vorname",
+  "last_name": "Nachname",
+  "gender": "Geschlecht",
+  "male": "Männlich",
+  "female": "Weiblich",
+  "other": "Andere",
+  "birthdate": "Geburtsdatum",
+  "age": "Alter",
+  "email": "E-Mail",
+  "phone": "Telefon",
+  "tax_id": "Steuernummer",
+  "address": "Adresse",
+  "code": "Code",
+  "price": "Preis",
+  "extension": "Erweiterung"
+  ,"financial": "Finanzen"
+  ,"currencies": "Währungen"
+  ,"payment_types": "Zahlungsarten"
+  ,"payment_forms": "Zahlungsformen"
+  ,"payment_methods": "Zahlungsmethoden"
+  ,"symbol": "Symbol"
+  ,"is_default": "Standard"
+  ,"dashboard": "Dashboard"
+  ,"master_data": "Stammdaten"
+  ,"production": "Produktion"
+  ,"crm": "CRM"
+  ,"sales_orders": "Aufträge"
+  ,"sales_invoices": "Rechnungen"
+  ,"number": "Nummer"
+  ,"client": "Kunde"
+  ,"currency": "Währung"
+  ,"description": "Beschreibung"
+  ,"qty": "Menge"
+  ,"total": "Summe"
+  ,"add_line": "Zeile hinzufügen"
+  ,"list": "Liste"
+  ,"date": "Datum"
+  ,"status": "Status"
+  ,"sales": "Vertrieb"
+  ,"doc_type_locked": "Typ gesperrt (bereits verwendet)"
+  ,"test": "Testen"
+  ,"smtp_ok": "SMTP OK"
+  ,"smtp_error": "SMTP-Fehler"
+}

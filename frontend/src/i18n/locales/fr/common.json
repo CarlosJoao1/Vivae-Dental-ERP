@@ -2,5 +2,58 @@
   "Bem-vindo": "Bienvenue",
   "Entrar": "Se connecter",
   "search": "Rechercher",
-  "logout": "Se déconnecter"
+  "logout": "Se déconnecter",
+  "masterdata": "Données de base",
+  "clients": "Clients",
+  "patients": "Patients",
+  "technicians": "Techniciens",
+  "services": "Services",
+  "document_types": "Types de document",
+  "reload": "Recharger",
+  "create": "Créer",
+  "remove": "Supprimer",
+  "name": "Nom",
+  "first_name": "Prénom",
+  "last_name": "Nom de famille",
+  "gender": "Genre",
+  "male": "Homme",
+  "female": "Femme",
+  "other": "Autre",
+  "birthdate": "Date de naissance",
+  "age": "âge",
+  "email": "Email",
+  "phone": "Téléphone",
+  "tax_id": "NIF",
+  "address": "Adresse",
+  "code": "Code",
+  "price": "Prix",
+  "extension": "Extension"
+  ,"financial": "Financier"
+  ,"currencies": "Devises"
+  ,"payment_types": "Types de Paiement"
+  ,"payment_forms": "Formes de Paiement"
+  ,"payment_methods": "Méthodes de Paiement"
+  ,"symbol": "Symbole"
+  ,"is_default": "Par défaut"
+  ,"dashboard": "Tableau de bord"
+  ,"master_data": "Données de base"
+  ,"production": "Production"
+  ,"crm": "CRM"
+  ,"sales_orders": "Commandes"
+  ,"sales_invoices": "Factures"
+  ,"number": "Numéro"
+  ,"client": "Client"
+  ,"currency": "Devise"
+  ,"description": "Description"
+  ,"qty": "Qté"
+  ,"total": "Total"
+  ,"add_line": "Ajouter une ligne"
+  ,"list": "Liste"
+  ,"date": "Date"
+  ,"status": "Statut"
+  ,"sales": "Ventes"
+  ,"doc_type_locked": "Type verrouillé (déjà utilisé)"
+  ,"test": "Tester"
+  ,"smtp_ok": "SMTP OK"
+  ,"smtp_error": "Erreur SMTP"
 }

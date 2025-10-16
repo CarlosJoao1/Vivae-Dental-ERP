@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Connection Test</title>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    <button onclick="testHealth()">Test Health Endpoint</button>
+    <button onclick="testLogin()">Test Login Endpoint</button>
+    <button onclick="testOptions()">Test OPTIONS Request</button>
+    <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+        const resultDiv = document.getElementById('result');
+
+        function log(message, isError = false) {
+            console.log(message);
+            const p = document.createElement('p');
+            p.textContent = message;
+            p.style.color = isError ? 'red' : 'green';
+            resultDiv.appendChild(p);
+        }
+
+        async function testHealth() {
+            resultDiv.innerHTML = '';
+            log('Testing /api/health...');
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                log(`✓ Health check passed: ${JSON.stringify(data)}`);
+            } catch (error) {
+                log(`✗ Health check failed: ${error.message}`, true);
+            }
+        }
+
+        async function testOptions() {
+            resultDiv.innerHTML = '';
+            log('Testing OPTIONS /api/auth/login...');
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'http://localhost:5173',
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                log(`✓ OPTIONS request: ${response.status} ${response.statusText}`);
+                log(`Headers: ${JSON.stringify([...response.headers.entries()])}`);
+            } catch (error) {
+                log(`✗ OPTIONS request failed: ${error.message}`, true);
+            }
+        }
+
+        async function testLogin() {
+            resultDiv.innerHTML = '';
+            log('Testing POST /api/auth/login...');
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': 'http://localhost:5173'
+                    },
+                    body: JSON.stringify({
+                        username: 'admin',
+                        password: 'admin123'
+                    })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    log(`✓ Login successful!`);
+                    log(`Access token received: ${data.access_token?.substring(0, 50)}...`);
+                } else {
+                    log(`✗ Login failed: ${JSON.stringify(data)}`, true);
+                }
+            } catch (error) {
+                log(`✗ Login request failed: ${error.message}`, true);
+                log(`Error details: ${JSON.stringify(error)}`, true);
+            }
+        }
+    </script>
+</body>
+</html>
