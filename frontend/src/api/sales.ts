@@ -27,7 +27,7 @@ export async function convertOrderToInvoice(id: Id, body?: { series?: Id | strin
 }
 export function orderPdfUrl(id: Id) { return `${api.defaults.baseURL}/sales/orders/${id}/pdf` }
 export async function sendOrderEmail(id: Id, payload: { to?: string; cc?: string; bcc?: string }) {
-  const { data } = await api.post(`/sales/orders/${id}/email`, payload)
+  const { data } = await api.post(`/sales/orders/${id}/email`, payload, { timeout: 90000 })
   return data
 }
 
@@ -49,6 +49,6 @@ export async function updateInvoice(id: Id, body: Partial<Invoice>) {
 }
 export function invoicePdfUrl(id: Id) { return `${api.defaults.baseURL}/sales/invoices/${id}/pdf` }
 export async function sendInvoiceEmail(id: Id, payload: { to?: string; cc?: string; bcc?: string }) {
-  const { data } = await api.post(`/sales/invoices/${id}/email`, payload)
+  const { data } = await api.post(`/sales/invoices/${id}/email`, payload, { timeout: 90000 })
   return data
 }

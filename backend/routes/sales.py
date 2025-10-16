@@ -681,9 +681,9 @@ def orders_email(oid):
         srv = None
         try:
             if use_ssl:
-                srv = smtplib.SMTP_SSL(cfg.server, port or 465, timeout=15)
+                srv = smtplib.SMTP_SSL(cfg.server, port or 465, timeout=30)
             else:
-                srv = smtplib.SMTP(cfg.server, port or 587, timeout=15)
+                srv = smtplib.SMTP(cfg.server, port or 587, timeout=30)
             srv.ehlo()
             if use_tls and not use_ssl:
                 srv.starttls(); srv.ehlo()
@@ -956,9 +956,9 @@ def invoices_email(iid):
         srv = None
         try:
             if use_ssl:
-                srv = smtplib.SMTP_SSL(cfg.server, port or 465, timeout=15)
+                srv = smtplib.SMTP_SSL(cfg.server, port or 465, timeout=30)
             else:
-                srv = smtplib.SMTP(cfg.server, port or 587, timeout=15)
+                srv = smtplib.SMTP(cfg.server, port or 587, timeout=30)
             srv.ehlo()
             if use_tls and not use_ssl:
                 srv.starttls(); srv.ehlo()

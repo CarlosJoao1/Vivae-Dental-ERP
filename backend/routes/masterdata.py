@@ -1026,7 +1026,7 @@ def smtp_diagnose():
         entry = {"port": p, "ssl": (p == 465), "tls": (p == 587 and bool(getattr(cfg, 'use_tls', True))) }
         # socket connectivity
         try:
-            s = socket.create_connection((host, p), timeout=8)
+            s = socket.create_connection((host, p), timeout=10)
             s.close()
             entry["connect_ok"] = True
         except Exception as e:
@@ -1045,9 +1045,9 @@ def smtp_diagnose():
         login_error = None
         try:
             if p == 465 or bool(getattr(cfg, 'use_ssl', False)):
-                srv = smtplib.SMTP_SSL(host, p, timeout=12)
+                srv = smtplib.SMTP_SSL(host, p, timeout=25)
             else:
-                srv = smtplib.SMTP(host, p, timeout=12)
+                srv = smtplib.SMTP(host, p, timeout=25)
             try:
                 code, msg = srv.noop()
                 banner = f"NOOP {code}"

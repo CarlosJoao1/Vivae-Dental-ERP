@@ -265,11 +265,13 @@ export async function updateSmtpConfig(body: Partial<SmtpConfig>) {
   return data.smtp as SmtpConfig
 }
 export async function testSmtp(to: string) {
-  const { data } = await api.post(`/masterdata/financial/smtp/test`, { to })
+  // SMTP test may take longer (multiple fallback attempts server-side)
+  const { data } = await api.post(`/masterdata/financial/smtp/test`, { to }, { timeout: 90000 })
   return data as { ok?: boolean; error?: string }
 }
 
 export async function diagnoseSmtp() {
-  const { data } = await api.post(`/masterdata/financial/smtp/diagnose`, {})
+  // Diagnostics may collect multiple probes; give it extra time
+  const { data } = await api.post(`/masterdata/financial/smtp/diagnose`, {}, { timeout: 90000 })
   return data as any
 }
