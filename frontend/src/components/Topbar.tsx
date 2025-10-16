@@ -32,9 +32,16 @@ export default function Topbar(){
     return () => { mounted = false }
   }, [])
   const shortCommit = commit ? commit.substring(0, 7) : null
-  const versionTooltip = version
-    ? `Branch: ${branch || 'unknown'}\nCommit: ${shortCommit || 'unknown'}${buildTime ? `\nBuild: ${buildTime}` : ''}`
-    : undefined
+  let versionTooltip: string | undefined
+  if (version) {
+    const lines: string[] = []
+    lines.push(`Branch: ${branch || 'unknown'}`)
+    lines.push(`Commit: ${shortCommit || 'unknown'}`)
+    if (buildTime) {
+      lines.push(`Build: ${buildTime}`)
+    }
+    versionTooltip = lines.join('\n')
+  }
   return (
     <header className="w-full border-b bg-white/70 dark:bg-gray-900/70 backdrop-blur sticky top-0 z-10">
       <div className="h-14 px-4 flex items-center justify-between">
