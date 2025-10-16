@@ -6,7 +6,14 @@ from flask import abort, current_app
 class LicenseService:
     def __init__(self, app):
         self.features = {}
-        self.load(app.config.get("LICENSE_FILE","/app/license.json"))
+        # Resolve caminho do ficheiro de licença: permite /app em container ou raiz do projeto em dev
+        candidate = app.config.get("LICENSE_FILE")
+        if not candidate:
+            # prefer /app/license.json (container), fallback ../license.json (repo root)
+            p1 = "/app/license.json"
+            p2 = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "license.json"))
+            candidate = p1 if os.path.exists(p1) else p2
+        self.load(candidate)
 
     def load(self, path):
         if os.path.exists(path):

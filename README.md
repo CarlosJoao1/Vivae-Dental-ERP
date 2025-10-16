@@ -35,3 +35,24 @@ docker compose up --build
 ## Notas
 - CORS está ativo para `http://localhost:5173`.
 - Para produção, usa um WSGI (Gunicorn) e variáveis seguras para secrets.
+
+## Deploy na Render
+
+Este repositório inclui `render.yaml` com dois serviços:
+- `vivae-backend` (web, Python): inicia via `gunicorn app:create_app()`
+- `vivae-frontend` (static): build `npm ci && npm run build`, publica `dist/` e tem rewrite SPA
+
+Variáveis obrigatórias (definir no dashboard da Render):
+- `SECRET_KEY` (web)
+- `JWT_SECRET_KEY` (web)
+- `MONGO_URI` (web) – ex: string Atlas `mongodb+srv://.../vivae_dental_erp`
+
+Variáveis ligadas automaticamente:
+- `FRONTEND_ORIGINS` (web) vem da URL do serviço estático
+- `VITE_API_BASE` (static) vem da URL do backend
+
+Passos:
+1. Criar Blueprint no Render apontando para este repo.
+2. Confirmar que os dois serviços aparecem com nomes `vivae-backend` e `vivae-frontend`.
+3. Definir `SECRET_KEY`, `JWT_SECRET_KEY`, `MONGO_URI` no serviço `vivae-backend`.
+4. Deploy; o backend expõe `/api/health` e o frontend faz chamadas para `${VITE_API_BASE}/api`.
