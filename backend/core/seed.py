@@ -46,11 +46,29 @@ def run_seed():
     else:
         print("ℹ️ Seed: Service exists")
 
-    # Client (best-effort; ignore errors if duplicates exist)
+    # Helper to get next formatted number for a series (atomic increment)
+    def _next_number(lab_obj: Laboratory, doc_type: str, fallback_prefix: str) -> str:
+        ser = Series.objects(lab=lab_obj, doc_type=doc_type, active=True).first()
+        if not ser:
+            ser = Series(lab=lab_obj, doc_type=doc_type, prefix=fallback_prefix, next_number=1, padding=5, active=True).save()
+        Series.objects(id=ser.id).update_one(inc__next_number=1)
+        ser.reload()
+        num = (ser.next_number or 1) - 1
+        return f"{ser.prefix}{num:0{ser.padding}d}"
+
+    # Client (idempotent): ensure a default client with auto-generated code exists
     try:
         cli = Client.objects(lab=lab, name="Clínica Central").first()
         if not cli:
-            Client(lab=lab, name="Clínica Central", type="clinic", tax_id="PT999999990", email="contato@clinica.pt").save()
+            code = _next_number(lab, "client", "CLI-")
+            Client(
+                lab=lab,
+                code=code,
+                name="Clínica Central",
+                type="clinic",
+                tax_id="PT999999990",
+                email="contato@clinica.pt",
+            ).save()
             print("✅ Seed: Client created")
         else:
             print("ℹ️ Seed: Client exists")
