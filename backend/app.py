@@ -13,6 +13,7 @@ from config.db import init_db
 from config.auth import init_auth, jwt  # noqa
 from routes import register_blueprints
 from core.seed import run_seed
+from flask import redirect
 
 def create_app():
     app = Flask(__name__)
@@ -83,6 +84,19 @@ def create_app():
     # Errors
     @app.errorhandler(404)
     def _nf(e):
+        # If non-API path was requested on the backend host, redirect to frontend homepage
+        try:
+            path = request.path or ""
+            if not path.startswith("/api"):
+                raw_origins = os.getenv(
+                    "FRONTEND_ORIGINS",
+                    "http://localhost:5173,http://127.0.0.1:5173,http://0.0.0.0:5173"
+                )
+                origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+                if origins:
+                    return redirect(origins[0], code=302)
+        except Exception:
+            pass
         return jsonify({"error": "not found"}), 404
 
     @app.errorhandler(500)

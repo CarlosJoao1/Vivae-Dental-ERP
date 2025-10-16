@@ -14,6 +14,9 @@ export default function Topbar(){
   const [branch, setBranch] = useState<string | null>(null)
   const [commit, setCommit] = useState<string | null>(null)
   const [buildTime, setBuildTime] = useState<string | null>(null)
+  const [apiOk, setApiOk] = useState<boolean | null>(null)
+  const [dbOk, setDbOk] = useState<boolean | null>(null)
+  const [diagErr, setDiagErr] = useState<string | null>(null)
   useEffect(() => {
     let mounted = true
     api.get('/health/info')
@@ -29,6 +32,21 @@ export default function Topbar(){
       .catch(() => {
         // silencioso, não crítico
       })
+    // Deep diagnostics (API + DB)
+    api.get('/health/deep')
+      .then((res)=>{
+        if (!mounted) return
+        const d = res.data || {}
+        setApiOk(Boolean(d?.ok))
+        setDbOk(Boolean(d?.db?.ok))
+        setDiagErr(null)
+      })
+      .catch((e:any)=>{
+        if (!mounted) return
+        setApiOk(null)
+        setDbOk(null)
+        setDiagErr(e?.message||'Network Error')
+      })
     return () => { mounted = false }
   }, [])
   const shortCommit = commit ? commit.substring(0, 7) : null
@@ -42,10 +60,17 @@ export default function Topbar(){
     }
     versionTooltip = lines.join('\n')
   }
+  // Status dot for quick glance (green: ok, yellow: db warn, red: error)
+  let statusColor = 'bg-gray-400'
+  let statusTip = 'Unknown'
+  if (diagErr) { statusColor = 'bg-red-500'; statusTip = `API error: ${diagErr}` }
+  else if (apiOk === true && dbOk === false) { statusColor = 'bg-yellow-500'; statusTip = 'API OK, DB unreachable' }
+  else if (apiOk === true && dbOk === true) { statusColor = 'bg-green-600'; statusTip = 'API OK, DB OK' }
   return (
     <header className="w-full border-b bg-white/70 dark:bg-gray-900/70 backdrop-blur sticky top-0 z-10">
       <div className="h-14 px-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
+          <span title={statusTip} className={`inline-block w-2.5 h-2.5 rounded-full ${statusColor}`} />
           {version && (
             <span
               title={versionTooltip}
