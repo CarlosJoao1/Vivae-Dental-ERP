@@ -88,6 +88,7 @@
   ,"cc": "Cc"
   ,"bcc": "Bcc"
   ,"emails_semicolon": "Separate multiple emails with ;"
+  ,"client_exists": "Client already exists ({field})"
   ,"edit": "Edit"
   ,"save": "Save"
   ,"cancel": "Cancel"
