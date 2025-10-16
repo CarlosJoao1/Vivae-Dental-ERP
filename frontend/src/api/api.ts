@@ -27,7 +27,8 @@ const base = rawEnvBase
 const api = axios.create({
   baseURL: base.replace(/\/+$/, ""),
   withCredentials: false,
-  timeout: 20000,
+  // Render pode demorar no cold start; em produção, dá mais margem
+  timeout: isDev ? 20000 : 60000,
 });
 
 console.log('[API] Environment:', isDev ? 'development' : 'production');
@@ -90,6 +91,17 @@ api.interceptors.response.use(
     const status: number | undefined = error?.response?.status;
     const url: string = original?.url || "";
     const isAuthPath = url.includes("/auth/login") || url.includes("/auth/refresh");
+
+    // Retry único para erros de rede/timeout (Render cold start)
+    const isNetworkOrTimeout = !status || error.code === 'ECONNABORTED' || error.message === 'Network Error';
+    if (isNetworkOrTimeout && !original._netRetry) {
+      original._netRetry = true;
+      try {
+        await new Promise((r) => setTimeout(r, 1500));
+        console.warn('[API] Retrying once after network/timeout error:', url);
+        return api(original);
+      } catch {}
+    }
 
     if (status === 401 && !isAuthPath && !original._retry) {
       original._retry = true;
