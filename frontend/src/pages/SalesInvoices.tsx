@@ -3,6 +3,9 @@ import i18n from '@/i18n'
 import { listInvoices, createInvoice, type Line, invoicePdfUrl, getInvoice, sendInvoiceEmail, updateInvoice } from '@/api/sales'
 import { searchClientsBrief, type Client, listServices, type Service, getClient, listSeries } from '@/api/masterdata'
 import { useTranslation } from 'react-i18next'
+import { calcGross, calcDiscount, calcNet, computeGlobalDiscount } from '@/lib/pricing'
+import EmailModal, { type EmailingState } from '@/components/EmailModal'
+import TotalsSummary, { GrandTotal } from '@/components/TotalsSummary'
 
 export default function SalesInvoices(){
   const { t } = useTranslation()
@@ -11,7 +14,7 @@ export default function SalesInvoices(){
   const [lines, setLines] = React.useState<Line[]>([{ description:'', qty:1, price:0 }])
   const [series, setSeries] = React.useState<any[]>([])
   const [seriesId, setSeriesId] = React.useState<string>('')
-  const [emailing, setEmailing] = React.useState<{ id:string; to:string; cc:string; bcc:string; suggestedTo?:string; defaultMessage?: string } | null>(null)
+  const [emailing, setEmailing] = React.useState<EmailingState>(null)
   const [editing, setEditing] = React.useState<{ id:string } | null>(null)
   const [editHdr, setEditHdr] = React.useState<any>({})
   const [editLines, setEditLines] = React.useState<Line[]>([])
@@ -28,24 +31,6 @@ export default function SalesInvoices(){
 
   const addLine = ()=> setLines([...lines, { description:'', qty:1, price:0 }])
   const setLine = (i:number, patch: Partial<Line>)=> setLines(lines.map((ln,idx)=> idx===i ? { ...ln, ...patch } : ln ))
-  // Helpers to avoid nested ternaries
-  const calcGross = (ln: any): number => {
-    const q = ln?.qty || 0; const p = ln?.price || 0
-    return q * p
-  }
-  const calcDiscount = (ln: any, gross?: number): number => {
-    const g = typeof gross === 'number' ? gross : calcGross(ln)
-    const dr = Number((ln as any)?.discount_rate || 0)
-    const da = Number((ln as any)?.discount_amount || 0)
-    if (da) return da
-    if (dr) return g * (dr / 100)
-    return 0
-  }
-  const calcNet = (ln: any): number => {
-    const g = calcGross(ln)
-    const d = calcDiscount(ln, g)
-    return Math.max(0, g - d)
-  }
   const total = lines.reduce((s, ln) => s + calcNet(ln), 0)
   React.useEffect(()=>{
     const h = setTimeout(async ()=>{
@@ -165,22 +150,11 @@ export default function SalesInvoices(){
           </table>
           <div className="flex justify-between mt-2">
             <button type="button" onClick={addLine} className="px-3 py-1 rounded border">+ {t('add_line')||'Add line'}</button>
-            {(() => { const sumGross=lines.reduce((s,ln)=>s+calcGross(ln),0); const sumAfterLine=lines.reduce((s,ln)=>s+calcNet(ln),0); const globalDisc=(hdr as any).discount_rate? sumAfterLine*((hdr as any).discount_rate/100):((hdr as any).discount_amount||0); const base=Math.max(0,sumAfterLine-(globalDisc||0)); const tax=base*((hdr as any).tax_rate||0)/100; const grand=base+tax; return (
-              <div className="text-right space-y-1">
-                <div>{t('subtotal')||'Subtotal'}: {sumGross.toFixed(2)} {hdr.currency}</div>
-                <div>{t('line_discount')||'Line discount'}: {(sumGross-sumAfterLine).toFixed(2)} {hdr.currency}</div>
-                <div>{t('subtotal_after_discount')||'Subtotal'}: {sumAfterLine.toFixed(2)} {hdr.currency}</div>
-                {(((hdr as any).discount_rate||0)>0 || ((hdr as any).discount_amount||0)>0) && (<div>{t('global_discount')||'Global discount'}: {globalDisc.toFixed(2)} {hdr.currency}</div>)}
-                <div>{t('tax')||'Tax'}: {tax.toFixed(2)} {hdr.currency}</div>
-                <div className="font-semibold">{t('grand_total')||'Total'}: {grand.toFixed(2)} {hdr.currency}</div>
-              </div>
-            )})()}
+            <TotalsSummary hdr={hdr} lines={lines} />
           </div>
         </div>
         <div className="flex items-center justify-end gap-4">
-          {(() => { const sumGross=lines.reduce((s,ln)=>s+calcGross(ln),0); const sumAfterLine=lines.reduce((s,ln)=>s+calcNet(ln),0); const globalDisc=(hdr as any).discount_rate? sumAfterLine*((hdr as any).discount_rate/100):((hdr as any).discount_amount||0); const base=Math.max(0,sumAfterLine-(globalDisc||0)); const tax=base*((hdr as any).tax_rate||0)/100; const grand=base+tax; return (
-            <div className="text-lg font-semibold">{t('grand_total')||'Total'}: {grand.toFixed(2)} {hdr.currency}</div>
-          )})()}
+          <GrandTotal hdr={hdr} lines={lines} />
           <button className="btn btn-primary">{t('create')||'Create'}</button>
         </div>
       </form>
@@ -275,27 +249,4 @@ export default function SalesInvoices(){
   )
 }
 
-function EmailModal({ emailing, onSend, onClose }:{ emailing: { id:string; to:string; cc:string; bcc:string; suggestedTo?:string; defaultMessage?: string } | null, onSend:(p:{to?:string;cc?:string;bcc?:string;message?:string})=>Promise<void>, onClose:()=>void }){
-  const { t } = useTranslation()
-  const [to,setTo]=React.useState(emailing?.suggestedTo||'')
-  const [cc,setCc]=React.useState('')
-  const [bcc,setBcc]=React.useState('')
-  const [message,setMessage]=React.useState(emailing?.defaultMessage||'')
-  React.useEffect(()=>{ setTo(emailing?.suggestedTo||''); setCc(''); setBcc(''); setMessage(emailing?.defaultMessage||'') },[emailing])
-  if (!emailing) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-xl p-4">
-        <div className="flex items-center justify-between mb-3"><h3 className="text-lg font-semibold">{t('email')||'Email'}</h3><button onClick={onClose}>✕</button></div>
-        <div className="space-y-2">
-          <input placeholder={`${t('to')||'To'} (a;b;c)`} value={to} onChange={e=>setTo(e.target.value)} className="input w-full" />
-          <input placeholder={`${t('cc')||'Cc'} (a;b;c)`} value={cc} onChange={e=>setCc(e.target.value)} className="input w-full" />
-          <input placeholder={`${t('bcc')||'Bcc'} (a;b;c)`} value={bcc} onChange={e=>setBcc(e.target.value)} className="input w-full" />
-          <div className="text-xs text-gray-500">{t('emails_semicolon')||'Separe múltiplos emails com ;'}</div>
-          <textarea placeholder={t('description')||'Message'} value={message} onChange={e=>setMessage(e.target.value)} className="input w-full" rows={3} />
-          <div className="flex justify-end gap-2"><button onClick={onClose} className="px-3 py-1 rounded border">{t('cancel') as string}</button><button onClick={()=>onSend({ to, cc, bcc, message })} className="px-3 py-1 rounded bg-gray-900 text-white dark:bg-gray-700">{t('send')||'Send'}</button></div>
-        </div>
-      </div>
-    </div>
-  )
-}
+// local EmailModal removed in favor of shared component
