@@ -2,6 +2,12 @@
 from flask import Blueprint, jsonify
 import os
 from datetime import datetime, timezone
+from typing import Any, Dict
+
+try:
+    from mongoengine.connection import get_db  # type: ignore
+except Exception:  # pragma: no cover
+    get_db = None  # type: ignore
 
 bp = Blueprint("health", __name__)
 
@@ -61,3 +67,37 @@ def health_info():
         "commit": commit,
         "build_time": build_time,
     })
+
+@bp.get("/api/health/deep")
+def health_deep():
+    """
+    Deep health: checks backend is alive and DB connectivity (MongoDB ping).
+    Returns fields helpful to diagnose Render/Atlas outages from the frontend.
+    """
+    data: Dict[str, Any] = {"ok": True}
+    # Version/meta
+    data["version"] = _compute_version()
+    data["branch"] = os.getenv("RENDER_GIT_BRANCH") or os.getenv("GIT_BRANCH")
+    data["commit"] = os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT")
+    data["build_time"] = os.getenv("RENDER_BUILD_TIME")
+    # Environment hints
+    env_lower = (os.getenv("ENV", "") or os.getenv("FLASK_ENV", "")).lower()
+    data["env"] = env_lower or None
+    data["render"] = os.getenv("RENDER") == "true"
+    data["has_secret_key"] = bool(os.getenv("SECRET_KEY"))
+    data["has_jwt_secret_key"] = bool(os.getenv("JWT_SECRET_KEY"))
+    data["has_mongo_uri"] = bool(os.getenv("MONGO_URI"))
+
+    # DB ping
+    db_status: Dict[str, Any] = {"ok": False}
+    try:
+        if get_db is None:
+            raise RuntimeError("mongoengine not available")
+        db = get_db(alias="default")  # type: ignore
+        res = db.command("ping")
+        db_status = {"ok": bool(res.get("ok")), "info": "pong"}
+    except Exception as e:  # pragma: no cover
+        db_status = {"ok": False, "error": str(e)}
+        data["ok"] = False
+    data["db"] = db_status
+    return jsonify(data)
