@@ -32,6 +32,29 @@ export type Client = {
   payment_method?: Id
 }
 
+// Laboratories
+export type Laboratory = {
+  id?: Id
+  name: string
+  address?: string
+  country?: string
+  postal_code?: string
+  city?: string
+  tax_id?: string
+  phone?: string
+  email?: string
+  logo_url?: string
+  active?: boolean
+}
+export async function listLaboratories() {
+  const { data } = await api.get(`/masterdata/laboratories`)
+  return data as { laboratories: Laboratory[] }
+}
+export async function updateLaboratory(id: Id, body: Partial<Laboratory>) {
+  const { data } = await api.put(`/masterdata/laboratories/${id}`, body)
+  return data.laboratory as Laboratory
+}
+
 export async function listClients(q = '', page = 1, page_size = 20) {
   const { data } = await api.get(`/masterdata/clients`, { params: { q, page, page_size } })
   return data as { total: number, items: Client[] }
@@ -51,6 +74,10 @@ export async function deleteClient(id: Id) {
 export async function getClient(id: Id) {
   const { data } = await api.get(`/masterdata/clients/${id}`)
   return data.client as Client
+}
+export async function searchClientsBrief(q = '') {
+  const { data } = await api.get(`/masterdata/clients/search`, { params: { q } })
+  return data as { items: Array<{ id: Id; code?: string; name: string; tax_id?: string; email?: string; phone?: string }> }
 }
 
 // Patients

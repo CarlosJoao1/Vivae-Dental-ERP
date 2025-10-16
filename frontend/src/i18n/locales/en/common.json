@@ -58,4 +58,11 @@
   ,"smtp_ok": "SMTP OK"
   ,"smtp_error": "SMTP error"
   ,"doc_type_locked": "Type locked (already used)"
+  ,"discount": "Discount"
+  ,"global_discount": "Global discount"
+  ,"line_discount": "Line discount"
+  ,"subtotal": "Subtotal"
+  ,"subtotal_after_discount": "Subtotal"
+  ,"tax": "Tax"
+  ,"grand_total": "Total"
 }

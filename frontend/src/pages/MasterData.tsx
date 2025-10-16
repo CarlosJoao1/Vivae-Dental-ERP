@@ -5,7 +5,7 @@ import {
   listTechnicians, createTechnician, updateTechnician, deleteTechnician,
   listServices, createService, updateService, deleteService,
   listDocumentTypes, createDocumentType, updateDocumentType, deleteDocumentType,
-  Client, Patient,
+  Client, Patient, Laboratory, listLaboratories, updateLaboratory,
   listCurrencies, createCurrency, listPaymentTypes, createPaymentType, listPaymentForms, createPaymentForm, listPaymentMethods, createPaymentMethod,
   listSeries, createSeries, updateSeries, getSmtpConfig, updateSmtpConfig, testSmtp, type SmtpConfig
 } from '@/api/masterdata'
@@ -415,7 +415,8 @@ function SimpleFinList({ title, loader, creator }:{ title:string, loader:()=>Pro
 
 export default function MasterData(){
   const { t } = useTranslation()
-  const tabs: Array<{key: 'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp', label: string}> = [
+  const tabs: Array<{key: 'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp'|'lab', label: string}> = [
+    { key: 'lab', label: (t('laboratory') as string) || 'Laboratory' },
     { key: 'clients', label: t('clients') as string },
     { key: 'clients_list', label: (t('all_clients') as string) || 'Todos os Clientes' },
     { key: 'patients', label: t('patients') as string },
@@ -429,7 +430,7 @@ export default function MasterData(){
     { key: 'series', label: (t('series') as string) || 'Series' },
     { key: 'smtp', label: (t('smtp_settings') as string) || 'SMTP' },
   ]
-  const [tab, setTab] = React.useState<'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp'>('clients')
+  const [tab, setTab] = React.useState<'lab'|'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp'>('clients')
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">{t('masterdata')}</h1>
@@ -439,7 +440,8 @@ export default function MasterData(){
         ))}
       </div>
       <div className="space-y-6">
-        {tab==='clients' && <Clients/>}
+  {tab==='lab' && <LabSettings/>}
+  {tab==='clients' && <Clients/>}
         {tab==='patients' && <Patients/>}
   {tab==='clients_list' && <ClientsManager />}
         {tab==='technicians' && <Technicians/>}
@@ -452,6 +454,44 @@ export default function MasterData(){
         {tab==='series' && <SeriesTab />}
         {tab==='smtp' && <SmtpTab />}
       </div>
+    </div>
+  )
+}
+
+function LabSettings(){
+  const { t } = useTranslation()
+  const [labs, setLabs] = React.useState<Laboratory[]>([])
+  const [form, setForm] = React.useState<Partial<Laboratory>>({})
+  const [labId, setLabId] = React.useState<string>('')
+  const reload = async ()=>{
+    const { laboratories } = await listLaboratories()
+    setLabs(laboratories||[])
+    const first = laboratories?.[0]
+    if (first) { setLabId(first.id as string); setForm(first) }
+  }
+  React.useEffect(()=>{ reload() }, [])
+  const save = async (e: React.FormEvent)=>{ e.preventDefault(); if (!labId) return; const body = { ...form }; const saved = await updateLaboratory(labId, body); setForm(saved) }
+  return (
+    <div>
+      <SectionHeader title={t('laboratory') as string || 'Laboratory'} onReload={reload} />
+      {!labId && <div className="text-sm text-gray-500">{t('loading')||'Loading...'}</div>}
+      {labId && (
+        <form onSubmit={save} className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <input placeholder={t('name') as string || 'Name'} value={form.name||''} onChange={e=>setForm({...form, name:e.target.value})} className="input" />
+          <input placeholder={t('address') as string || 'Address'} value={form.address||''} onChange={e=>setForm({...form, address:e.target.value})} className="input col-span-2" />
+          <input placeholder={t('postal_code') as string || 'Postal Code'} value={form.postal_code||''} onChange={e=>setForm({...form, postal_code:e.target.value})} className="input" />
+          <input placeholder={t('city') as string || 'City'} value={form.city||''} onChange={e=>setForm({...form, city:e.target.value})} className="input" />
+          <input placeholder={t('country') as string || 'Country'} value={form.country||''} onChange={e=>setForm({...form, country:e.target.value})} className="input" />
+          <input placeholder={t('tax_id') as string || 'Tax ID'} value={form.tax_id||''} onChange={e=>setForm({...form, tax_id:e.target.value})} className="input" />
+          <input placeholder={t('phone') as string || 'Phone'} value={form.phone||''} onChange={e=>setForm({...form, phone:e.target.value})} className="input" />
+          <input placeholder={t('email') as string || 'Email'} value={form.email||''} onChange={e=>setForm({...form, email:e.target.value})} className="input" />
+          <input placeholder="Logo URL" value={form.logo_url||''} onChange={e=>setForm({...form, logo_url:e.target.value})} className="input col-span-2" />
+          {form.logo_url ? <div className="col-span-2"><img src={form.logo_url} alt="logo" className="h-16 object-contain" /></div> : <div className="col-span-2 text-xs text-gray-500">{t('no_logo')||'No logo set'}</div>}
+          <div className="col-span-2 md:col-span-4 flex justify-end">
+            <button className="btn btn-primary">{t('save') as string || 'Save'}</button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }

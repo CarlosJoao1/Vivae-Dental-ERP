@@ -14,6 +14,7 @@ class Laboratory(Document):
     phone = StringField()
     email = StringField()
     active = BooleanField(default=True)
+    logo_url = StringField()
 
     created_at = DateTimeField(default=datetime.utcnow)
     updated_at = DateTimeField(default=datetime.utcnow)

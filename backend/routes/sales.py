@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, make_response, send_file
 from flask_jwt_extended import jwt_required, get_jwt
-from datetime import date
+from datetime import date, datetime
 from models.laboratory import Laboratory
 from models.order import Order
 from models.invoice import Invoice
@@ -14,6 +14,7 @@ from models.smtp_config import SmtpConfig
 import smtplib
 from email.message import EmailMessage
 from email.utils import formataddr
+from urllib.request import urlopen
 import fitz  # PyMuPDF
 import io
 
@@ -35,17 +36,32 @@ def _lab() -> Laboratory:
 
 
 def _calc_total(lines):
-    total = 0.0
+    total = 0.0  # sum after line discounts
     out = []
+    # support per-line discounts (discount_rate % or discount_amount)
     for ln in lines or []:
         qty = float(ln.get("qty") or 0)
         price = float(ln.get("price") or 0)
-        tot = qty * price
+        gross = qty * price
+        disc = 0.0
+        try:
+            if ln.get('discount_amount') not in (None, ''):
+                da = float(ln.get('discount_amount') or 0)
+                disc = da
+            elif ln.get('discount_rate') not in (None, ''):
+                dr = float(ln.get('discount_rate') or 0)
+                disc = gross * (dr/100.0)
+        except Exception:
+            disc = 0.0
+        disc = max(0.0, min(disc, gross))
+        tot = gross - disc
         total += tot
         out.append({
             "description": ln.get("description"),
             "qty": qty,
             "price": price,
+            "discount_rate": ln.get('discount_rate'),
+            "discount_amount": ln.get('discount_amount'),
             "total": tot,
         })
     return total, out
@@ -57,41 +73,47 @@ def _labels_for(lang: str) -> dict:
             'date': 'Data', 'lab_tenant': 'Laboratório / Tenant', 'client': 'Cliente',
             'billing': 'Faturação', 'shipping': 'Envio', 'currency': 'Moeda',
             'terms': 'Condição', 'type': 'Tipo', 'form': 'Forma', 'method': 'Método',
-            'lines': 'Linhas', 'total': 'Total', 'born': 'Nasc.', 'tax_id': 'NIF'
+            'lines': 'Linhas', 'total': 'Total', 'born': 'Nasc.', 'tax_id': 'NIF', 'subtotal':'Subtotal', 'tax':'IVA', 'grand_total':'Total',
+            'description': 'Descrição', 'qty': 'Qtd', 'price': 'Preço', 'discount':'Desconto', 'line_discount':'Desconto linhas', 'global_discount':'Desconto global', 'subtotal_after_discount':'Subtotal', 'decimal': ','
         }
     if lang.startswith('es'):
         return {
             'date': 'Fecha', 'lab_tenant': 'Laboratorio / Tenant', 'client': 'Cliente',
             'billing': 'Facturación', 'shipping': 'Envío', 'currency': 'Moneda',
             'terms': 'Condición', 'type': 'Tipo', 'form': 'Forma', 'method': 'Método',
-            'lines': 'Líneas', 'total': 'Total', 'born': 'Nac.', 'tax_id': 'NIF'
+            'lines': 'Líneas', 'total': 'Total', 'born': 'Nac.', 'tax_id': 'NIF',
+            'description': 'Descripción', 'qty': 'Cant.', 'price': 'Precio', 'discount':'Descuento', 'line_discount':'Desc. líneas', 'global_discount':'Desc. global', 'subtotal_after_discount':'Subtotal', 'decimal': ','
         }
     if lang.startswith('fr'):
         return {
             'date': 'Date', 'lab_tenant': 'Laboratoire / Tenant', 'client': 'Client',
             'billing': 'Facturation', 'shipping': 'Expédition', 'currency': 'Devise',
             'terms': 'Condition', 'type': 'Type', 'form': 'Forme', 'method': 'Méthode',
-            'lines': 'Lignes', 'total': 'Total', 'born': 'Né', 'tax_id': 'NIF'
+            'lines': 'Lignes', 'total': 'Total', 'born': 'Né', 'tax_id': 'NIF',
+            'description': 'Description', 'qty': 'Qté', 'price': 'Prix', 'discount':'Remise', 'line_discount':'Remise lignes', 'global_discount':'Remise globale', 'subtotal_after_discount':'Sous-total', 'decimal': ','
         }
     if lang.startswith('de'):
         return {
             'date': 'Datum', 'lab_tenant': 'Labor / Tenant', 'client': 'Kunde',
             'billing': 'Rechnung', 'shipping': 'Versand', 'currency': 'Währung',
             'terms': 'Bedingung', 'type': 'Typ', 'form': 'Formular', 'method': 'Methode',
-            'lines': 'Positionen', 'total': 'Summe', 'born': 'Geb.', 'tax_id': 'USt-IdNr'
+            'lines': 'Positionen', 'total': 'Summe', 'born': 'Geb.', 'tax_id': 'USt-IdNr',
+            'description': 'Beschreibung', 'qty': 'Menge', 'price': 'Preis', 'discount':'Rabatt', 'line_discount':'Zeilenrabatt', 'global_discount':'Globalrabatt', 'subtotal_after_discount':'Zwischensumme', 'decimal': ','
         }
     if lang.startswith('zh') or lang.startswith('cn'):
         return {
             'date': '日期', 'lab_tenant': '实验室 / 租户', 'client': '客户',
             'billing': '账单', 'shipping': '送货', 'currency': '货币',
             'terms': '条款', 'type': '类型', 'form': '形式', 'method': '方式',
-            'lines': '明细', 'total': '合计', 'born': '出生', 'tax_id': '税号'
+            'lines': '明细', 'total': '合计', 'born': '出生', 'tax_id': '税号',
+            'description': '描述', 'qty': '数量', 'price': '价格', 'discount':'折扣', 'line_discount':'行折扣', 'global_discount':'全局折扣', 'subtotal_after_discount':'小计', 'decimal': '.'
         }
     return {
         'date': 'Date', 'lab_tenant': 'Laboratory / Tenant', 'client': 'Client',
         'billing': 'Billing', 'shipping': 'Shipping', 'currency': 'Currency',
-        'terms': 'Terms', 'type': 'Type', 'form': 'Form', 'method': 'Method',
-        'lines': 'Lines', 'total': 'Total', 'born': 'Born', 'tax_id': 'Tax ID'
+        'terms': 'Terms', 'type': 'Type', 'form': 'Form', 'method': 'Method', 'subtotal':'Subtotal', 'tax':'Tax', 'grand_total':'Total',
+        'lines': 'Lines', 'total': 'Total', 'born': 'Born', 'tax_id': 'Tax ID',
+        'description': 'Description', 'qty': 'Qty', 'price': 'Price', 'discount':'Discount', 'line_discount':'Line discount', 'global_discount':'Global discount', 'subtotal_after_discount':'Subtotal', 'decimal': '.'
     }
 def _order_to_dict(o: Order):
     return {
@@ -128,6 +150,10 @@ def _render_pdf(
     lab_info: dict | None = None,
     client_info: dict | None = None,
     labels: dict | None = None,
+    tax_rate: float | None = None,
+    tax_amount: float | None = None,
+    discount_rate: float | None = None,
+    discount_amount: float | None = None,
 ) -> bytes:
     labels = labels or {
         'date': 'Date', 'lab_tenant': 'Laboratory / Tenant', 'client': 'Client',
@@ -139,9 +165,19 @@ def _render_pdf(
     page = doc.new_page()
     width, height = page.rect.width, page.rect.height
 
-    # Header title centered
+    # Header title centered and optional logo
     page.insert_text((width/2 - 150, 30), f"{title} {number}", fontsize=18)
     page.insert_text((width/2 - 150, 50), f"{labels.get('date','Date')}: {date_str}", fontsize=10)
+    # Logo (top-left)
+    try:
+        logo_url = (lab_info or {}).get('logo_url')
+        if logo_url:
+            img_rect = fitz.Rect(30, 20, 110, 60)
+            with urlopen(logo_url) as resp:
+                img_bytes = resp.read()
+                page.insert_image(img_rect, stream=img_bytes)
+    except Exception:
+        pass
 
     # Boxes
     # Lab box (top-left)
@@ -152,12 +188,16 @@ def _render_pdf(
         return str(val) if val is not None else ''
     if lab_info:
         page.insert_text((lab_box.x0+8, ty), _t(lab_info.get('name')), fontsize=11); ty += 12
-        line1 = " ".join([_t(lab_info.get('address')), _t(lab_info.get('postal_code')), _t(lab_info.get('city'))]).strip()
-        if line1:
-            page.insert_text((lab_box.x0+8, ty), line1, fontsize=9); ty += 11
-        line2 = _t(lab_info.get('country'))
-        if line2:
-            page.insert_text((lab_box.x0+8, ty), line2, fontsize=9); ty += 11
+        # Address in multiple lines
+        addr = _t(lab_info.get('address')).strip()
+        if addr:
+            page.insert_text((lab_box.x0+8, ty), addr, fontsize=9); ty += 11
+        pc_city = " ".join(filter(None, [_t(lab_info.get('postal_code')), _t(lab_info.get('city'))])).strip()
+        if pc_city:
+            page.insert_text((lab_box.x0+8, ty), pc_city, fontsize=9); ty += 11
+        country = _t(lab_info.get('country'))
+        if country:
+            page.insert_text((lab_box.x0+8, ty), country, fontsize=9); ty += 11
         line3 = " | ".join(filter(None, [f"NIF: {_t(lab_info.get('tax_id'))}" if lab_info.get('tax_id') else '', _t(lab_info.get('phone')), _t(lab_info.get('email'))]))
         if line3:
             page.insert_text((lab_box.x0+8, ty), line3, fontsize=9); ty += 11
@@ -184,10 +224,11 @@ def _render_pdf(
         ])).strip()
         if id_line:
             page.insert_text((cli_box.x0+8, ty), id_line, fontsize=9); ty += 11
-        # Contacts
-        line1 = _t(client_info.get('address')).strip()
-        if line1:
-            page.insert_text((cli_box.x0+8, ty), line1, fontsize=9); ty += 11
+        # Contacts - main address (multi-line)
+        addr = _t(client_info.get('address')).strip()
+        if addr:
+            page.insert_text((cli_box.x0+8, ty), addr, fontsize=9); ty += 11
+        # If client has 'address' split into lines like street|pc city|country when present
         line2 = " | ".join(filter(None, [f"{labels.get('tax_id','Tax ID')}: {_t(client_info.get('tax_id'))}" if client_info.get('tax_id') else '', _t(client_info.get('phone')), _t(client_info.get('email'))]))
         if line2:
             page.insert_text((cli_box.x0+8, ty), line2, fontsize=9); ty += 11
@@ -196,14 +237,26 @@ def _render_pdf(
         ship = client_info.get('shipping_address') or {}
         if any(bill.values()):
             page.insert_text((cli_box.x0+8, ty), _t(labels.get('billing','Billing')+':' ), fontsize=8); ty += 10
-            bline = " ".join(filter(None, [ _t(bill.get('street')), _t(bill.get('postal_code')), _t(bill.get('city')), _t(bill.get('country')) ])).strip()
-            if bline:
-                page.insert_text((cli_box.x0+16, ty), bline, fontsize=8); ty += 10
+            b_street = _t(bill.get('street')).strip()
+            if b_street:
+                page.insert_text((cli_box.x0+16, ty), b_street, fontsize=8); ty += 10
+            b_pc_city = " ".join(filter(None, [_t(bill.get('postal_code')), _t(bill.get('city'))])).strip()
+            if b_pc_city:
+                page.insert_text((cli_box.x0+16, ty), b_pc_city, fontsize=8); ty += 10
+            b_country = _t(bill.get('country')).strip()
+            if b_country:
+                page.insert_text((cli_box.x0+16, ty), b_country, fontsize=8); ty += 10
         if any(ship.values()):
             page.insert_text((cli_box.x0+8, ty), _t(labels.get('shipping','Shipping')+':' ), fontsize=8); ty += 10
-            sline = " ".join(filter(None, [ _t(ship.get('street')), _t(ship.get('postal_code')), _t(ship.get('city')), _t(ship.get('country')) ])).strip()
-            if sline:
-                page.insert_text((cli_box.x0+16, ty), sline, fontsize=8); ty += 10
+            s_street = _t(ship.get('street')).strip()
+            if s_street:
+                page.insert_text((cli_box.x0+16, ty), s_street, fontsize=8); ty += 10
+            s_pc_city = " ".join(filter(None, [_t(ship.get('postal_code')), _t(ship.get('city'))])).strip()
+            if s_pc_city:
+                page.insert_text((cli_box.x0+16, ty), s_pc_city, fontsize=8); ty += 10
+            s_country = _t(ship.get('country')).strip()
+            if s_country:
+                page.insert_text((cli_box.x0+16, ty), s_country, fontsize=8); ty += 10
         # Financial preferences
         fin_parts = []
         if client_info.get('preferred_currency'):
@@ -220,23 +273,113 @@ def _render_pdf(
             page.insert_text((cli_box.x0+8, ty), " | ".join(fin_parts), fontsize=8); ty += 10
         page.insert_text((cli_box.x0+8, cli_box.y0+2), _t(labels.get('client','Client')), fontsize=7)
 
-    # Lines section
-    x, y = 30, 180
-    page.insert_text((x, y), labels.get('lines','Lines')+':', fontsize=12)
-    y += 18
+    # Helpers
+    def fmt(n: float) -> str:
+        try:
+            s = f"{n:.2f}"
+            return s.replace('.', ',') if labels.get('decimal', ',') == ',' else s
+        except Exception:
+            return str(n)
+    # Table section
+    lm, rm, top = 30, width-30, 180
+    y = top
+    page.insert_text((lm, y), labels.get('lines','Lines')+':', fontsize=12); y += 14
+    # Columns: desc 50%, qty 10%, price 15%, discount 10%, total 15%
+    col_desc_w = (rm-lm)*0.50
+    col_qty_w  = (rm-lm)*0.10
+    col_price_w= (rm-lm)*0.15
+    col_disc_w = (rm-lm)*0.10
+    col_total_w= (rm-lm)*0.15
+    x_desc = lm
+    x_qty = lm + col_desc_w
+    x_price = x_qty + col_qty_w
+    x_disc = x_price + col_price_w
+    x_total = x_disc + col_disc_w
+    # Header row
+    page.insert_text((x_desc, y), labels.get('description','Description'), fontsize=10)
+    page.insert_text((x_qty, y), labels.get('qty','Qty'), fontsize=10)
+    page.insert_text((x_price, y), labels.get('price','Price'), fontsize=10)
+    page.insert_text((x_disc, y), labels.get('discount','Discount'), fontsize=10)
+    page.insert_text((x_total, y), labels.get('total','Total'), fontsize=10)
+    y += 12
+    # Draw separator
+    page.draw_line(p1=(lm, y), p2=(rm, y), width=0.5)
+    y += 6
+    # Rows
+    def wrap_text(text: str, max_chars: int = 80):
+        text = text or ''
+        out = []
+        while len(text) > max_chars:
+            cut = text.rfind(' ', 0, max_chars)
+            if cut == -1:
+                cut = max_chars
+            out.append(text[:cut].strip())
+            text = text[cut:].strip()
+        if text:
+            out.append(text)
+        return out
+    sum_gross = 0.0
+    sum_line_disc = 0.0
     for ln in lines or []:
         desc = str(ln.get('description') or '')
         qty = float(ln.get('qty') or 0)
         price = float(ln.get('price') or 0)
-        tot = qty * price
-        page.insert_text((x, y), f"- {desc} | {qty} x {price:.2f} = {tot:.2f} {currency}")
-        y += 14
-        if y > page.rect.height - 50:
-            page = doc.new_page()
-            width, height = page.rect.width, page.rect.height
-            y = 50
-    y += 10
-    page.insert_text((x, y), f"{labels.get('total','Total')}: {total:.2f} {currency}", fontsize=12)
+        gross = qty * price
+        tot = float(ln.get('total') or gross)
+        disc_val = max(0.0, gross - tot)
+        sum_gross += gross
+        sum_line_disc += disc_val
+        wrapped = wrap_text(desc, int(col_desc_w/6))  # approx chars by width
+        first = True
+        for wline in wrapped or ['']:
+            page.insert_text((x_desc, y), wline, fontsize=9)
+            if first:
+                page.insert_text((x_qty, y), fmt(qty), fontsize=9)
+                page.insert_text((x_price, y), f"{fmt(price)} {currency}", fontsize=9)
+                page.insert_text((x_disc, y), f"{fmt(disc_val)} {currency}", fontsize=9)
+                page.insert_text((x_total, y), f"{fmt(tot)} {currency}", fontsize=9)
+                first = False
+            y += 12
+            if y > height - 50:
+                page = doc.new_page(); width, height = page.rect.width, page.rect.height
+                y = 50
+        # row separator
+        page.draw_line(p1=(lm, y-4), p2=(rm, y-4), width=0.2)
+    # Totals block
+    y += 6
+    # Subtotals and discounts
+    page.insert_text((x_total-120, y), f"{labels.get('subtotal','Subtotal')}: {fmt(sum_gross)} {currency}", fontsize=10); y += 12
+    if sum_line_disc > 0:
+        page.insert_text((x_total-120, y), f"{labels.get('line_discount','Line discount')}: -{fmt(sum_line_disc)} {currency}", fontsize=10); y += 12
+    # total here equals sum after line discounts
+    page.insert_text((x_total-120, y), f"{labels.get('subtotal_after_discount','Subtotal')}: {fmt(total)} {currency}", fontsize=10); y += 12
+    # Global discount (if any) computed on subtotal after line discounts
+    gl_disc = 0.0
+    if (discount_rate or 0) > 0:
+        gl_disc = (discount_rate or 0.0) * total / 100.0
+    if (discount_amount or 0) > 0:
+        gl_disc = discount_amount or 0.0
+    if gl_disc > 0:
+        page.insert_text((x_total-120, y), f"{labels.get('global_discount','Discount')}: -{fmt(gl_disc)} {currency}", fontsize=10); y += 12
+        total_after_global = max(0.0, total - gl_disc)
+    else:
+        total_after_global = total
+    # Tax
+    if (tax_rate or 0) > 0 or (tax_amount or 0) > 0:
+        tr = tax_rate or 0.0
+        ta = tax_amount if tax_amount is not None else (total_after_global*tr/100.0)
+        page.insert_text((x_total-120, y), f"{labels.get('tax','Tax')}: {fmt(ta)} {currency} ({fmt(tr)}%)", fontsize=10); y += 12
+    # Grand total
+    grand = total_after_global + (tax_amount if tax_amount is not None else 0.0)
+    page.insert_text((x_total-120, y), f"{labels.get('grand_total','Total')}: {fmt(grand)} {currency}", fontsize=12)
+    # Footer with page numbers
+    page_count = doc.page_count
+    for i in range(page_count):
+        p = doc.load_page(i)
+        pw, ph = p.rect.width, p.rect.height
+        p.insert_text((pw/2 - 30, ph - 20), f"{i+1}/{page_count}", fontsize=8)
+        p.insert_text((30, ph - 20), f"{title} {number}", fontsize=8)
+        p.insert_text((pw - 160, ph - 20), datetime.now().strftime('%Y-%m-%d %H:%M'), fontsize=8)
     pdf_bytes = doc.tobytes()
     doc.close()
     return pdf_bytes
@@ -368,8 +511,63 @@ def orders_create():
                 currency = cli.preferred_currency.code
         except Exception:
             pass
-    o = Order(lab=lab, number=number, date=data.get("date") or date.today(), client=cli, client_code=getattr(cli,'code', None) or '', currency= currency or "EUR", lines=lines, total=total).save()
+    # Discounts/Taxes/notes
+    discount_rate = float(data.get('discount_rate') or 0.0)
+    discount_amount = float(data.get('discount_amount') or 0.0)
+    tax_rate = float(data.get('tax_rate') or 0.0)
+    # apply global discount to tax base
+    base_after_global = total - (discount_amount if discount_amount>0 else (total*discount_rate/100.0))
+    if base_after_global < 0: base_after_global = 0.0
+    tax_amount = float(data.get('tax_amount') or (base_after_global*tax_rate/100.0)) if tax_rate else float(data.get('tax_amount') or 0.0)
+    o = Order(lab=lab, number=number, date=data.get("date") or date.today(), client=cli, client_code=getattr(cli,'code', None) or '', currency= currency or "EUR", lines=lines, total=total, notes=data.get('notes') or '', discount_rate=discount_rate, discount_amount=discount_amount, tax_rate=tax_rate, tax_amount=tax_amount).save()
     return jsonify({"order_id": str(o.id), "total": total}), 201
+
+@bp.put("/orders/<oid>")
+@jwt_required()
+def orders_update(oid):
+    lab = _lab()
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        o = Order.objects.get(id=oid, lab=lab)
+    except Exception:
+        return jsonify({"error": "not found"}), 404
+    # optional client change
+    if data.get("client"):
+        try:
+            cli = Client.objects.get(id=data.get("client"), lab=lab)
+            o.client = cli
+            o.client_code = getattr(cli, 'code', '') or ''
+        except Exception:
+            pass
+    # lines and totals
+    if "lines" in data:
+        total, lines = _calc_total(data.get("lines"))
+        o.lines = lines
+        o.total = total
+    # header fields
+    for f in ["number","date","currency","notes"]:
+        if f in data:
+            setattr(o, f, data.get(f))
+    # discounts/taxes
+    if "discount_rate" in data:
+        try: o.discount_rate = float(data.get('discount_rate') or 0.0)
+        except Exception: pass
+    if "discount_amount" in data:
+        try: o.discount_amount = float(data.get('discount_amount') or 0.0)
+        except Exception: pass
+    if "tax_rate" in data:
+        try: o.tax_rate = float(data.get('tax_rate') or 0.0)
+        except Exception: pass
+    # recompute tax based on updated base
+    base_after_global = o.total - (o.discount_amount if (getattr(o,'discount_amount',0.0) or 0)>0 else (o.total * ((getattr(o,'discount_rate',0.0) or 0)/100.0)))
+    if base_after_global < 0: base_after_global = 0.0
+    if "tax_amount" in data and data.get('tax_amount') is not None:
+        try: o.tax_amount = float(data.get('tax_amount') or 0.0)
+        except Exception: pass
+    else:
+        o.tax_amount = base_after_global * ((getattr(o,'tax_rate',0.0) or 0)/100.0)
+    o.save()
+    return jsonify({"order": _order_to_dict(o)})
 
 @bp.get("/orders/<oid>/pdf")
 @jwt_required()
@@ -394,6 +592,10 @@ def orders_pdf(oid):
             lab_info=_lab_to_info(lab),
             client_info=_client_to_info(c_obj),
             labels=labels,
+            tax_rate=float(getattr(o,'tax_rate',0.0) or 0.0),
+            tax_amount=float(getattr(o,'tax_amount',0.0) or 0.0),
+            discount_rate=float(getattr(o,'discount_rate',0.0) or 0.0),
+            discount_amount=float(getattr(o,'discount_amount',0.0) or 0.0),
         )
         return _pdf_response(f"order_{o.number or oid}.pdf", pdf)
     except Exception as e:
@@ -426,7 +628,20 @@ def orders_email(oid):
                 pass
     except Exception:
         pass
-    pdf = _render_pdf("Encomenda", o.number or '', o.date.isoformat() if o.date else '', client_name, o.currency or 'EUR', o.lines or [], float(o.total or 0))
+    labels = _labels_for(request.headers.get('Accept-Language',''))
+    pdf = _render_pdf(
+        "Encomenda",
+        o.number or '',
+        o.date.isoformat() if o.date else '',
+        o.currency or 'EUR',
+        o.lines or [],
+        float(o.total or 0),
+        lab_info=_lab_to_info(lab),
+        client_info=_client_to_info(Client.objects.get(id=o.client.id)) if getattr(o,'client',None) else {},
+        labels=labels,
+        tax_rate=float(getattr(o,'tax_rate',0.0) or 0.0),
+        tax_amount=float(getattr(o,'tax_amount',0.0) or 0.0),
+    )
     filename = f"order_{o.number or oid}.pdf"
     # load smtp
     cfg = SmtpConfig.objects(lab=lab).first()
@@ -458,7 +673,8 @@ def orders_email(oid):
         msg['Cc'] = ', '.join(cc_list)
     if bcc_list:
         msg['Bcc'] = ', '.join(bcc_list)
-    msg.set_content(f"Segue em anexo a encomenda {o.number}.")
+    body = (data.get('message') or '').strip() or f"Segue em anexo a encomenda {o.number}."
+    msg.set_content(body)
     msg.add_attachment(pdf, maintype='application', subtype='pdf', filename=filename)
 
     def _try_send(use_ssl: bool, use_tls: bool, port: int | None):
@@ -545,8 +761,56 @@ def invoices_create():
                 currency = cli.preferred_currency.code
         except Exception:
             pass
-    inv = Invoice(lab=lab, number=number, date=data.get("date") or date.today(), client=cli, client_code=getattr(cli,'code', None) or '', currency= currency or "EUR", lines=lines, total=total, status=data.get("status") or "draft").save()
+    discount_rate = float(data.get('discount_rate') or 0.0)
+    discount_amount = float(data.get('discount_amount') or 0.0)
+    tax_rate = float(data.get('tax_rate') or 0.0)
+    base_after_global = total - (discount_amount if discount_amount>0 else (total*discount_rate/100.0))
+    if base_after_global < 0: base_after_global = 0.0
+    tax_amount = float(data.get('tax_amount') or (base_after_global*tax_rate/100.0)) if tax_rate else float(data.get('tax_amount') or 0.0)
+    inv = Invoice(lab=lab, number=number, date=data.get("date") or date.today(), client=cli, client_code=getattr(cli,'code', None) or '', currency= currency or "EUR", lines=lines, total=total, status=data.get("status") or "draft", notes=data.get('notes') or '', discount_rate=discount_rate, discount_amount=discount_amount, tax_rate=tax_rate, tax_amount=tax_amount).save()
     return jsonify({"invoice_id": str(inv.id), "total": total}), 201
+
+@bp.put("/invoices/<iid>")
+@jwt_required()
+def invoices_update(iid):
+    lab = _lab()
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        inv = Invoice.objects.get(id=iid, lab=lab)
+    except Exception:
+        return jsonify({"error": "not found"}), 404
+    if data.get("client"):
+        try:
+            cli = Client.objects.get(id=data.get("client"), lab=lab)
+            inv.client = cli
+            inv.client_code = getattr(cli, 'code', '') or ''
+        except Exception:
+            pass
+    if "lines" in data:
+        total, lines = _calc_total(data.get("lines"))
+        inv.lines = lines
+        inv.total = total
+    for f in ["number","date","currency","status","notes"]:
+        if f in data:
+            setattr(inv, f, data.get(f))
+    if "discount_rate" in data:
+        try: inv.discount_rate = float(data.get('discount_rate') or 0.0)
+        except Exception: pass
+    if "discount_amount" in data:
+        try: inv.discount_amount = float(data.get('discount_amount') or 0.0)
+        except Exception: pass
+    if "tax_rate" in data:
+        try: inv.tax_rate = float(data.get('tax_rate') or 0.0)
+        except Exception: pass
+    base_after_global = inv.total - (inv.discount_amount if (getattr(inv,'discount_amount',0.0) or 0)>0 else (inv.total * ((getattr(inv,'discount_rate',0.0) or 0)/100.0)))
+    if base_after_global < 0: base_after_global = 0.0
+    if "tax_amount" in data and data.get('tax_amount') is not None:
+        try: inv.tax_amount = float(data.get('tax_amount') or 0.0)
+        except Exception: pass
+    else:
+        inv.tax_amount = base_after_global * ((getattr(inv,'tax_rate',0.0) or 0)/100.0)
+    inv.save()
+    return jsonify({"invoice": _invoice_to_dict(inv)})
 
 @bp.get("/invoices/<iid>/pdf")
 @jwt_required()
@@ -571,6 +835,10 @@ def invoices_pdf(iid):
             lab_info=_lab_to_info(lab),
             client_info=_client_to_info(c_obj),
             labels=labels,
+            tax_rate=float(getattr(inv,'tax_rate',0.0) or 0.0),
+            tax_amount=float(getattr(inv,'tax_amount',0.0) or 0.0),
+            discount_rate=float(getattr(inv,'discount_rate',0.0) or 0.0),
+            discount_amount=float(getattr(inv,'discount_amount',0.0) or 0.0),
         )
         return _pdf_response(f"invoice_{inv.number or iid}.pdf", pdf)
     except Exception as e:
@@ -602,7 +870,20 @@ def invoices_email(iid):
                 pass
     except Exception:
         pass
-    pdf = _render_pdf("Fatura", inv.number or '', inv.date.isoformat() if inv.date else '', client_name, inv.currency or 'EUR', inv.lines or [], float(inv.total or 0))
+    labels = _labels_for(request.headers.get('Accept-Language',''))
+    pdf = _render_pdf(
+        "Fatura",
+        inv.number or '',
+        inv.date.isoformat() if inv.date else '',
+        inv.currency or 'EUR',
+        inv.lines or [],
+        float(inv.total or 0),
+        lab_info=_lab_to_info(lab),
+        client_info=_client_to_info(Client.objects.get(id=inv.client.id)) if getattr(inv,'client',None) else {},
+        labels=labels,
+        tax_rate=float(getattr(inv,'tax_rate',0.0) or 0.0),
+        tax_amount=float(getattr(inv,'tax_amount',0.0) or 0.0),
+    )
     filename = f"invoice_{inv.number or iid}.pdf"
     cfg = SmtpConfig.objects(lab=lab).first()
     if not cfg or not cfg.server:
@@ -632,7 +913,8 @@ def invoices_email(iid):
         msg['Cc'] = ', '.join(cc_list)
     if bcc_list:
         msg['Bcc'] = ', '.join(bcc_list)
-    msg.set_content(f"Segue em anexo a fatura {inv.number}.")
+    body = (data.get('message') or '').strip() or f"Segue em anexo a fatura {inv.number}."
+    msg.set_content(body)
     msg.add_attachment(pdf, maintype='application', subtype='pdf', filename=filename)
 
     def _try_send(use_ssl: bool, use_tls: bool, port: int | None):

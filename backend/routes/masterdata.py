@@ -20,7 +20,6 @@ from models.series import Series
 from models.smtp_config import SmtpConfig
 import smtplib
 from email.message import EmailMessage
-import smtplib
 
 bp = Blueprint("masterdata", __name__, url_prefix="/api/masterdata")
 
@@ -73,6 +72,7 @@ def _lab_to_dict(l: Laboratory):
         "tax_id": l.tax_id or "",
         "phone": l.phone or "",
         "email": l.email or "",
+        "logo_url": getattr(l, 'logo_url', '') or "",
         "active": bool(getattr(l, "active", True)),
     }
 
@@ -168,6 +168,31 @@ def _client_to_dict(c: Client):
         ),
     }
 
+@bp.get("/clients/search")
+@jwt_required()
+def clients_search():
+    lab = _lab()
+    q = _q()
+    qs = Client.objects(lab=lab)
+    if q:
+        qlc = q.lower()
+        qs = qs.filter(
+            (Q(name__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q) |
+             Q(code__icontains=q) | Q(email__icontains=q) | Q(tax_id__icontains=q))
+        )
+    items = qs.order_by("name").limit(20)
+    def brief(c: Client):
+        full = (f"{getattr(c,'first_name','') or ''} {getattr(c,'last_name','') or ''}".strip() or c.name)
+        return {
+            "id": str(c.id),
+            "code": getattr(c,'code', None),
+            "name": full,
+            "tax_id": getattr(c,'tax_id','') or '',
+            "email": getattr(c,'email','') or '',
+            "phone": getattr(c,'phone','') or '',
+        }
+    return jsonify({"items": [brief(x) for x in items]})
+
 def _currency_to_dict(c: Currency):
     return {
         "id": str(c.id),
@@ -251,6 +276,7 @@ def labs_create():
             tax_id=data.get("tax_id"),
             phone=data.get("phone"),
             email=data.get("email"),
+            logo_url=data.get("logo_url"),
             active=data.get("active", True),
         ).save()
         return jsonify({"laboratory": _lab_to_dict(lab)}), 201
@@ -263,7 +289,7 @@ def labs_update(lab_id):
     data = request.get_json(force=True, silent=True) or {}
     try:
         lab = Laboratory.objects.get(id=lab_id)
-        for f in ["name","address","country","postal_code","city","tax_id","phone","email","active"]:
+        for f in ["name","address","country","postal_code","city","tax_id","phone","email","logo_url","active"]:
             if f in data: setattr(lab, f, data[f])
         lab.save()
         return jsonify({"laboratory": _lab_to_dict(lab)})
@@ -856,38 +882,87 @@ def smtp_update():
 @bp.post("/financial/smtp/test")
 @jwt_required()
 def smtp_test():
+    """Testa conectividade SMTP. Se receber um parâmetro 'to', envia um email de teste.
+
+    Payload opcional:
+      - to: endereço para envio de email de teste (opcional)
+      - subject/body: campos opcionais para personalizar o email de teste
+    """
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
     to = (data.get("to") or "").strip()
+    subject = (data.get("subject") or "SMTP Test").strip()
+    body = (data.get("body") or "Este é um email de teste do Vivae Dental ERP.").strip()
+
     cfg = SmtpConfig.objects(lab=lab).first()
     if not cfg or not cfg.server:
+        # padrão de erro compatível
         return jsonify({"error": "smtp not configured"}), 400
+
+    def _connect(use_ssl: bool, use_tls: bool, port: int | None):
+        srv = None
+        if use_ssl:
+            srv = smtplib.SMTP_SSL(cfg.server, port or 465, timeout=15)
+        else:
+            srv = smtplib.SMTP(cfg.server, port or 587, timeout=15)
+        srv.ehlo()
+        if use_tls and not use_ssl:
+            srv.starttls()
+            srv.ehlo()
+        if cfg.username:
+            srv.login(cfg.username, cfg.password or '')
+        return srv
+
+    # Se não há destinatário, apenas testa a conectividade com a configuração atual
     if not to:
-        return jsonify({"error": "missing 'to'"}), 400
-    # Build simple test email
+        try:
+            srv = _connect(bool(getattr(cfg, 'use_ssl', False)), bool(getattr(cfg, 'use_tls', False)), getattr(cfg, 'port', None))
+            try:
+                srv.quit()
+            except Exception:
+                pass
+            return jsonify({"ok": True})
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)}), 500
+
+    # Envio de email de teste: tenta configuração atual e alternativas comuns
     msg = EmailMessage()
     sender = cfg.username or ""
-    msg["Subject"] = "SMTP Test"
+    msg["Subject"] = subject or "SMTP Test"
     msg["From"] = sender
     msg["To"] = to
-    msg.set_content("Este é um email de teste do Vivae Dental ERP.")
-    def _try_send(use_ssl: bool, use_tls: bool, port: int | None):
+    msg.set_content(body or "Este é um email de teste do Vivae Dental ERP.")
+
+    tried: list[tuple[bool, bool, int | None]] = []
+    def add_combo(u_ssl, u_tls, prt):
+        key = (bool(u_ssl), bool(u_tls), int(prt) if prt else None)
+        if key not in tried:
+            tried.append(key)
+
+    # atual
+    add_combo(getattr(cfg, 'use_ssl', False), getattr(cfg, 'use_tls', False), getattr(cfg, 'port', None))
+    # alternativas comuns
+    add_combo(True, False, 465)
+    add_combo(False, True, 587)
+    add_combo(False, False, 25)
+
+    errors = []
+    for u_ssl, u_tls, prt in tried:
         srv = None
         try:
-            if use_ssl:
-                srv = smtplib.SMTP_SSL(cfg.server, port or 465, timeout=15)
-            else:
-                srv = smtplib.SMTP(cfg.server, port or 587, timeout=15)
-            srv.ehlo()
-            if use_tls and not use_ssl:
-                srv.starttls()
-                srv.ehlo()
-            if cfg.username:
-                srv.login(cfg.username, cfg.password or '')
+            srv = _connect(u_ssl, u_tls, prt)
             srv.send_message(msg)
-            return True, None
+            try:
+                srv.quit()
+            except Exception:
+                pass
+            # sucesso
+            if (u_ssl, u_tls, prt) != (bool(getattr(cfg, 'use_ssl', False)), bool(getattr(cfg, 'use_tls', False)), getattr(cfg, 'port', None)):
+                used_port = prt or (465 if u_ssl else 587)
+                return jsonify({"ok": True, "fallback": {"use_ssl": bool(u_ssl), "use_tls": bool(u_tls), "port": int(used_port)}})
+            return jsonify({"ok": True})
         except Exception as ex:
-            return False, f"{ex.__class__.__name__}: {str(ex)}"
+            errors.append(f"ssl={u_ssl} tls={u_tls} port={prt or (465 if u_ssl else 587)} -> {ex.__class__.__name__}: {str(ex)}")
         finally:
             try:
                 if srv:
@@ -895,52 +970,4 @@ def smtp_test():
             except Exception:
                 pass
 
-    tried = []
-    def add_combo(u_ssl, u_tls, prt):
-        key = (bool(u_ssl), bool(u_tls), int(prt) if prt else None)
-        if key not in tried:
-            tried.append(key)
-
-    # Try current config first
-    add_combo(getattr(cfg, 'use_ssl', False), getattr(cfg, 'use_tls', False), getattr(cfg, 'port', None))
-    # Common alternatives
-    add_combo(True, False, 465)     # SSL 465
-    add_combo(False, True, 587)     # STARTTLS 587
-    add_combo(False, False, 25)     # Plain 25 (alguns provedores)
-
-    errors = []
-    for u_ssl, u_tls, prt in tried:
-        ok, err = _try_send(u_ssl, u_tls, prt)
-        if ok:
-            # if differs from stored config, report fallback combo
-            if (u_ssl, u_tls, prt) != (bool(getattr(cfg, 'use_ssl', False)), bool(getattr(cfg, 'use_tls', False)), getattr(cfg, 'port', None)):
-                used_port = prt or (465 if u_ssl else 587)
-                return jsonify({"ok": True, "fallback": {"use_ssl": bool(u_ssl), "use_tls": bool(u_tls), "port": int(used_port)}})
-            return jsonify({"ok": True})
-        else:
-            errors.append(f"ssl={u_ssl} tls={u_tls} port={prt or (465 if u_ssl else 587)} -> {err}")
-
     return jsonify({"error": "; ".join(errors) or "unknown smtp error"}), 500
-
-@bp.post("/financial/smtp/test")
-@jwt_required()
-def smtp_test():
-    """Test SMTP connectivity and optional login using current settings."""
-    lab = _lab()
-    cfg = SmtpConfig.objects(lab=lab).first()
-    if not cfg or not cfg.server:
-        return jsonify({"ok": False, "error": "smtp not configured"}), 400
-    try:
-        if cfg.use_ssl:
-            server = smtplib.SMTP_SSL(cfg.server, cfg.port or 465, timeout=10)
-        else:
-            server = smtplib.SMTP(cfg.server, cfg.port or 587, timeout=10)
-        server.ehlo()
-        if cfg.use_tls and not cfg.use_ssl:
-            server.starttls()
-        if cfg.username:
-            server.login(cfg.username, cfg.password or '')
-        server.quit()
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500

@@ -1,9 +1,9 @@
 import api from '@/api/api'
 import type { Id } from '@/api/masterdata'
 
-export type Line = { description: string; qty: number; price: number; total?: number }
-export type Order = { id?: Id; number?: string; date?: string; client?: Id | string; currency?: string; lines?: Line[]; total?: number; series?: Id | string }
-export type Invoice = { id?: Id; number?: string; date?: string; client?: Id | string; currency?: string; lines?: Line[]; total?: number; status?: string; series?: Id | string }
+export type Line = { description: string; qty: number; price: number; total?: number; discount_rate?: number; discount_amount?: number }
+export type Order = { id?: Id; number?: string; date?: string; client?: Id | string; currency?: string; lines?: Line[]; total?: number; series?: Id | string; notes?: string; discount_rate?: number; discount_amount?: number; tax_rate?: number; tax_amount?: number }
+export type Invoice = { id?: Id; number?: string; date?: string; client?: Id | string; currency?: string; lines?: Line[]; total?: number; status?: string; series?: Id | string; notes?: string; discount_rate?: number; discount_amount?: number; tax_rate?: number; tax_amount?: number }
 
 export async function listOrders() {
   const { data } = await api.get(`/sales/orders`)
@@ -15,6 +15,10 @@ export async function createOrder(body: Partial<Order>) {
 }
 export async function getOrder(id: Id) {
   const { data } = await api.get(`/sales/orders/${id}`)
+  return data.order as Order
+}
+export async function updateOrder(id: Id, body: Partial<Order>) {
+  const { data } = await api.put(`/sales/orders/${id}`, body)
   return data.order as Order
 }
 export function orderPdfUrl(id: Id) { return `${api.defaults.baseURL}/sales/orders/${id}/pdf` }
@@ -33,6 +37,10 @@ export async function createInvoice(body: Partial<Invoice>) {
 }
 export async function getInvoice(id: Id) {
   const { data } = await api.get(`/sales/invoices/${id}`)
+  return data.invoice as Invoice
+}
+export async function updateInvoice(id: Id, body: Partial<Invoice>) {
+  const { data } = await api.put(`/sales/invoices/${id}`, body)
   return data.invoice as Invoice
 }
 export function invoicePdfUrl(id: Id) { return `${api.defaults.baseURL}/sales/invoices/${id}/pdf` }

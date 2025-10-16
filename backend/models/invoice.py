@@ -13,3 +13,10 @@ class Invoice(BaseDoc):
     lines = ListField(DictField())  # [{description, qty, price, total}]
     total = FloatField(default=0.0)
     status = StringField(default="draft")
+    notes = StringField()
+    # Global discounts
+    discount_rate = FloatField(default=0.0)
+    discount_amount = FloatField(default=0.0)
+    # Taxes
+    tax_rate = FloatField(default=0.0)
+    tax_amount = FloatField(default=0.0)
