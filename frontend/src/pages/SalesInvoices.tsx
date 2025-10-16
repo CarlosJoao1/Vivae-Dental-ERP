@@ -28,7 +28,25 @@ export default function SalesInvoices(){
 
   const addLine = ()=> setLines([...lines, { description:'', qty:1, price:0 }])
   const setLine = (i:number, patch: Partial<Line>)=> setLines(lines.map((ln,idx)=> idx===i ? { ...ln, ...patch } : ln ))
-  const total = lines.reduce((s,ln)=> { const q=ln.qty||0,p=ln.price||0; const gross=q*p; const dr=Number((ln as any).discount_rate||0); const da=Number((ln as any).discount_amount||0); const disc= (da||0)? (da||0) : (dr? gross*(dr/100):0); return s + Math.max(0,gross-disc) }, 0)
+  // Helpers to avoid nested ternaries
+  const calcGross = (ln: any): number => {
+    const q = ln?.qty || 0; const p = ln?.price || 0
+    return q * p
+  }
+  const calcDiscount = (ln: any, gross?: number): number => {
+    const g = typeof gross === 'number' ? gross : calcGross(ln)
+    const dr = Number((ln as any)?.discount_rate || 0)
+    const da = Number((ln as any)?.discount_amount || 0)
+    if (da) return da
+    if (dr) return g * (dr / 100)
+    return 0
+  }
+  const calcNet = (ln: any): number => {
+    const g = calcGross(ln)
+    const d = calcDiscount(ln, g)
+    return Math.max(0, g - d)
+  }
+  const total = lines.reduce((s, ln) => s + calcNet(ln), 0)
   React.useEffect(()=>{
     const h = setTimeout(async ()=>{
       if (!clientQ) { setClientOpts([]); return }
@@ -140,14 +158,14 @@ export default function SalesInvoices(){
                     <input type="number" step="0.01" placeholder="%" value={(ln as any).discount_rate||0} onChange={e=>setLine(i,{ ...(ln as any), discount_rate: Number(e.target.value)||0 })} className="input w-full" />
                     <input type="number" step="0.01" placeholder={t('discount') as string || 'Discount'} value={(ln as any).discount_amount||0} onChange={e=>setLine(i,{ ...(ln as any), discount_amount: Number(e.target.value)||0 })} className="input w-full" />
                   </td>
-                  <td className="text-center">{(()=>{ const q=ln.qty||0,p=ln.price||0; const gross=q*p; const dr=Number((ln as any).discount_rate||0); const da=Number((ln as any).discount_amount||0); const disc= (da||0)? (da||0) : (dr? gross*(dr/100):0); return (Math.max(0,gross-disc)).toFixed(2) })()}</td>
+                  <td className="text-center">{calcNet(ln).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <div className="flex justify-between mt-2">
             <button type="button" onClick={addLine} className="px-3 py-1 rounded border">+ {t('add_line')||'Add line'}</button>
-            {(() => { const sumGross=lines.reduce((s,ln)=>s+(ln.qty||0)*(ln.price||0),0); const sumAfterLine=lines.reduce((s,ln)=>{const q=ln.qty||0,p=ln.price||0; const gross=q*p; const dr=Number((ln as any).discount_rate||0); const da=Number((ln as any).discount_amount||0); const d=dr? gross*(dr/100):(da||0); return s+Math.max(0,gross-d)},0); const globalDisc=(hdr as any).discount_rate? sumAfterLine*((hdr as any).discount_rate/100):((hdr as any).discount_amount||0); const base=Math.max(0,sumAfterLine-(globalDisc||0)); const tax=base*((hdr as any).tax_rate||0)/100; const grand=base+tax; return (
+            {(() => { const sumGross=lines.reduce((s,ln)=>s+calcGross(ln),0); const sumAfterLine=lines.reduce((s,ln)=>s+calcNet(ln),0); const globalDisc=(hdr as any).discount_rate? sumAfterLine*((hdr as any).discount_rate/100):((hdr as any).discount_amount||0); const base=Math.max(0,sumAfterLine-(globalDisc||0)); const tax=base*((hdr as any).tax_rate||0)/100; const grand=base+tax; return (
               <div className="text-right space-y-1">
                 <div>{t('subtotal')||'Subtotal'}: {sumGross.toFixed(2)} {hdr.currency}</div>
                 <div>{t('line_discount')||'Line discount'}: {(sumGross-sumAfterLine).toFixed(2)} {hdr.currency}</div>
@@ -160,7 +178,7 @@ export default function SalesInvoices(){
           </div>
         </div>
         <div className="flex items-center justify-end gap-4">
-          {(() => { const sumGross=lines.reduce((s,ln)=>s+(ln.qty||0)*(ln.price||0),0); const sumAfterLine=lines.reduce((s,ln)=>{const q=ln.qty||0,p=ln.price||0; const gross=q*p; const dr=Number((ln as any).discount_rate||0); const da=Number((ln as any).discount_amount||0); const d=dr? gross*(dr/100):(da||0); return s+Math.max(0,gross-d)},0); const globalDisc=(hdr as any).discount_rate? sumAfterLine*((hdr as any).discount_rate/100):((hdr as any).discount_amount||0); const base=Math.max(0,sumAfterLine-(globalDisc||0)); const tax=base*((hdr as any).tax_rate||0)/100; const grand=base+tax; return (
+          {(() => { const sumGross=lines.reduce((s,ln)=>s+calcGross(ln),0); const sumAfterLine=lines.reduce((s,ln)=>s+calcNet(ln),0); const globalDisc=(hdr as any).discount_rate? sumAfterLine*((hdr as any).discount_rate/100):((hdr as any).discount_amount||0); const base=Math.max(0,sumAfterLine-(globalDisc||0)); const tax=base*((hdr as any).tax_rate||0)/100; const grand=base+tax; return (
             <div className="text-lg font-semibold">{t('grand_total')||'Total'}: {grand.toFixed(2)} {hdr.currency}</div>
           )})()}
           <button className="btn btn-primary">{t('create')||'Create'}</button>

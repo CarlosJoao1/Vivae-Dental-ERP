@@ -29,15 +29,26 @@ export default function SalesOrders(){
 
   const addLine = ()=> setLines([...lines, { description:'', qty:1, price:0 }])
   const setLine = (i:number, patch: Partial<Line>)=> setLines(lines.map((ln,idx)=> idx===i ? { ...ln, ...patch } : ln ))
-  const sumGross = lines.reduce((s,ln)=> (s + (ln.qty||0)*(ln.price||0)), 0)
-  const sumAfterLine = lines.reduce((s,ln)=> {
-    const qty = ln.qty||0; const price = ln.price||0
-    const gross = qty*price
-    const dr = Number((ln as any).discount_rate||0)
-    const da = Number((ln as any).discount_amount||0)
-    const disc = (da||0) ? (da||0) : (dr ? gross*(dr/100) : 0)
-    return s + Math.max(0, gross - disc)
-  }, 0)
+  // Helpers to avoid nested ternaries
+  const calcGross = (ln: any): number => {
+    const q = ln?.qty || 0; const p = ln?.price || 0
+    return q * p
+  }
+  const calcDiscount = (ln: any, gross?: number): number => {
+    const g = typeof gross === 'number' ? gross : calcGross(ln)
+    const dr = Number((ln as any)?.discount_rate || 0)
+    const da = Number((ln as any)?.discount_amount || 0)
+    if (da) return da
+    if (dr) return g * (dr / 100)
+    return 0
+  }
+  const calcNet = (ln: any): number => {
+    const g = calcGross(ln)
+    const d = calcDiscount(ln, g)
+    return Math.max(0, g - d)
+  }
+  const sumGross = lines.reduce((s, ln) => s + calcGross(ln), 0)
+  const sumAfterLine = lines.reduce((s, ln) => s + calcNet(ln), 0)
   const globalDisc = (hdr.discount_rate && hdr.discount_rate>0) ? (sumAfterLine * (hdr.discount_rate/100)) : (hdr as any).discount_amount || 0
   const baseTax = Math.max(0, sumAfterLine - (globalDisc||0))
   const taxAmount = baseTax * ((hdr.tax_rate||0)/100)
@@ -156,7 +167,7 @@ export default function SalesOrders(){
                     <input type="number" step="0.01" placeholder="%" value={(ln as any).discount_rate||0} onChange={e=>setLine(i,{ ...(ln as any), discount_rate: Number(e.target.value)||0 })} className="input w-full" />
                     <input type="number" step="0.01" placeholder={t('discount') as string || 'Discount'} value={(ln as any).discount_amount||0} onChange={e=>setLine(i,{ ...(ln as any), discount_amount: Number(e.target.value)||0 })} className="input w-full" />
                   </td>
-                  <td className="text-center">{(()=>{ const qty=ln.qty||0, price=ln.price||0; const gross=qty*price; const dr=Number((ln as any).discount_rate||0); const da=Number((ln as any).discount_amount||0); const disc = (da||0)? (da||0) : (dr? gross*(dr/100):0); return (Math.max(0,gross-disc)).toFixed(2) })()}</td>
+                  <td className="text-center">{calcNet(ln).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
