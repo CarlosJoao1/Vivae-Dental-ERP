@@ -712,6 +712,7 @@ def orders_email(oid):
     # common fallbacks
     add_combo(True, False, 465)
     add_combo(False, True, 587)
+    add_combo(False, False, 25)
 
     errors = []
     for u_ssl, u_tls, prt in combos:
@@ -983,6 +984,7 @@ def invoices_email(iid):
     add_combo(getattr(cfg, 'use_ssl', False), getattr(cfg, 'use_tls', False), getattr(cfg, 'port', None))
     add_combo(True, False, 465)
     add_combo(False, True, 587)
+    add_combo(False, False, 25)
 
     errors = []
     for u_ssl, u_tls, prt in combos:
