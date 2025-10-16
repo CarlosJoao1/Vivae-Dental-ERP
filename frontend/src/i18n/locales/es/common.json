@@ -56,4 +56,13 @@
   ,"test": "Probar"
   ,"smtp_ok": "SMTP OK"
   ,"smtp_error": "Error SMTP"
+  ,"discount": "Descuento"
+  ,"global_discount": "Descuento global"
+  ,"line_discount": "Descuento de líneas"
+  ,"subtotal": "Subtotal"
+  ,"subtotal_after_discount": "Subtotal"
+  ,"tax": "Impuesto"
+  ,"grand_total": "Total"
+  ,"print": "Imprimir"
+  ,"save_pdf": "Guardar PDF"
 }

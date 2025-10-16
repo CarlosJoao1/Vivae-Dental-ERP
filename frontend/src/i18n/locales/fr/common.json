@@ -56,4 +56,13 @@
   ,"test": "Tester"
   ,"smtp_ok": "SMTP OK"
   ,"smtp_error": "Erreur SMTP"
+  ,"discount": "Remise"
+  ,"global_discount": "Remise globale"
+  ,"line_discount": "Remise lignes"
+  ,"subtotal": "Sous-total"
+  ,"subtotal_after_discount": "Sous-total"
+  ,"tax": "Taxe"
+  ,"grand_total": "Total"
+  ,"print": "Imprimer"
+  ,"save_pdf": "Enregistrer PDF"
 }

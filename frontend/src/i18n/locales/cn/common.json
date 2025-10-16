@@ -56,4 +56,13 @@
   ,"test": "测试"
   ,"smtp_ok": "SMTP 正常"
   ,"smtp_error": "SMTP 错误"
+  ,"discount": "折扣"
+  ,"global_discount": "总折扣"
+  ,"line_discount": "行折扣"
+  ,"subtotal": "小计"
+  ,"subtotal_after_discount": "小计"
+  ,"tax": "税"
+  ,"grand_total": "合计"
+  ,"print": "打印"
+  ,"save_pdf": "保存 PDF"
 }

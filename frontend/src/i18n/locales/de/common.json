@@ -60,4 +60,13 @@
   ,"test": "Testen"
   ,"smtp_ok": "SMTP OK"
   ,"smtp_error": "SMTP-Fehler"
+  ,"discount": "Rabatt"
+  ,"global_discount": "Globaler Rabatt"
+  ,"line_discount": "Positionsrabatt"
+  ,"subtotal": "Zwischensumme"
+  ,"subtotal_after_discount": "Zwischensumme"
+  ,"tax": "Steuer"
+  ,"grand_total": "Gesamtsumme"
+  ,"print": "Drucken"
+  ,"save_pdf": "PDF speichern"
 }
