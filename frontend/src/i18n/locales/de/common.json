@@ -43,6 +43,8 @@
   ,"master_data": "Stammdaten"
   ,"production": "Produktion"
   ,"crm": "CRM"
+  ,"crm_unlicensed": "Keine Lizenz für den Benutzer. Solange wir mit der Entwicklung noch nicht begonnen haben."
+  ,"crm_work_in_progress": "Dieses Modul wird in Kürze entwickelt. Bitte kontaktieren Sie den Administrator, um die Lizenz zu aktivieren."
   ,"sales_orders": "Aufträge"
   ,"sales_invoices": "Rechnungen"
   ,"number": "Nummer"

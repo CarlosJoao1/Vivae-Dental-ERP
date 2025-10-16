@@ -39,6 +39,8 @@
   ,"master_data": "Master Data"
   ,"production": "Production"
   ,"crm": "CRM"
+  ,"crm_unlicensed": "No licensing for the user. Until we start developing it."
+  ,"crm_work_in_progress": "This module will be developed soon. Please contact the admin to enable licensing."
   ,"sales_orders": "Sales Orders"
   ,"sales_invoices": "Sales Invoices"
   ,"number": "Number"

@@ -39,6 +39,8 @@
   ,"master_data": "主数据"
   ,"production": "生产"
   ,"crm": "客户关系"
+  ,"crm_unlicensed": "当前用户未获得许可。在开始开发之前暂不可用。"
+  ,"crm_work_in_progress": "此模块即将开发。请联系管理员以启用许可。"
   ,"sales_orders": "订单"
   ,"sales_invoices": "发票"
   ,"number": "编号"

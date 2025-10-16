@@ -55,6 +55,8 @@
   ,"master_data": "Master Data"
   ,"production": "Produção"
   ,"crm": "CRM"
+  ,"crm_unlicensed": "Sem licenciamento para o utilizador. Enquanto não a começamos a desenvolver."
+  ,"crm_work_in_progress": "Este módulo será desenvolvido brevemente. Contacte o administrador para ativar o licenciamento."
   ,"series": "Séries"
   ,"prefix": "Prefixo"
   ,"next_number": "Próximo nº"

@@ -39,6 +39,8 @@
   ,"master_data": "Datos Maestros"
   ,"production": "Producción"
   ,"crm": "CRM"
+  ,"crm_unlicensed": "Sin licencia para el usuario. Mientras no lo empecemos a desarrollar."
+  ,"crm_work_in_progress": "Este módulo se desarrollará pronto. Contacte con el administrador para habilitar la licencia."
   ,"sales_orders": "Pedidos"
   ,"sales_invoices": "Facturas"
   ,"number": "Número"
