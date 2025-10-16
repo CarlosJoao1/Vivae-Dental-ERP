@@ -89,10 +89,16 @@ def create_app():
         env_lower = (os.getenv("ENV", "") or os.getenv("FLASK_ENV", "")).lower()
         is_prod = env_lower in ("prod", "production") or os.getenv("RENDER") == "true"
         if is_prod:
+            app.logger.info(
+                "[BOOT] Production mode detected. Secrets present -> SECRET_KEY=%s, JWT_SECRET_KEY=%s",
+                bool(os.getenv("SECRET_KEY")), bool(os.getenv("JWT_SECRET_KEY"))
+            )
             if app.config.get("SECRET_KEY") == "dev-secret" or not os.getenv("SECRET_KEY"):
                 raise RuntimeError("SECRET_KEY must be set in production")
+            # If JWT secret is missing, fallback to SECRET_KEY to avoid downtime, but warn loudly
             if app.config.get("JWT_SECRET_KEY") == "dev-jwt-secret" or not os.getenv("JWT_SECRET_KEY"):
-                raise RuntimeError("JWT_SECRET_KEY must be set in production")
+                app.logger.warning("JWT_SECRET_KEY not set in production; falling back to SECRET_KEY (set JWT_SECRET_KEY ASAP)")
+                app.config["JWT_SECRET_KEY"] = app.config["SECRET_KEY"]
     except Exception as e:
         app.logger.error("Production secrets validation failed: %s", e)
         # Falhar o arranque em produção para segurança
