@@ -1,5 +1,7 @@
 # backend/routes/health.py
 from flask import Blueprint, jsonify
+import os
+from datetime import datetime
 
 bp = Blueprint("health", __name__)
 
@@ -30,3 +32,31 @@ def api_root():
 @bp.get("/api/health")
 def health():
     return jsonify({"ok": True})
+
+def _iso_year_week(dt: datetime) -> str:
+    y, w, _ = dt.isocalendar()
+    return f"{y}{w:02d}"
+
+def _compute_version() -> str:
+    # Prefer APP_VERSION from env if set
+    ev = (os.getenv("APP_VERSION") or "").strip()
+    if ev:
+        return ev
+    # Default: v[AnoSemana].01 using ISO week
+    base = _iso_year_week(datetime.utcnow())
+    return f"v{base}.01"
+
+@bp.get("/api/health/info")
+def health_info():
+    version = _compute_version()
+    # Render provides these on build/runtime; if absent, keep None
+    branch = os.getenv("RENDER_GIT_BRANCH") or os.getenv("GIT_BRANCH")
+    commit = os.getenv("RENDER_GIT_COMMIT") or os.getenv("GIT_COMMIT")
+    build_time = os.getenv("RENDER_BUILD_TIME")
+    return jsonify({
+        "ok": True,
+        "version": version,
+        "branch": branch,
+        "commit": commit,
+        "build_time": build_time,
+    })

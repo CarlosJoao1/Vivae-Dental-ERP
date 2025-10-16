@@ -75,3 +75,10 @@ Frontend:
 	- cd frontend
 	- npm ci
 	- npm run dev
+
+	## Versionamento e Health Info
+
+	- Endpoint: `GET /api/health/info` retorna `{ ok, version, branch, commit, build_time }`.
+	- Versão por padrão é calculada como `v[AnoSemana].01` (ISO YearWeek), ex.: `v202542.01`.
+	- Para fixar manualmente a versão no deploy, defina `APP_VERSION` no ambiente (Render ou `.env`).
+	- O frontend exibe a versão no Topbar (lado esquerdo), obtendo-a do endpoint acima.
