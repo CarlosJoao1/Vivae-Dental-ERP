@@ -56,3 +56,22 @@ Passos:
 2. Confirmar que os dois serviços aparecem com nomes `vivae-backend` e `vivae-frontend`.
 3. Definir `SECRET_KEY`, `JWT_SECRET_KEY`, `MONGO_URI` no serviço `vivae-backend`.
 4. Deploy; o backend expõe `/api/health` e o frontend faz chamadas para `${VITE_API_BASE}/api`.
+
+## Dev offline (sem Docker)
+
+Backend:
+1. Copie `backend/.env.example` para `backend/.env` e ajuste (SECRET_KEY/JWT_SECRET_KEY para dev, MONGO_URI local)
+2. Crie e ative um venv e instale dependências:
+	- Windows PowerShell
+	  - python -m venv .venv
+	  - .venv\\Scripts\\Activate.ps1
+	  - pip install -r backend/requirements.txt
+3. Inicie o backend:
+	- python backend/app.py
+
+Frontend:
+1. Copie `frontend/.env.example` para `frontend/.env` e ajuste VITE_API_BASE
+2. Instale e rode:
+	- cd frontend
+	- npm ci
+	- npm run dev

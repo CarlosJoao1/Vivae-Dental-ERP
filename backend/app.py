@@ -2,6 +2,12 @@
 from flask import Flask, jsonify, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 import os
+try:
+    # Load .env for offline/dev environments
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    pass
 
 from config.db import init_db
 from config.auth import init_auth, jwt  # noqa
