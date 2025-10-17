@@ -65,9 +65,14 @@ function Modal({ open, title, children, onClose }: { open: boolean; title: strin
 function Clients(){
   const { t } = useTranslation()
   const { q, setQ, loading, items, reload } = useList((q) => listClients(q))
-  const [form, setForm] = React.useState<{ code?: string; first_name: string; last_name: string; gender: 'male'|'female'|'other'; birthdate: string; address: string; type: 'clinic'|'dentist'|'other'; tax_id: string; email: string; phone: string; preferred_currency?: string; payment_type?: string; payment_form?: string; payment_method?: string }>(
-    { code:'', first_name:'', last_name:'', gender:'other', birthdate:'', address:'', type:'clinic', tax_id:'', email:'', phone:'', preferred_currency:'', payment_type:'', payment_form:'', payment_method:'' }
+  const [form, setForm] = React.useState<{ code?: string; name?: string; first_name: string; last_name: string; gender: 'male'|'female'|'other'; birthdate: string; address: string; postal_code?: string; country_code?: string; type: 'clinic'|'dentist'|'other'; tax_id: string; email: string; phone: string; default_shipping_address?: string; location_code?: string; preferred_currency?: string; payment_type?: string; payment_form?: string; payment_method?: string }>(
+    { code:'', name:'', first_name:'', last_name:'', gender:'other', birthdate:'', address:'', postal_code:'', country_code:'', type:'clinic', tax_id:'', email:'', phone:'', default_shipping_address:'', location_code:'', preferred_currency:'', payment_type:'', payment_form:'', payment_method:'' }
   )
+  const [err, setErr] = React.useState<string>('')
+  // Countries & shipping addresses for selects
+  const [countries, setCountries] = React.useState<any[]>([])
+  const [shipAddrs, setShipAddrs] = React.useState<any[]>([])
+  React.useEffect(()=>{ (async()=>{ try{ const cs = await listCountries(); setCountries(cs.items||[]) }catch{} try{ const sa = await listShippingAddresses(); setShipAddrs(sa.items||[]) }catch{} })() }, [])
   // Financial lists for selects
   const [currs, setCurrs] = React.useState<any[]>([])
   const [payTypes, setPayTypes] = React.useState<any[]>([])
@@ -83,13 +88,15 @@ function Clients(){
   })() }, [])
   const submit = async (e: React.FormEvent)=>{
     e.preventDefault();
+    setErr('')
     try {
-      const name = `${form.first_name} ${form.last_name}`.trim()
-  const body: Partial<Client> = { ...form, name }
-  await createClient(body); setForm({ code:'', first_name:'', last_name:'', gender:'other', birthdate:'', address:'', type:'clinic', tax_id:'', email:'', phone:''}); reload()
-    } catch (err: any) {
-      const field = err?.response?.data?.field || 'unknown'
-      alert(t('client_exists', { field }))
+      const name = `${form.first_name} ${form.last_name}`.trim() || form.name || ''
+      const body: Partial<Client> = { ...form, name, country_code: (form.country_code||'').toUpperCase() || undefined }
+      await createClient(body)
+      setForm({ code:'', name:'', first_name:'', last_name:'', gender:'other', birthdate:'', address:'', postal_code:'', country_code:'', type:'clinic', tax_id:'', email:'', phone:'', default_shipping_address:'', location_code:'', preferred_currency:'', payment_type:'', payment_form:'', payment_method:''});
+      reload()
+    } catch (e: any) {
+      setErr(e?.response?.data?.error || e?.message || 'Error')
     }
   }
   const remove = async (id: string)=>{ await deleteClient(id); reload() }
@@ -97,17 +104,19 @@ function Clients(){
   // Edit modal
   const [editing, setEditing] = React.useState<Client | null>(null)
   const [editForm, setEditForm] = React.useState<Partial<Client>>({})
+  const [editErr, setEditErr] = React.useState<string>('')
   const openEdit = (c: Client) => { setEditing(c); setEditForm({ ...c }) }
   const closeEdit = () => { setEditing(null); setEditForm({}) }
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editing?.id) return
+    setEditErr('')
     try {
-      await updateClient(editing.id, editForm)
+      const body: Partial<Client> = { ...editForm, country_code: ((editForm as any).country_code||'').toUpperCase() || undefined }
+      await updateClient(editing.id, body)
       closeEdit(); reload()
-    } catch (err: any) {
-      const field = err?.response?.data?.field || 'unknown'
-      alert(t('client_exists', { field }))
+    } catch (e: any) {
+      setEditErr(e?.response?.data?.error || e?.message || 'Error')
     }
   }
 
@@ -118,9 +127,11 @@ function Clients(){
         <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input" />
         {loading && <span>…</span>}
       </div>
+      {err && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{err}</div>}
       <form onSubmit={submit} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
         <input placeholder={t('first_name') as string} value={form.first_name} onChange={e=>setForm({...form, first_name: e.target.value})} className="input" />
         <input placeholder={t('last_name') as string} value={form.last_name} onChange={e=>setForm({...form, last_name: e.target.value})} className="input" />
+        <input placeholder={t('name') as string || 'Name'} value={form.name||''} onChange={e=>setForm({...form, name: e.target.value})} className="input col-span-2" />
         <select value={form.gender} onChange={e=>setForm({...form, gender: e.target.value as 'male'|'female'|'other'})} className="input">
           <option value="male">{t('male')}</option>
           <option value="female">{t('female')}</option>
@@ -128,6 +139,11 @@ function Clients(){
         </select>
         <input type="date" placeholder={t('birthdate') as string} value={form.birthdate} onChange={e=>setForm({...form, birthdate: e.target.value})} className="input" />
         <input placeholder={t('address') as string} value={form.address} onChange={e=>setForm({...form, address: e.target.value})} className="input col-span-2" />
+        <input placeholder={t('postal_code') as string || 'Código Postal'} value={form.postal_code||''} onChange={e=>setForm({...form, postal_code: e.target.value})} className="input" />
+        <select value={form.country_code||''} onChange={e=>setForm({...form, country_code: e.target.value})} className="input">
+          <option value="">{t('country') as string || 'País'}</option>
+          {countries.map((c:any)=> (<option key={c.id} value={c.code}>{c.code} - {c.name}</option>))}
+        </select>
         <input placeholder={t('email') as string} value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className="input" />
         <input placeholder={t('phone') as string} value={form.phone} onChange={e=>setForm({...form, phone: e.target.value})} className="input" />
         <select value={form.type} onChange={e=>setForm({...form, type: e.target.value as 'clinic'|'dentist'|'other'})} className="input">
@@ -136,6 +152,11 @@ function Clients(){
           <option value="other">Other</option>
         </select>
         <input placeholder={t('tax_id') as string} value={form.tax_id} onChange={e=>setForm({...form, tax_id: e.target.value})} className="input" />
+        <select value={form.default_shipping_address||''} onChange={e=>setForm({...form, default_shipping_address: e.target.value})} className="input">
+          <option value="">{t('default_shipping_address') as string || 'Endereço Envio (predef.)'}</option>
+          {shipAddrs.map((a:any)=> (<option key={a.id} value={a.code}>{a.code} - {a.address1}</option>))}
+        </select>
+        <input placeholder={t('location_code') as string || 'Código Localização'} value={form.location_code||''} onChange={e=>setForm({...form, location_code: e.target.value})} className="input" />
         <select value={form.preferred_currency||''} onChange={e=>setForm({...form, preferred_currency: e.target.value})} className="input">
           <option value="">{t('currencies')}</option>
           {currs.map(c=> (<option key={c.id} value={c.id}>{c.code} {c.name? `- ${c.name}`:''}</option>))}
@@ -183,10 +204,12 @@ function Clients(){
       </table>
 
       <Modal open={!!editing} title={t('edit') as string} onClose={closeEdit}>
+        {editErr && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{editErr}</div>}
         <form onSubmit={saveEdit} className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <input placeholder={(t('code') as string)||'Code'} value={(editForm as any).code || ''} onChange={e=>setEditForm({...editForm, code: e.target.value})} className="input" />
           <input placeholder={t('first_name') as string} value={editForm.first_name || ''} onChange={e=>setEditForm({...editForm, first_name: e.target.value})} className="input" />
           <input placeholder={t('last_name') as string} value={editForm.last_name || ''} onChange={e=>setEditForm({...editForm, last_name: e.target.value})} className="input" />
+          <input placeholder={t('name') as string || 'Name'} value={(editForm as any).name || ''} onChange={e=>setEditForm({...editForm, name: e.target.value})} className="input col-span-2" />
           <select value={editForm.gender || 'other'} onChange={e=>setEditForm({...editForm, gender: e.target.value as 'male'|'female'|'other'})} className="input">
             <option value="male">{t('male')}</option>
             <option value="female">{t('female')}</option>
@@ -194,9 +217,19 @@ function Clients(){
           </select>
           <input type="date" value={(editForm.birthdate as string) || ''} onChange={e=>setEditForm({...editForm, birthdate: e.target.value})} className="input" />
           <input placeholder={t('address') as string} value={editForm.address || ''} onChange={e=>setEditForm({...editForm, address: e.target.value})} className="input col-span-2" />
+          <input placeholder={t('postal_code') as string || 'Código Postal'} value={(editForm as any).postal_code || ''} onChange={e=>setEditForm({...editForm, postal_code: e.target.value})} className="input" />
+          <select value={(editForm as any).country_code || ''} onChange={e=>setEditForm({...editForm, country_code: e.target.value})} className="input">
+            <option value="">{t('country') as string || 'País'}</option>
+            {countries.map((c:any)=> (<option key={c.id} value={c.code}>{c.code} - {c.name}</option>))}
+          </select>
           <input placeholder={t('email') as string} value={editForm.email || ''} onChange={e=>setEditForm({...editForm, email: e.target.value})} className="input" />
           <input placeholder={t('phone') as string} value={editForm.phone || ''} onChange={e=>setEditForm({...editForm, phone: e.target.value})} className="input" />
           <input placeholder={t('tax_id') as string} value={editForm.tax_id || ''} onChange={e=>setEditForm({...editForm, tax_id: e.target.value})} className="input" />
+          <select value={(editForm as any).default_shipping_address || ''} onChange={e=>setEditForm({...editForm, default_shipping_address: e.target.value})} className="input">
+            <option value="">{t('default_shipping_address') as string || 'Endereço Envio (predef.)'}</option>
+            {shipAddrs.map((a:any)=> (<option key={a.id} value={a.code}>{a.code} - {a.address1}</option>))}
+          </select>
+          <input placeholder={t('location_code') as string || 'Código Localização'} value={(editForm as any).location_code || ''} onChange={e=>setEditForm({...editForm, location_code: e.target.value})} className="input" />
           <select value={(editForm as any).preferred_currency || ''} onChange={e=>setEditForm({...editForm, preferred_currency: e.target.value})} className="input">
             <option value="">{t('currencies')}</option>
             {currs.map(c=> (<option key={c.id} value={c.id}>{c.code} {c.name? `- ${c.name}`:''}</option>))}
