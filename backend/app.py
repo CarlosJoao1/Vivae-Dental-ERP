@@ -94,7 +94,12 @@ def create_app():
                 )
                 origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
                 if origins:
-                    base = origins[0].rstrip("/")
+                    # Prefer a non-localhost origin if available (avoid redirecting to localhost in prod)
+                    def _is_local(u: str) -> bool:
+                        return any(h in u for h in ("localhost", "127.0.0.1", "0.0.0.0"))
+
+                    preferred = next((o for o in origins if not _is_local(o)), None) or origins[0]
+                    base = preferred.rstrip("/")
                     # Preserve the requested path and query string for SPA routing
                     dest = f"{base}{path}"
                     if request.query_string:

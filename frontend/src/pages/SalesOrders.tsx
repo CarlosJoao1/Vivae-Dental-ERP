@@ -255,7 +255,46 @@ export default function SalesOrders(){
         ))}
       </tbody></table>
       {/* Email modal */}
-  <EmailModal onSend={async (payload)=>{ if (emailing) { try { const r:any = await sendOrderEmail(emailing.id, payload); if (r?.ok){ alert(t('smtp_ok') as string) } else if (r?.error){ alert(`${t('smtp_error')}: ${r.error}`) } else { alert(t('smtp_ok') as string) } setEmailing(null) } catch(e:any){ const msg = e?.response?.data?.error || e?.message || ''; alert(`${t('smtp_error')}: ${msg}`) } } }} emailing={emailing} onClose={()=>setEmailing(null)} />
+  <EmailModal
+    onSend={async (payload) => {
+      if (!emailing) return;
+      try {
+        const r: any = await sendOrderEmail(emailing.id, payload);
+        if (r?.ok) {
+          alert(t('smtp_ok') as string);
+        } else if (r?.error) {
+          alert(`${t('smtp_error')}: ${r.error}`);
+        } else {
+          alert(t('smtp_ok') as string);
+        }
+        setEmailing(null);
+      } catch (e: any) {
+        const isTimeout = e?.code === 'ECONNABORTED' || /timeout/i.test(e?.message || '');
+        if (isTimeout) {
+          try {
+            const r2: any = await sendOrderEmail(emailing.id, payload);
+            if (r2?.ok) {
+              alert(t('smtp_ok') as string);
+            } else if (r2?.error) {
+              alert(`${t('smtp_error')}: ${r2.error}`);
+            } else {
+              alert(t('smtp_ok') as string);
+            }
+            setEmailing(null);
+            return;
+          } catch (e2: any) {
+            const msg2 = e2?.response?.data?.error || e2?.message || '';
+            alert(`${t('smtp_error')}: ${msg2}`);
+          }
+        } else {
+          const msg = e?.response?.data?.error || e?.message || '';
+          alert(`${t('smtp_error')}: ${msg}`);
+        }
+      }
+    }}
+    emailing={emailing}
+    onClose={() => setEmailing(null)}
+  />
   {/* Edit modal */}
   {editing && (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
