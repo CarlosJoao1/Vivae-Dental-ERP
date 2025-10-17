@@ -98,3 +98,11 @@ Se ao fazer refresh em URLs como `/masterdata` no domínio de produção do fron
 - Testes rápidos:
 	- Aceda a `https://<frontend>/qualquer/coisa` → deve carregar a app (index.html) e o router trata o caminho.
 	- Aceda a `https://<backend>/masterdata` → deve redirecionar para o domínio do frontend mantendo `/masterdata` se `FRONTEND_ORIGINS` estiver definido.
+
+## Changelog
+
+- v0.2.0
+	- Frontend (Clientes): adicionados campos postal_code, country_code (select, uppercase), default_shipping_address (select), location_code e name no modal; criação e edição com banners de erro inline.
+	- Master Data: abas Countries e Shipping Addresses com feedback de erro inline; validações e regras de integridade no backend (não permitir apagar/alterar country em uso; validar/normalizar country_code; validar default_shipping_address).
+	- Fiabilidade/UX: SPA deep-link fix, i18n parity gate, melhorias SMTP e diagnósticos; versão exibida no Topbar a partir de `/api/health/info`.
+	- Tag: v0.2.0; package.json (frontend) atualizado para 0.2.0.
