@@ -17,6 +17,8 @@ from models.payment_type import PaymentType
 from models.payment_form import PaymentForm
 from models.payment_method import PaymentMethod
 from models.series import Series
+from models.country import Country
+from models.shipping_address import ShippingAddress
 from models.smtp_config import SmtpConfig
 import smtplib
 from email.message import EmailMessage
@@ -142,10 +144,13 @@ def _client_to_dict(c: Client):
         "email": c.email or "",
         "phone": c.phone or "",
         "address": getattr(c, "address", "") or "",
+    "postal_code": getattr(c, "postal_code", "") or "",
+    "country_code": getattr(c, "country_code", "") or "",
         "type": c.type or "",
         "tax_id": c.tax_id or "",
         "billing_address": c.billing_address or {},
         "shipping_address": c.shipping_address or {},
+    "default_shipping_address": getattr(c, "default_shipping_address", "") or "",
         "payment_terms": c.payment_terms or "",
         "notes": c.notes or "",
         "active": bool(getattr(c, "active", True)),
@@ -609,10 +614,13 @@ def clients_create():
             email=email,
             phone=data.get("phone"),
             address=data.get("address"),
+            postal_code=data.get("postal_code"),
+            country_code=data.get("country_code"),
             type=data.get("type"),
             tax_id=tax_id,
             billing_address=data.get("billing_address"),
             shipping_address=data.get("shipping_address"),
+            default_shipping_address=data.get("default_shipping_address"),
             payment_terms=data.get("payment_terms"),
             notes=data.get("notes"),
             active=data.get("active", True),
@@ -621,6 +629,7 @@ def clients_create():
             payment_type=pt,
             payment_form=pf,
             payment_method=pm,
+            location_code=data.get("location_code"),
         ).save()
         return jsonify({"client": _client_to_dict(c)}), 201
     except (ValidationError, Exception) as e:
@@ -655,8 +664,8 @@ def clients_update(cid):
                 return jsonify({"error": "client exists", "field": "email"}), 409
 
         for f in [
-            "code","name","first_name","last_name","gender","birthdate","email","phone","address",
-            "type","tax_id","billing_address","shipping_address","payment_terms","notes","active","contacts"
+            "code","name","first_name","last_name","gender","birthdate","email","phone","address","postal_code","country_code",
+            "type","tax_id","billing_address","shipping_address","default_shipping_address","payment_terms","notes","active","contacts","location_code"
         ]:
             if f in data: setattr(c, f, data[f])
         # Refs
@@ -1113,3 +1122,99 @@ def smtp_diagnose():
 
     result["tests"] = tests
     return jsonify(result)
+
+# --- Countries ---
+def _country_to_dict(o: Country):
+    return {"id": str(o.id), "code": o.code, "name": o.name}
+
+@bp.get("/countries")
+@jwt_required()
+def countries_list():
+    items = Country.objects.order_by("name")
+    return jsonify({"items": [_country_to_dict(x) for x in items]})
+
+@bp.post("/countries")
+@jwt_required()
+def countries_create():
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        c = Country(code=(data.get("code") or "").upper(), name=data.get("name"))
+        c.save()
+        return jsonify({"country": _country_to_dict(c)}), 201
+    except (ValidationError, Exception) as e:
+        return jsonify({"error": str(e)}), 400
+
+# --- Shipping Addresses ---
+def _shipaddr_to_dict(a: ShippingAddress):
+    return {
+        "id": str(a.id),
+        "lab_id": str(getattr(a.lab, 'id', '')),
+        "code": a.code,
+        "address1": a.address1 or "",
+        "address2": a.address2 or "",
+        "postal_code": a.postal_code or "",
+        "city": a.city or "",
+        "country_code": a.country_code or "",
+    }
+
+@bp.get("/shipping-addresses")
+@jwt_required()
+def shipaddrs_list():
+    lab = _lab()
+    items = ShippingAddress.objects(lab=lab).order_by("code")
+    return jsonify({"items": [_shipaddr_to_dict(x) for x in items]})
+
+@bp.post("/shipping-addresses")
+@jwt_required()
+def shipaddrs_create():
+    lab = _lab()
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        # unique code per lab
+        if ShippingAddress.objects(lab=lab, code=data.get('code')).first():
+            return jsonify({"error": "address exists", "field": "code"}), 409
+        a = ShippingAddress(
+            lab=lab,
+            code=data.get('code'),
+            address1=data.get('address1'),
+            address2=data.get('address2'),
+            postal_code=data.get('postal_code'),
+            city=data.get('city'),
+            country_code=(data.get('country_code') or '').upper() or None,
+        ).save()
+        return jsonify({"shipping_address": _shipaddr_to_dict(a)}), 201
+    except (ValidationError, Exception) as e:
+        return jsonify({"error": str(e)}), 400
+
+@bp.put("/shipping-addresses/<aid>")
+@jwt_required()
+def shipaddrs_update(aid):
+    lab = _lab()
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        a = ShippingAddress.objects.get(id=aid, lab=lab)
+        if 'code' in data:
+            new_code = data.get('code')
+            dup = ShippingAddress.objects(lab=lab, code=new_code, id__ne=a.id).first()
+            if dup:
+                return jsonify({"error": "address exists", "field": "code"}), 409
+        for f in ['code','address1','address2','postal_code','city','country_code']:
+            if f in data:
+                setattr(a, f, data.get(f))
+        a.save()
+        return jsonify({"shipping_address": _shipaddr_to_dict(a)})
+    except DoesNotExist:
+        return jsonify({"error": "not found"}), 404
+    except (ValidationError, Exception) as e:
+        return jsonify({"error": str(e)}), 400
+
+@bp.delete("/shipping-addresses/<aid>")
+@jwt_required()
+def shipaddrs_delete(aid):
+    lab = _lab()
+    try:
+        a = ShippingAddress.objects.get(id=aid, lab=lab)
+        a.delete()
+        return jsonify({"status": "deleted"})
+    except DoesNotExist:
+        return jsonify({"error": "not found"}), 404

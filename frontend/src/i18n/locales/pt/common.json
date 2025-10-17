@@ -100,4 +100,8 @@
   ,"convert_to_invoice": "Converter em Fatura"
   ,"search_service": "Procurar serviço"
   ,"choose_series": "Escolher série"
+  ,"postal_code": "Código Postal"
+  ,"country": "País"
+  ,"default_shipping_address": "Endereço Envio (predef.)"
+  ,"location_code": "Código Localização"
 }

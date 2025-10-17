@@ -30,13 +30,20 @@ class Client(BaseDoc):
     email = StringField()
     phone = StringField()
     address = StringField()
+    postal_code = StringField()
+    country_code = StringField(max_length=3)
 
     # Faturação
     type = StringField(choices=("clinic","dentist","other"), default="clinic")
     tax_id = StringField()
     billing_address = DictField()  # {street, city, postal_code, country}
     shipping_address = DictField()
+    # Default shipping address code (from ShippingAddress)
+    default_shipping_address = StringField()
     payment_terms = StringField()  # e.g., NET30
+
+    # Logistics
+    location_code = StringField()  # warehouse/location code
 
     notes = StringField()
     active = BooleanField(default=True)

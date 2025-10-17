@@ -6,6 +6,7 @@ from models.service import Service
 from models.patient import Patient
 from models.client import Client
 from models.currency import Currency
+from models.country import Country
 from models.payment_type import PaymentType
 from models.payment_form import PaymentForm
 from models.payment_method import PaymentMethod
@@ -127,3 +128,19 @@ def run_seed():
             print("✅ Seed: Series CLI-")
     except Exception as e:
         print(f"⚠️ Seed Series skipped: {e}")
+
+    # Countries seed (partial list)
+    try:
+        if Country.objects.count() == 0:
+            pairs = [
+                ("PT","Portugal"),("ES","España"),("FR","France"),("DE","Deutschland"),("IT","Italia"),
+                ("GB","United Kingdom"),("US","United States"),("BR","Brasil"),("CN","China"),("JP","Japan"),
+                ("NL","Nederland"),("BE","Belgium"),("LU","Luxembourg"),("IE","Ireland"),("CH","Switzerland"),
+            ]
+            for code,name in pairs:
+                try:
+                    Country(code=code, name=name).save()
+                except Exception:
+                    pass
+    except Exception:
+        pass

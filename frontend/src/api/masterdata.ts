@@ -16,15 +16,19 @@ export type Client = {
   email?: string
   phone?: string
   address?: string
+  postal_code?: string
+  country_code?: string
   type?: 'clinic'|'dentist'|'other'
   tax_id?: string
   billing_address?: Record<string, any>
   shipping_address?: Record<string, any>
+  default_shipping_address?: string
   payment_terms?: string
   notes?: string
   active?: boolean
   contacts?: Array<Record<string, any>>
   created_at?: string
+  location_code?: string
   // Financial preferences (ids)
   preferred_currency?: Id
   payment_type?: Id
@@ -78,6 +82,36 @@ export async function getClient(id: Id) {
 export async function searchClientsBrief(q = '') {
   const { data } = await api.get(`/masterdata/clients/search`, { params: { q } })
   return data as { items: Array<{ id: Id; code?: string; name: string; tax_id?: string; email?: string; phone?: string }> }
+}
+
+// Countries
+export type Country = { id?: Id; code: string; name: string }
+export async function listCountries() {
+  const { data } = await api.get(`/masterdata/countries`)
+  return data as { items: Country[] }
+}
+export async function createCountry(body: Partial<Country>) {
+  const { data } = await api.post(`/masterdata/countries`, body)
+  return data.country as Country
+}
+
+// Shipping Addresses
+export type ShippingAddress = { id?: Id; code: string; address1?: string; address2?: string; postal_code?: string; city?: string; country_code?: string }
+export async function listShippingAddresses() {
+  const { data } = await api.get(`/masterdata/shipping-addresses`)
+  return data as { items: ShippingAddress[] }
+}
+export async function createShippingAddress(body: Partial<ShippingAddress>) {
+  const { data } = await api.post(`/masterdata/shipping-addresses`, body)
+  return data.shipping_address as ShippingAddress
+}
+export async function updateShippingAddress(id: Id, body: Partial<ShippingAddress>) {
+  const { data } = await api.put(`/masterdata/shipping-addresses/${id}`, body)
+  return data.shipping_address as ShippingAddress
+}
+export async function deleteShippingAddress(id: Id) {
+  const { data } = await api.delete(`/masterdata/shipping-addresses/${id}`)
+  return data
 }
 
 // Patients

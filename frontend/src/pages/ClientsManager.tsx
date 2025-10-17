@@ -2,7 +2,8 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   listClients, updateClient, deleteClient, type Client,
-  listCurrencies, listPaymentTypes, listPaymentForms, listPaymentMethods
+  listCurrencies, listPaymentTypes, listPaymentForms, listPaymentMethods,
+  listCountries, type Country, listShippingAddresses, type ShippingAddress
 } from '@/api/masterdata'
 
 function SectionHeader({ title, onReload }: { title: string, onReload: ()=>void }){
@@ -79,6 +80,16 @@ export default function ClientsManager(){
     } catch{}
   })() }, [])
 
+  // Countries and shipping addresses
+  const [countries, setCountries] = React.useState<Country[]>([])
+  const [shipAddrs, setShipAddrs] = React.useState<ShippingAddress[]>([])
+  React.useEffect(()=>{ (async ()=>{
+    try{
+      const cs = await listCountries(); setCountries(cs.items||[])
+      const sa = await listShippingAddresses(); setShipAddrs(sa.items||[])
+    } catch{}
+  })() }, [])
+
   const totalPages = Math.max(1, Math.ceil(total/20))
 
   return (
@@ -127,7 +138,17 @@ export default function ClientsManager(){
           <input placeholder={t('email') as string} value={editForm.email || ''} onChange={e=>setEditForm({...editForm, email: e.target.value})} className="input" />
           <input placeholder={t('phone') as string} value={editForm.phone || ''} onChange={e=>setEditForm({...editForm, phone: e.target.value})} className="input" />
           <input placeholder={t('address') as string} value={editForm.address || ''} onChange={e=>setEditForm({...editForm, address: e.target.value})} className="input col-span-2" />
+          <input placeholder={t('postal_code') as string || 'Código Postal'} value={(editForm as any).postal_code || ''} onChange={e=>setEditForm({...editForm, postal_code: e.target.value})} className="input" />
+          <select value={(editForm as any).country_code || ''} onChange={e=>setEditForm({...editForm, country_code: e.target.value})} className="input">
+            <option value="">{t('country') as string || 'País'}</option>
+            {countries.map(c=> (<option key={c.id} value={c.code}>{c.code} - {c.name}</option>))}
+          </select>
           <input placeholder={t('tax_id') as string} value={editForm.tax_id || ''} onChange={e=>setEditForm({...editForm, tax_id: e.target.value})} className="input" />
+          <select value={(editForm as any).default_shipping_address || ''} onChange={e=>setEditForm({...editForm, default_shipping_address: e.target.value})} className="input">
+            <option value="">{t('default_shipping_address') as string || 'Endereço Envio (predef.)'}</option>
+            {shipAddrs.map(a=> (<option key={a.id} value={a.code}>{a.code} - {a.address1}</option>))}
+          </select>
+          <input placeholder={t('location_code') as string || 'Código Localização'} value={(editForm as any).location_code || ''} onChange={e=>setEditForm({...editForm, location_code: e.target.value})} className="input" />
           <select value={(editForm.preferred_currency as string) || ''} onChange={e=>setEditForm({...editForm, preferred_currency: e.target.value})} className="input">
             <option value="">{t('currencies')}</option>
             {currs.map(c=> (<option key={c.id} value={c.id}>{c.code} {c.name? `- ${c.name}`:''}</option>))}
