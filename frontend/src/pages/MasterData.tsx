@@ -469,24 +469,46 @@ function CountriesTab(){
   const [items, setItems] = React.useState<Country[]>([])
   const [form, setForm] = React.useState<Partial<Country>>({ code: '', name: '' })
   const [editingId, setEditingId] = React.useState<string>('')
+  const [err, setErr] = React.useState<string>('')
   const reload = async ()=>{ const { items } = await listCountries(); setItems(items||[]) }
   React.useEffect(()=>{ reload() }, [])
   const submit = async (e: React.FormEvent)=>{
     e.preventDefault();
+    setErr('')
     if (!form.code || !form.name) return;
-    if (editingId) {
-      await updateCountry(editingId, { code: String(form.code).toUpperCase(), name: form.name })
-      setEditingId('')
-    } else {
-      await createCountry({ code: String(form.code).toUpperCase(), name: form.name })
+    try {
+      if (editingId) {
+        await updateCountry(editingId, { code: String(form.code).toUpperCase(), name: form.name })
+        setEditingId('')
+      } else {
+        await createCountry({ code: String(form.code).toUpperCase(), name: form.name })
+      }
+      setForm({ code:'', name:'' }); reload()
+    } catch (e:any) {
+      const ref = e?.response?.data?.references
+      const msg = e?.response?.data?.error || e?.message || 'Error'
+      if (ref && (typeof ref.shipping_addresses !== 'undefined' || typeof ref.clients !== 'undefined')){
+        setErr(`${msg}: SA=${ref.shipping_addresses||0}, Clients=${ref.clients||0}`)
+      } else {
+        setErr(String(msg))
+      }
     }
-    setForm({ code:'', name:'' }); reload()
   }
   const startEdit = (c: Country)=>{ setEditingId(c.id as string); setForm({ code: c.code, name: c.name }) }
-  const remove = async (id: string)=>{ await deleteCountry(id); reload() }
+  const remove = async (id: string)=>{
+    setErr('')
+    try { await deleteCountry(id); reload() } catch (e:any) {
+      const ref = e?.response?.data?.references
+      const msg = e?.response?.data?.error || e?.message || 'Error'
+      if (ref && (typeof ref.shipping_addresses !== 'undefined' || typeof ref.clients !== 'undefined')){
+        setErr(`${msg}: SA=${ref.shipping_addresses||0}, Clients=${ref.clients||0}`)
+      } else { setErr(String(msg)) }
+    }
+  }
   return (
     <div>
       <SectionHeader title={(t('countries') as string) || 'Countries'} onReload={reload} />
+      {err && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{err}</div>}
       <form onSubmit={submit} className="flex flex-wrap gap-2 mb-3">
         <input placeholder={(t('code') as string)||'Code'} value={form.code||''} onChange={e=>setForm({...form, code:e.target.value})} className="input" />
         <input placeholder={(t('name') as string)||'Name'} value={form.name||''} onChange={e=>setForm({...form, name:e.target.value})} className="input" />
@@ -514,19 +536,27 @@ function ShippingAddressesTab(){
   const [countries, setCountries] = React.useState<Country[]>([])
   const [form, setForm] = React.useState<ShippingAddress>({ code:'', address1:'', address2:'', postal_code:'', city:'', country_code:'' })
   const [editingId, setEditingId] = React.useState<string>('')
+  const [err, setErr] = React.useState<string>('')
   const reload = async ()=>{ const { items } = await listShippingAddresses(); setItems(items||[]) }
   React.useEffect(()=>{ reload(); (async()=>{ try{ const cs = await listCountries(); setCountries(cs.items||[]) }catch{} })() }, [])
   const submit = async (e: React.FormEvent)=>{
     e.preventDefault()
-    const body: Partial<ShippingAddress> = { ...form, country_code: (form.country_code||'').toUpperCase() }
-    if (editingId) { await updateShippingAddress(editingId, body); setEditingId('') } else { await createShippingAddress(body) }
-    setForm({ code:'', address1:'', address2:'', postal_code:'', city:'', country_code:'' }); reload()
+    setErr('')
+    try{
+      const body: Partial<ShippingAddress> = { ...form, country_code: (form.country_code||'').toUpperCase() }
+      if (editingId) { await updateShippingAddress(editingId, body); setEditingId('') } else { await createShippingAddress(body) }
+      setForm({ code:'', address1:'', address2:'', postal_code:'', city:'', country_code:'' }); reload()
+    } catch(e:any){
+      const msg = e?.response?.data?.error || e?.message || 'Error'
+      setErr(String(msg))
+    }
   }
   const startEdit = (it: ShippingAddress)=>{ setEditingId(it.id as string); setForm({ code: it.code, address1: it.address1, address2: it.address2, postal_code: it.postal_code, city: it.city, country_code: it.country_code }) }
   const remove = async (id: string)=>{ await deleteShippingAddress(id); reload() }
   return (
     <div>
       <SectionHeader title={(t('shipping_addresses') as string) || 'Shipping Addresses'} onReload={reload} />
+      {err && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{err}</div>}
       <form onSubmit={submit} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
         <input placeholder={(t('code') as string)||'Code'} value={form.code||''} onChange={e=>setForm({...form, code:e.target.value})} className="input" />
         <input placeholder={(t('address1') as string)||'Address 1'} value={form.address1||''} onChange={e=>setForm({...form, address1:e.target.value})} className="input col-span-2" />
