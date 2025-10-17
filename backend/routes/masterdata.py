@@ -603,6 +603,16 @@ def clients_create():
             except Exception:
                 pm = None
 
+        # Validate country_code
+        cc = (data.get("country_code") or '').upper() or None
+        if cc and not Country.objects(code=cc).first():
+            return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+        # Validate default_shipping_address code exists within lab
+        dsa = (data.get("default_shipping_address") or '').strip()
+        if dsa:
+            if not ShippingAddress.objects(lab=lab, code=dsa).first():
+                return jsonify({"error": "invalid default_shipping_address", "field": "default_shipping_address"}), 400
+
         c = Client(
             lab=lab,
             code=code,
@@ -615,12 +625,12 @@ def clients_create():
             phone=data.get("phone"),
             address=data.get("address"),
             postal_code=data.get("postal_code"),
-            country_code=data.get("country_code"),
+            country_code=cc,
             type=data.get("type"),
             tax_id=tax_id,
             billing_address=data.get("billing_address"),
             shipping_address=data.get("shipping_address"),
-            default_shipping_address=data.get("default_shipping_address"),
+            default_shipping_address=dsa or None,
             payment_terms=data.get("payment_terms"),
             notes=data.get("notes"),
             active=data.get("active", True),
@@ -662,6 +672,19 @@ def clients_update(cid):
             dup = Client.objects(lab=lab, email=email, id__ne=c.id).first()
             if dup:
                 return jsonify({"error": "client exists", "field": "email"}), 409
+
+        # Normalize and validate country_code if present
+        if 'country_code' in data:
+            cc = (data.get('country_code') or '').upper() or None
+            if cc and not Country.objects(code=cc).first():
+                return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+            data['country_code'] = cc
+        # Validate default_shipping_address if present
+        if 'default_shipping_address' in data:
+            dsa = (data.get('default_shipping_address') or '').strip()
+            if dsa and not ShippingAddress.objects(lab=lab, code=dsa).first():
+                return jsonify({"error": "invalid default_shipping_address", "field": "default_shipping_address"}), 400
+            data['default_shipping_address'] = dsa or None
 
         for f in [
             "code","name","first_name","last_name","gender","birthdate","email","phone","address","postal_code","country_code",
@@ -1153,6 +1176,16 @@ def countries_update(cid):
         # Unique code check if changing
         if 'code' in data and data['code']:
             new_code = (data.get('code') or '').upper()
+            # If code is changing, prevent change when referenced
+            if new_code != c.code:
+                ref_sa = ShippingAddress.objects(country_code=c.code).count()
+                ref_cli = Client.objects(country_code=c.code).count()
+                if (ref_sa or ref_cli):
+                    return jsonify({
+                        "error": "country code in use",
+                        "field": "code",
+                        "references": {"shipping_addresses": int(ref_sa), "clients": int(ref_cli)}
+                    }), 400
             dup = Country.objects(code=new_code, id__ne=c.id).first()
             if dup:
                 return jsonify({"error": "country exists", "field": "code"}), 409
@@ -1171,6 +1204,14 @@ def countries_update(cid):
 def countries_delete(cid):
     try:
         c = Country.objects.get(id=cid)
+        # Prevent deleting if referenced by ShippingAddress or Client
+        ref_sa = ShippingAddress.objects(country_code=c.code).count()
+        ref_cli = Client.objects(country_code=c.code).count()
+        if (ref_sa or ref_cli):
+            return jsonify({
+                "error": "country in use",
+                "references": {"shipping_addresses": int(ref_sa), "clients": int(ref_cli)}
+            }), 400
         c.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
@@ -1205,6 +1246,11 @@ def shipaddrs_create():
         # unique code per lab
         if ShippingAddress.objects(lab=lab, code=data.get('code')).first():
             return jsonify({"error": "address exists", "field": "code"}), 409
+        # validate country_code exists if provided
+        cc = (data.get('country_code') or '').upper() or None
+        if cc:
+            if not Country.objects(code=cc).first():
+                return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
         a = ShippingAddress(
             lab=lab,
             code=data.get('code'),
@@ -1212,7 +1258,7 @@ def shipaddrs_create():
             address2=data.get('address2'),
             postal_code=data.get('postal_code'),
             city=data.get('city'),
-            country_code=(data.get('country_code') or '').upper() or None,
+            country_code=cc,
         ).save()
         return jsonify({"shipping_address": _shipaddr_to_dict(a)}), 201
     except (ValidationError, Exception) as e:
@@ -1230,6 +1276,12 @@ def shipaddrs_update(aid):
             dup = ShippingAddress.objects(lab=lab, code=new_code, id__ne=a.id).first()
             if dup:
                 return jsonify({"error": "address exists", "field": "code"}), 409
+        # Normalize and validate country_code if present
+        if 'country_code' in data:
+            cc = (data.get('country_code') or '').upper() or None
+            if cc and not Country.objects(code=cc).first():
+                return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+            data['country_code'] = cc
         for f in ['code','address1','address2','postal_code','city','country_code']:
             if f in data:
                 setattr(a, f, data.get(f))
