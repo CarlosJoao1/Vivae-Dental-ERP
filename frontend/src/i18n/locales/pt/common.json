@@ -104,4 +104,12 @@
   ,"country": "País"
   ,"default_shipping_address": "Endereço Envio (predef.)"
   ,"location_code": "Código Localização"
+  ,"countries": "Países"
+  ,"shipping_addresses": "Endereços de Envio"
+  ,"address1": "Morada 1"
+  ,"address2": "Morada 2"
+  ,"city": "Cidade"
+  ,"laboratory": "Laboratório"
+  ,"loading": "A carregar..."
+  ,"no_logo": "Sem logótipo"
 }

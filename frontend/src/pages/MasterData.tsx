@@ -7,7 +7,9 @@ import {
   listDocumentTypes, createDocumentType, updateDocumentType, deleteDocumentType,
   Client, Patient, Laboratory, listLaboratories, updateLaboratory,
   listCurrencies, createCurrency, listPaymentTypes, createPaymentType, listPaymentForms, createPaymentForm, listPaymentMethods, createPaymentMethod,
-  listSeries, createSeries, updateSeries, getSmtpConfig, updateSmtpConfig, testSmtp, diagnoseSmtp, type SmtpConfig
+  listSeries, createSeries, updateSeries, getSmtpConfig, updateSmtpConfig, testSmtp, diagnoseSmtp, type SmtpConfig,
+  listCountries, createCountry, type Country,
+  listShippingAddresses, createShippingAddress, updateShippingAddress, deleteShippingAddress, type ShippingAddress
 } from '@/api/masterdata'
 import { useTranslation } from 'react-i18next'
 import ClientsManager from '@/pages/ClientsManager'
@@ -415,7 +417,7 @@ function SimpleFinList({ title, loader, creator }:{ title:string, loader:()=>Pro
 
 export default function MasterData(){
   const { t } = useTranslation()
-  const tabs: Array<{key: 'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp'|'lab', label: string}> = [
+  const tabs: Array<{key: 'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp'|'lab'|'countries'|'shipping_addresses', label: string}> = [
     { key: 'lab', label: (t('laboratory') as string) || 'Laboratory' },
     { key: 'clients', label: t('clients') as string },
     { key: 'clients_list', label: (t('all_clients') as string) || 'Todos os Clientes' },
@@ -423,6 +425,8 @@ export default function MasterData(){
     { key: 'technicians', label: t('technicians') as string },
     { key: 'services', label: t('services') as string },
     { key: 'doctypes', label: t('document_types') as string },
+    { key: 'countries', label: (t('countries') as string) || 'Countries' },
+    { key: 'shipping_addresses', label: (t('shipping_addresses') as string) || 'Shipping Addresses' },
     { key: 'currencies', label: t('currencies') as string },
     { key: 'payment_types', label: t('payment_types') as string },
     { key: 'payment_forms', label: t('payment_forms') as string },
@@ -430,7 +434,7 @@ export default function MasterData(){
     { key: 'series', label: (t('series') as string) || 'Series' },
     { key: 'smtp', label: (t('smtp_settings') as string) || 'SMTP' },
   ]
-  const [tab, setTab] = React.useState<'lab'|'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp'>('clients')
+  const [tab, setTab] = React.useState<'lab'|'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'countries'|'shipping_addresses'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp'>('clients')
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">{t('masterdata')}</h1>
@@ -447,6 +451,8 @@ export default function MasterData(){
         {tab==='technicians' && <Technicians/>}
         {tab==='services' && <Services/>}
         {tab==='doctypes' && <DocumentTypes/>}
+        {tab==='countries' && <CountriesTab />}
+        {tab==='shipping_addresses' && <ShippingAddressesTab />}
         {tab==='currencies' && <Currencies/>}
         {tab==='payment_types' && <SimpleFinList title={t('payment_types') as string} loader={listPaymentTypes} creator={createPaymentType} />}
         {tab==='payment_forms' && <SimpleFinList title={t('payment_forms') as string} loader={listPaymentForms} creator={createPaymentForm} />}
@@ -454,6 +460,80 @@ export default function MasterData(){
         {tab==='series' && <SeriesTab />}
         {tab==='smtp' && <SmtpTab />}
       </div>
+    </div>
+  )
+}
+
+function CountriesTab(){
+  const { t } = useTranslation()
+  const [items, setItems] = React.useState<Country[]>([])
+  const [form, setForm] = React.useState<Partial<Country>>({ code: '', name: '' })
+  const reload = async ()=>{ const { items } = await listCountries(); setItems(items||[]) }
+  React.useEffect(()=>{ reload() }, [])
+  const submit = async (e: React.FormEvent)=>{ e.preventDefault(); if (!form.code || !form.name) return; await createCountry({ code: String(form.code).toUpperCase(), name: form.name }); setForm({ code:'', name:'' }); reload() }
+  return (
+    <div>
+      <SectionHeader title={(t('countries') as string) || 'Countries'} onReload={reload} />
+      <form onSubmit={submit} className="flex flex-wrap gap-2 mb-3">
+        <input placeholder={(t('code') as string)||'Code'} value={form.code||''} onChange={e=>setForm({...form, code:e.target.value})} className="input" />
+        <input placeholder={(t('name') as string)||'Name'} value={form.name||''} onChange={e=>setForm({...form, name:e.target.value})} className="input" />
+        <button className="btn btn-primary">{t('create')}</button>
+      </form>
+      <table className="w-full text-sm"><thead><tr><th>{t('code')}</th><th>{t('name')}</th></tr></thead><tbody>
+        {items.map(c=> (<tr key={c.id} className="border-t"><td className="text-center">{c.code}</td><td className="text-center">{c.name}</td></tr>))}
+      </tbody></table>
+    </div>
+  )
+}
+
+function ShippingAddressesTab(){
+  const { t } = useTranslation()
+  const [items, setItems] = React.useState<ShippingAddress[]>([])
+  const [countries, setCountries] = React.useState<Country[]>([])
+  const [form, setForm] = React.useState<ShippingAddress>({ code:'', address1:'', address2:'', postal_code:'', city:'', country_code:'' })
+  const [editingId, setEditingId] = React.useState<string>('')
+  const reload = async ()=>{ const { items } = await listShippingAddresses(); setItems(items||[]) }
+  React.useEffect(()=>{ reload(); (async()=>{ try{ const cs = await listCountries(); setCountries(cs.items||[]) }catch{} })() }, [])
+  const submit = async (e: React.FormEvent)=>{
+    e.preventDefault()
+    const body: Partial<ShippingAddress> = { ...form, country_code: (form.country_code||'').toUpperCase() }
+    if (editingId) { await updateShippingAddress(editingId, body); setEditingId('') } else { await createShippingAddress(body) }
+    setForm({ code:'', address1:'', address2:'', postal_code:'', city:'', country_code:'' }); reload()
+  }
+  const startEdit = (it: ShippingAddress)=>{ setEditingId(it.id as string); setForm({ code: it.code, address1: it.address1, address2: it.address2, postal_code: it.postal_code, city: it.city, country_code: it.country_code }) }
+  const remove = async (id: string)=>{ await deleteShippingAddress(id); reload() }
+  return (
+    <div>
+      <SectionHeader title={(t('shipping_addresses') as string) || 'Shipping Addresses'} onReload={reload} />
+      <form onSubmit={submit} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+        <input placeholder={(t('code') as string)||'Code'} value={form.code||''} onChange={e=>setForm({...form, code:e.target.value})} className="input" />
+        <input placeholder={(t('address1') as string)||'Address 1'} value={form.address1||''} onChange={e=>setForm({...form, address1:e.target.value})} className="input col-span-2" />
+        <input placeholder={(t('address2') as string)||'Address 2'} value={form.address2||''} onChange={e=>setForm({...form, address2:e.target.value})} className="input col-span-2" />
+        <input placeholder={(t('postal_code') as string)||'Postal Code'} value={form.postal_code||''} onChange={e=>setForm({...form, postal_code:e.target.value})} className="input" />
+        <input placeholder={(t('city') as string)||'City'} value={form.city||''} onChange={e=>setForm({...form, city:e.target.value})} className="input" />
+        <select value={form.country_code||''} onChange={e=>setForm({...form, country_code:e.target.value})} className="input">
+          <option value="">{(t('country') as string)||'Country'}</option>
+          {countries.map(c=> (<option key={c.id} value={c.code}>{c.code} - {c.name}</option>))}
+        </select>
+        <button className="btn btn-primary">{editingId ? (t('save') as string) : (t('create') as string)}</button>
+      </form>
+      <table className="w-full text-sm"><thead><tr>
+        <th>{t('code')}</th><th>{t('address1')||'Address 1'}</th><th>{t('postal_code')||'Postal Code'}</th><th>{t('city')||'City'}</th><th>{t('country')||'Country'}</th><th></th>
+      </tr></thead><tbody>
+        {items.map((a:any)=> (
+          <tr key={a.id} className="border-t">
+            <td className="text-center">{a.code}</td>
+            <td className="text-center">{a.address1}</td>
+            <td className="text-center">{a.postal_code}</td>
+            <td className="text-center">{a.city}</td>
+            <td className="text-center">{a.country_code}</td>
+            <td className="text-right px-2 py-1 flex gap-2 justify-end">
+              <button className="text-blue-600" onClick={()=>startEdit(a)}>{t('edit')}</button>
+              <button className="text-red-600" onClick={()=>remove(a.id)}>{t('remove')}</button>
+            </td>
+          </tr>
+        ))}
+      </tbody></table>
     </div>
   )
 }

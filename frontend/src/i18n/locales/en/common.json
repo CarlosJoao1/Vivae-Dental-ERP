@@ -104,4 +104,12 @@
   ,"edit": "Edit"
   ,"save": "Save"
   ,"cancel": "Cancel"
+  ,"countries": "Countries"
+  ,"shipping_addresses": "Shipping Addresses"
+  ,"address1": "Address 1"
+  ,"address2": "Address 2"
+  ,"city": "City"
+  ,"laboratory": "Laboratory"
+  ,"loading": "Loading..."
+  ,"no_logo": "No logo set"
 }

@@ -104,4 +104,12 @@
   ,"country": "País"
   ,"default_shipping_address": "Dirección de envío (pred.)"
   ,"location_code": "Código de ubicación"
+  ,"countries": "Países"
+  ,"shipping_addresses": "Direcciones de envío"
+  ,"address1": "Dirección 1"
+  ,"address2": "Dirección 2"
+  ,"city": "Ciudad"
+  ,"laboratory": "Laboratorio"
+  ,"loading": "Cargando..."
+  ,"no_logo": "Sin logotipo"
 }

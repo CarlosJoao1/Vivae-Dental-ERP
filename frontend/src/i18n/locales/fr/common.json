@@ -104,4 +104,12 @@
   ,"country": "Pays"
   ,"default_shipping_address": "Adresse d'expédition (par déf.)"
   ,"location_code": "Code d'emplacement"
+  ,"countries": "Pays"
+  ,"shipping_addresses": "Adresses d'expédition"
+  ,"address1": "Adresse 1"
+  ,"address2": "Adresse 2"
+  ,"city": "Ville"
+  ,"laboratory": "Laboratoire"
+  ,"loading": "Chargement..."
+  ,"no_logo": "Pas de logo"
 }

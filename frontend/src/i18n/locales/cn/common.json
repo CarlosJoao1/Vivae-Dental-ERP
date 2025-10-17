@@ -104,4 +104,12 @@
   ,"country": "国家"
   ,"default_shipping_address": "默认收货地址"
   ,"location_code": "位置代码"
+  ,"countries": "国家"
+  ,"shipping_addresses": "收货地址"
+  ,"address1": "地址 1"
+  ,"address2": "地址 2"
+  ,"city": "城市"
+  ,"laboratory": "实验室"
+  ,"loading": "加载中..."
+  ,"no_logo": "无标志"
 }

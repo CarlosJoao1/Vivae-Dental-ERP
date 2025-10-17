@@ -104,4 +104,12 @@
   ,"country": "Land"
   ,"default_shipping_address": "Standard-Lieferadresse"
   ,"location_code": "Standortcode"
+  ,"countries": "Länder"
+  ,"shipping_addresses": "Lieferadressen"
+  ,"address1": "Adresse 1"
+  ,"address2": "Adresse 2"
+  ,"city": "Stadt"
+  ,"laboratory": "Labor"
+  ,"loading": "Wird geladen..."
+  ,"no_logo": "Kein Logo"
 }
