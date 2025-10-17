@@ -8,7 +8,7 @@ import {
   Client, Patient, Laboratory, listLaboratories, updateLaboratory,
   listCurrencies, createCurrency, listPaymentTypes, createPaymentType, listPaymentForms, createPaymentForm, listPaymentMethods, createPaymentMethod,
   listSeries, createSeries, updateSeries, getSmtpConfig, updateSmtpConfig, testSmtp, diagnoseSmtp, type SmtpConfig,
-  listCountries, createCountry, type Country,
+  listCountries, createCountry, updateCountry, deleteCountry, type Country,
   listShippingAddresses, createShippingAddress, updateShippingAddress, deleteShippingAddress, type ShippingAddress
 } from '@/api/masterdata'
 import { useTranslation } from 'react-i18next'
@@ -468,19 +468,41 @@ function CountriesTab(){
   const { t } = useTranslation()
   const [items, setItems] = React.useState<Country[]>([])
   const [form, setForm] = React.useState<Partial<Country>>({ code: '', name: '' })
+  const [editingId, setEditingId] = React.useState<string>('')
   const reload = async ()=>{ const { items } = await listCountries(); setItems(items||[]) }
   React.useEffect(()=>{ reload() }, [])
-  const submit = async (e: React.FormEvent)=>{ e.preventDefault(); if (!form.code || !form.name) return; await createCountry({ code: String(form.code).toUpperCase(), name: form.name }); setForm({ code:'', name:'' }); reload() }
+  const submit = async (e: React.FormEvent)=>{
+    e.preventDefault();
+    if (!form.code || !form.name) return;
+    if (editingId) {
+      await updateCountry(editingId, { code: String(form.code).toUpperCase(), name: form.name })
+      setEditingId('')
+    } else {
+      await createCountry({ code: String(form.code).toUpperCase(), name: form.name })
+    }
+    setForm({ code:'', name:'' }); reload()
+  }
+  const startEdit = (c: Country)=>{ setEditingId(c.id as string); setForm({ code: c.code, name: c.name }) }
+  const remove = async (id: string)=>{ await deleteCountry(id); reload() }
   return (
     <div>
       <SectionHeader title={(t('countries') as string) || 'Countries'} onReload={reload} />
       <form onSubmit={submit} className="flex flex-wrap gap-2 mb-3">
         <input placeholder={(t('code') as string)||'Code'} value={form.code||''} onChange={e=>setForm({...form, code:e.target.value})} className="input" />
         <input placeholder={(t('name') as string)||'Name'} value={form.name||''} onChange={e=>setForm({...form, name:e.target.value})} className="input" />
-        <button className="btn btn-primary">{t('create')}</button>
+        <button className="btn btn-primary">{editingId ? (t('save') as string) : (t('create') as string)}</button>
       </form>
-      <table className="w-full text-sm"><thead><tr><th>{t('code')}</th><th>{t('name')}</th></tr></thead><tbody>
-        {items.map(c=> (<tr key={c.id} className="border-t"><td className="text-center">{c.code}</td><td className="text-center">{c.name}</td></tr>))}
+      <table className="w-full text-sm"><thead><tr><th>{t('code')}</th><th>{t('name')}</th><th></th></tr></thead><tbody>
+        {items.map(c=> (
+          <tr key={c.id} className="border-t">
+            <td className="text-center">{c.code}</td>
+            <td className="text-center">{c.name}</td>
+            <td className="text-right px-2 py-1 flex gap-2 justify-end">
+              <button className="text-blue-600" onClick={()=>startEdit(c)}>{t('edit')}</button>
+              <button className="text-red-600" onClick={()=>remove(c.id as string)}>{t('remove')}</button>
+            </td>
+          </tr>
+        ))}
       </tbody></table>
     </div>
   )

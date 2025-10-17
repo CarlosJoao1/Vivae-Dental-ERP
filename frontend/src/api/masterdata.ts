@@ -94,6 +94,14 @@ export async function createCountry(body: Partial<Country>) {
   const { data } = await api.post(`/masterdata/countries`, body)
   return data.country as Country
 }
+export async function updateCountry(id: Id, body: Partial<Country>) {
+  const { data } = await api.put(`/masterdata/countries/${id}`, body)
+  return data.country as Country
+}
+export async function deleteCountry(id: Id) {
+  const { data } = await api.delete(`/masterdata/countries/${id}`)
+  return data
+}
 
 // Shipping Addresses
 export type ShippingAddress = { id?: Id; code: string; address1?: string; address2?: string; postal_code?: string; city?: string; country_code?: string }

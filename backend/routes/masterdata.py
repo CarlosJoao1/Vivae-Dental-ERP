@@ -1144,6 +1144,38 @@ def countries_create():
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
+@bp.put("/countries/<cid>")
+@jwt_required()
+def countries_update(cid):
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        c = Country.objects.get(id=cid)
+        # Unique code check if changing
+        if 'code' in data and data['code']:
+            new_code = (data.get('code') or '').upper()
+            dup = Country.objects(code=new_code, id__ne=c.id).first()
+            if dup:
+                return jsonify({"error": "country exists", "field": "code"}), 409
+            c.code = new_code
+        if 'name' in data:
+            c.name = data.get('name')
+        c.save()
+        return jsonify({"country": _country_to_dict(c)})
+    except DoesNotExist:
+        return jsonify({"error": "not found"}), 404
+    except (ValidationError, Exception) as e:
+        return jsonify({"error": str(e)}), 400
+
+@bp.delete("/countries/<cid>")
+@jwt_required()
+def countries_delete(cid):
+    try:
+        c = Country.objects.get(id=cid)
+        c.delete()
+        return jsonify({"status": "deleted"})
+    except DoesNotExist:
+        return jsonify({"error": "not found"}), 404
+
 # --- Shipping Addresses ---
 def _shipaddr_to_dict(a: ShippingAddress):
     return {
