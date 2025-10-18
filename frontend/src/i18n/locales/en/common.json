@@ -1,5 +1,6 @@
 {
   "Bem-vindo": "Welcome",
+  "welcome_to_lab": "Welcome to {{name}}",
   "Entrar": "Sign in",
   "search": "Search",
   "logout": "Logout",

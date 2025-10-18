@@ -1,5 +1,6 @@
 {
   "Bem-vindo": "欢迎",
+  "welcome_to_lab": "欢迎来到 {{name}}",
   "Entrar": "登录",
   "search": "搜索",
   "logout": "退出登录",

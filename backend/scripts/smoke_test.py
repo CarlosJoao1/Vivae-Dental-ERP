@@ -72,7 +72,7 @@ def main() -> int:
     # 3) Login
     token = None
     try:
-        r = _post(f"{base}/auth/login", {"username": args.user, "password": args.password})
+        r = _post(f"{base}/api/auth/login", {"username": args.user, "password": args.password})
         r.raise_for_status()
         data = r.json()
         token = data.get("access_token")
@@ -89,7 +89,7 @@ def main() -> int:
 
     # 4) /auth/me
     try:
-        r = _get(f"{base}/auth/me", headers=headers)
+        r = _get(f"{base}/api/auth/me", headers=headers)
         r.raise_for_status()
         data = r.json()
         print("[PASS] /auth/me:", {k: data.get(k) for k in ("username", "role", "tenant_id")})
@@ -99,7 +99,7 @@ def main() -> int:
 
     # 5) /auth/stats
     try:
-        r = _get(f"{base}/auth/stats", headers=headers)
+        r = _get(f"{base}/api/auth/stats", headers=headers)
         r.raise_for_status()
         data = r.json()
         print("[PASS] /auth/stats:", {k: data.get(k) for k in ("tenants_accessible", "users_in_tenant", "total_users")})

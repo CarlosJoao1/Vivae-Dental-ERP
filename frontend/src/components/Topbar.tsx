@@ -17,6 +17,7 @@ export default function Topbar(){
   const [apiOk, setApiOk] = useState<boolean | null>(null)
   const [dbOk, setDbOk] = useState<boolean | null>(null)
   const [diagErr, setDiagErr] = useState<string | null>(null)
+  const [welcome, setWelcome] = useState<{ text: string } | null>(null)
   useEffect(() => {
     let mounted = true
     api.get('/health/info')
@@ -49,15 +50,26 @@ export default function Topbar(){
       })
     return () => { mounted = false }
   }, [])
-  // When tenant changes, hint pages to reload by emitting the event; here we just re-run diagnostics optionally
+  // When tenant changes, show welcome popup and trigger lightweight refresh hints
   useEffect(()=>{
-    const handler = () => {
+    const handler = (ev: any) => {
+      try {
+        const id = ev?.detail?.tenantId as string | undefined
+        const tn = (tenants||[]).find(x => (x.id as any) === id)
+        const name = (tn?.name as string) || id || ''
+        const text = (t('welcome_to_lab', { name }) as string) || `${t('Bem-vindo')} ${name ? `— ${name}` : ''}`
+        setWelcome({ text })
+        // auto-hide after a short delay
+        setTimeout(()=> setWelcome(null), 2500)
+      } catch {}
+      // Hint: trigger a lightweight refresh signal other parts can listen to
+      try { window.dispatchEvent(new CustomEvent('tenant:refresh', { detail: ev?.detail })) } catch {}
       // optional: ping something lightweight to keep status updated
       api.get('/health').catch(()=>{})
     }
     window.addEventListener('tenant:changed', handler)
     return () => window.removeEventListener('tenant:changed', handler)
-  }, [])
+  }, [t, tenants])
   const shortCommit = commit ? commit.substring(0, 7) : null
   let versionTooltip: string | undefined
   if (version) {
@@ -104,6 +116,14 @@ export default function Topbar(){
           <button onClick={logout} className="px-3 py-1 rounded bg-gray-900 text-white dark:bg-gray-700">{t('logout')}</button>
         </div>
       </div>
+      {/* Welcome toast under the topbar */}
+      {welcome && (
+        <div className="fixed left-1/2 -translate-x-1/2 top-16 z-20">
+          <div className="px-4 py-2 rounded-md shadow-lg bg-white/95 dark:bg-gray-800/95 border border-gray-200 dark:border-gray-700 text-sm">
+            {welcome.text}
+          </div>
+        </div>
+      )}
     </header>
   )
 }
