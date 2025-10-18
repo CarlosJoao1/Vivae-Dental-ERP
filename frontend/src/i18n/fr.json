@@ -28,5 +28,19 @@
   "light": "Clair",
   "dark": "Sombre",
   "system": "Système",
-  "select_tenant": "Sélectionner le laboratoire"
+  "select_tenant": "Sélectionner le laboratoire",
+  "financial_management": "Gestion Financière",
+  "purchasing": "Achats",
+  "warehouse": "Entrepôt",
+  "projects": "Projets",
+  "resource_planning": "Planification des Ressources",
+  "service": "Service",
+  "human_resources": "Ressources Humaines",
+  "integrations": "Intégrations",
+  "administration": "Administration",
+  "quality": "Qualité",
+  "document_capture": "Capture de Documents",
+  "under_development": "En Développement",
+  "licensing_required": "Licence Requise",
+  "status_dev_license": "En Développement - Licence Requise"
 }

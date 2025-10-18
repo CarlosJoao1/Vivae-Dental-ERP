@@ -28,13 +28,27 @@
   "light": "Light",
   "dark": "Dark",
   "system": "System",
-  "select_tenant": "Select laboratory"
-  , "countries": "Countries"
-  , "shipping_addresses": "Shipping Addresses"
-  , "address1": "Address 1"
-  , "address2": "Address 2"
-  , "city": "City"
-  , "laboratory": "Laboratory"
-  , "loading": "Loading..."
-  , "no_logo": "No logo set"
+  "select_tenant": "Select laboratory",
+  "countries": "Countries",
+  "shipping_addresses": "Shipping Addresses",
+  "address1": "Address 1",
+  "address2": "Address 2",
+  "city": "City",
+  "laboratory": "Laboratory",
+  "loading": "Loading...",
+  "no_logo": "No logo set",
+  "financial_management": "Financial Management",
+  "purchasing": "Purchasing",
+  "warehouse": "Warehouse",
+  "projects": "Projects",
+  "resource_planning": "Resource Planning",
+  "service": "Service",
+  "human_resources": "Human Resources",
+  "integrations": "Integrations",
+  "administration": "Administration",
+  "quality": "Quality",
+  "document_capture": "Document Capture",
+  "under_development": "Under Development",
+  "licensing_required": "Licensing Required",
+  "status_dev_license": "Under Development - Licensing Required"
 }

@@ -28,5 +28,19 @@
   "light": "浅色",
   "dark": "深色",
   "system": "系统",
-  "select_tenant": "选择实验室"
+  "select_tenant": "选择实验室",
+  "financial_management": "财务管理",
+  "purchasing": "采购",
+  "warehouse": "仓库",
+  "projects": "项目",
+  "resource_planning": "资源规划",
+  "service": "服务",
+  "human_resources": "人力资源",
+  "integrations": "集成",
+  "administration": "管理",
+  "quality": "质量",
+  "document_capture": "文档捕获",
+  "under_development": "开发中",
+  "licensing_required": "需要许可证",
+  "status_dev_license": "开发中 - 需要许可证"
 }

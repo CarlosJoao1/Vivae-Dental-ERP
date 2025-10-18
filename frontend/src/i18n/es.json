@@ -28,5 +28,19 @@
   "light": "Claro",
   "dark": "Oscuro",
   "system": "Sistema",
-  "select_tenant": "Seleccionar laboratorio"
+  "select_tenant": "Seleccionar laboratorio",
+  "financial_management": "Gestión Financiera",
+  "purchasing": "Compras",
+  "warehouse": "Almacén",
+  "projects": "Proyectos",
+  "resource_planning": "Planificación de Recursos",
+  "service": "Servicio",
+  "human_resources": "Recursos Humanos",
+  "integrations": "Integraciones",
+  "administration": "Administración",
+  "quality": "Calidad",
+  "document_capture": "Captura de Documentos",
+  "under_development": "En Desarrollo",
+  "licensing_required": "Requiere Licencia",
+  "status_dev_license": "En Desarrollo - Requiere Licencia"
 }

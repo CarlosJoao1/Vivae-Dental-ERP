@@ -1,8 +1,10 @@
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '@/api/api';
 type Tenant = { id: string; name: string };
 export default function Dashboard() {
+  const { t } = useTranslation();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [activeUsers, setActiveUsers] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +61,41 @@ export default function Dashboard() {
               {tenants.length === 0 && !loading && (<tr><td className="py-2 text-gray-500" colSpan={2}>Sem dados</td></tr>)}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* Nova seção de módulos */}
+      <section className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">{t('modules')}</h2>
+          <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+            {t('under_development')}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            { key: 'financial_management', icon: '💰', color: 'bg-green-50 border-green-200' },
+            { key: 'purchasing', icon: '🛒', color: 'bg-blue-50 border-blue-200' },
+            { key: 'warehouse', icon: '📦', color: 'bg-purple-50 border-purple-200' },
+            { key: 'projects', icon: '📋', color: 'bg-yellow-50 border-yellow-200' },
+            { key: 'resource_planning', icon: '📊', color: 'bg-indigo-50 border-indigo-200' },
+            { key: 'service', icon: '🔧', color: 'bg-red-50 border-red-200' },
+            { key: 'human_resources', icon: '👥', color: 'bg-teal-50 border-teal-200' },
+            { key: 'integrations', icon: '🔌', color: 'bg-pink-50 border-pink-200' },
+            { key: 'administration', icon: '⚙️', color: 'bg-gray-50 border-gray-200' },
+            { key: 'quality', icon: '✅', color: 'bg-emerald-50 border-emerald-200' },
+            { key: 'document_capture', icon: '📄', color: 'bg-cyan-50 border-cyan-200' }
+          ].map(module => (
+            <div key={module.key} className={`p-4 rounded-lg border-2 ${module.color} opacity-75 cursor-not-allowed`}>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-2xl">{module.icon}</span>
+                <h3 className="font-medium text-gray-800">{t(module.key)}</h3>
+              </div>
+              <div className="text-xs text-gray-600 bg-white bg-opacity-60 px-2 py-1 rounded">
+                {t('status_dev_license')}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>
