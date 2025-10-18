@@ -44,9 +44,9 @@ function useList<T>(fetcher: (q?: string) => Promise<{ total: number, items: T[]
 function SectionHeader({ title, onReload }: { title: string, onReload: ()=>void }){
   const { t } = useTranslation()
   return (
-    <div className="flex items-center justify-between mb-3">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <button onClick={onReload} className="px-3 py-1 rounded border">{t('reload')}</button>
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+      <button onClick={onReload} className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 text-sm font-medium">{t('reload')}</button>
     </div>
   )
 }
@@ -54,11 +54,11 @@ function SectionHeader({ title, onReload }: { title: string, onReload: ()=>void 
 function Modal({ open, title, children, onClose }: { open: boolean; title: string; children: React.ReactNode; onClose: ()=>void }){
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-xl p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <button onClick={onClose} className="px-2 py-1">✕</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+          <button onClick={onClose} className="px-2 py-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">✕</button>
         </div>
         {children}
       </div>
@@ -134,14 +134,14 @@ function Clients(){
   }
 
   return (
-    <div>
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
       <SectionHeader title={t('clients')} onReload={reload} />
-      <div className="flex items-center gap-2 mb-2">
-        <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input" />
-        {loading && <span>…</span>}
+      <div className="flex items-center gap-2 mb-4">
+        <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input flex-1" />
+        {loading && <span className="text-gray-500">…</span>}
       </div>
-      {err && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{err}</div>}
-      <form onSubmit={submit} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+      {err && <div className="mb-3 p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200 dark:bg-red-900/20 dark:border-red-800">{err}</div>}
+      <form onSubmit={submit} className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <input placeholder={t('first_name') as string} value={form.first_name} onChange={e=>setForm({...form, first_name: e.target.value})} className="input" />
         <input placeholder={t('last_name') as string} value={form.last_name} onChange={e=>setForm({...form, last_name: e.target.value})} className="input" />
         <input placeholder={t('name') as string || 'Name'} value={form.name||''} onChange={e=>setForm({...form, name: e.target.value})} className="input col-span-2" />
@@ -185,35 +185,38 @@ function Clients(){
           <option value="">{t('payment_methods')}</option>
           {payMethods.map(p=> (<option key={p.id} value={p.id}>{p.name}</option>))}
         </select>
-        <button className="btn btn-primary col-span-2 md:col-span-1">{t('create')}</button>
+        <button className="btn btn-primary col-span-2 md:col-span-1 transition-all duration-200 hover:shadow-lg">{t('create')}</button>
       </form>
+      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
       <table className="w-full text-sm">
-        <thead><tr>
-          <th className="text-left">{t('name')}</th>
-          <th>{t('birthdate')}</th>
-          <th>{t('age')}</th>
-          <th>{t('email')}</th>
-          <th>{t('phone')}</th>
-          <th>{t('tax_id')}</th>
-          <th></th>
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr className="border-b border-gray-200 dark:border-gray-700">
+          <th className="text-left px-4 py-3 font-semibold">{t('name')}</th>
+          <th className="px-4 py-3 font-semibold text-center">{t('birthdate')}</th>
+          <th className="px-4 py-3 font-semibold text-center">{t('age')}</th>
+          <th className="px-4 py-3 font-semibold text-center">{t('email')}</th>
+          <th className="px-4 py-3 font-semibold text-center">{t('phone')}</th>
+          <th className="px-4 py-3 font-semibold text-center">{t('tax_id')}</th>
+          <th className="px-4 py-3 font-semibold"></th>
         </tr></thead>
         <tbody>
           {items.map((c:any)=> (
-            <tr key={c.id} className="border-t">
-              <td className="py-1">{c.first_name || c.last_name ? `${c.first_name||''} ${c.last_name||''}`.trim() : (c.name || '')}</td>
-              <td className="text-center">{c.birthdate ? new Date(c.birthdate).toLocaleDateString() : ''}</td>
-              <td className="text-center">{c.age ?? ''}</td>
-              <td className="text-center">{c.email || ''}</td>
-              <td className="text-center">{c.phone || ''}</td>
-              <td className="text-center">{c.tax_id || ''}</td>
-              <td className="text-right flex gap-2 justify-end">
-                <button onClick={()=>openEdit(c)} className="text-blue-600">{t('edit')}</button>
-                <button onClick={()=>remove(c.id)} className="text-red-600">{t('remove')}</button>
+            <tr key={c.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
+              <td className="px-4 py-3">{c.first_name || c.last_name ? `${c.first_name||''} ${c.last_name||''}`.trim() : (c.name || '')}</td>
+              <td className="px-4 py-3 text-center">{c.birthdate ? new Date(c.birthdate).toLocaleDateString() : ''}</td>
+              <td className="px-4 py-3 text-center">{c.age ?? ''}</td>
+              <td className="px-4 py-3 text-center">{c.email || ''}</td>
+              <td className="px-4 py-3 text-center">{c.phone || ''}</td>
+              <td className="px-4 py-3 text-center">{c.tax_id || ''}</td>
+              <td className="px-4 py-3 text-right flex gap-2 justify-end">
+                <button onClick={()=>openEdit(c)} className="text-blue-600 hover:text-blue-800 dark:hover:text-blue-400 transition-colors font-medium">{t('edit')}</button>
+                <button onClick={()=>remove(c.id)} className="text-red-600 hover:text-red-800 dark:hover:text-red-400 transition-colors font-medium">{t('remove')}</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
 
       <Modal open={!!editing} title={t('edit') as string} onClose={closeEdit}>
         {editErr && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{editErr}</div>}
@@ -328,13 +331,13 @@ function Patients(){
   }
   const remove = async (id: string)=>{ await deletePatient(id); reload() }
   return (
-    <div>
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
       <SectionHeader title={t('patients')} onReload={reload} />
-      <div className="flex items-center gap-2 mb-2">
-        <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input" />
-        {loading && <span>…</span>}
+      <div className="flex items-center gap-2 mb-4">
+        <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input flex-1" />
+        {loading && <span className="text-gray-500">…</span>}
       </div>
-      <form onSubmit={submit} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+      <form onSubmit={submit} className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         <input placeholder={t('first_name') as string} value={form.first_name} onChange={e=>setForm({...form, first_name: e.target.value})} className="input" />
         <input placeholder={t('last_name') as string} value={form.last_name} onChange={e=>setForm({...form, last_name: e.target.value})} className="input" />
         <select value={form.gender} onChange={e=>setForm({...form, gender: e.target.value as 'male'|'female'|'other'})} className="input">
@@ -346,17 +349,17 @@ function Patients(){
         <input placeholder={t('address') as string} value={form.address} onChange={e=>setForm({...form, address: e.target.value})} className="input col-span-2" />
         <input placeholder={t('email') as string} value={form.email} onChange={e=>setForm({...form, email: e.target.value})} className="input" />
         <input placeholder={t('phone') as string} value={form.phone} onChange={e=>setForm({...form, phone: e.target.value})} className="input" />
-        <button className="btn btn-primary col-span-2 md:col-span-1">{t('create')}</button>
+        <button className="btn btn-primary col-span-2 md:col-span-1 transition-all duration-200 hover:shadow-lg">{t('create')}</button>
       </form>
-      <ul className="space-y-1">
+      <ul className="space-y-2">
         {items.map((p:any)=> (
-          <li key={p.id} className="border p-2 rounded">
+          <li key={p.id} className="border border-gray-200 dark:border-gray-700 p-4 rounded-lg hover:shadow-md transition-all duration-200">
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-medium">{p.first_name || p.last_name ? `${p.first_name||''} ${p.last_name||''}`.trim() : (p.name || '')}</div>
-                <div className="text-xs text-gray-500">{[p.birthdate ? new Date(p.birthdate).toLocaleDateString() : '', p.age != null ? `${p.age} ${t('age')}` : ''].filter(Boolean).join(' · ')}</div>
+                <div className="font-medium text-gray-900 dark:text-gray-100">{p.first_name || p.last_name ? `${p.first_name||''} ${p.last_name||''}`.trim() : (p.name || '')}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{[p.birthdate ? new Date(p.birthdate).toLocaleDateString() : '', p.age != null ? `${p.age} ${t('age')}` : ''].filter(Boolean).join(' · ')}</div>
               </div>
-              <button onClick={()=>remove(p.id)} className="text-red-600">{t('remove')}</button>
+              <button onClick={()=>remove(p.id)} className="text-red-600 hover:text-red-800 dark:hover:text-red-400 transition-colors font-medium">{t('remove')}</button>
             </div>
           </li>
         ))}
@@ -372,21 +375,21 @@ function Technicians(){
   const submit = async (e: React.FormEvent)=>{ e.preventDefault(); await createTechnician(form); setForm({ name:''}); reload() }
   const remove = async (id: string)=>{ await deleteTechnician(id); reload() }
   return (
-    <div>
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
       <SectionHeader title={t('technicians')} onReload={reload} />
-      <div className="flex items-center gap-2 mb-2">
-        <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input" />
-        {loading && <span>…</span>}
+      <div className="flex items-center gap-2 mb-4">
+        <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input flex-1" />
+        {loading && <span className="text-gray-500">…</span>}
       </div>
-      <form onSubmit={submit} className="flex gap-2 mb-3">
-        <input placeholder={t('name') as string} value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className="input" />
-        <button className="btn btn-primary">{t('create')}</button>
+      <form onSubmit={submit} className="flex gap-3 mb-4">
+        <input placeholder={t('name') as string} value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className="input flex-1" />
+        <button className="btn btn-primary transition-all duration-200 hover:shadow-lg">{t('create')}</button>
       </form>
-      <ul className="space-y-1">
+      <ul className="space-y-2">
         {items.map((tech:any)=> (
-          <li key={tech.id} className="border p-2 rounded flex items-center justify-between">
-            <div>{tech.name}</div>
-            <button onClick={()=>remove(tech.id)} className="text-red-600">{t('remove')}</button>
+          <li key={tech.id} className="border border-gray-200 dark:border-gray-700 p-4 rounded-lg flex items-center justify-between hover:shadow-md transition-all duration-200">
+            <div className="font-medium text-gray-900 dark:text-gray-100">{tech.name}</div>
+            <button onClick={()=>remove(tech.id)} className="text-red-600 hover:text-red-800 dark:hover:text-red-400 transition-colors font-medium">{t('remove')}</button>
           </li>
         ))}
       </ul>
@@ -401,31 +404,40 @@ function Services(){
   const submit = async (e: React.FormEvent)=>{ e.preventDefault(); await createService({ ...form, price: Number(form.price) || 0 }); setForm({ name:'', code:'', price:0}); reload() }
   const remove = async (id: string)=>{ await deleteService(id); reload() }
   return (
-    <div>
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
       <SectionHeader title={t('services')} onReload={reload} />
-      <div className="flex items-center gap-2 mb-2">
-        <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input" />
-        {loading && <span>…</span>}
+      <div className="flex items-center gap-2 mb-4">
+        <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input flex-1" />
+        {loading && <span className="text-gray-500">…</span>}
       </div>
-      <form onSubmit={submit} className="flex gap-2 mb-3">
-        <input placeholder={t('name') as string} value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className="input" />
-        <input placeholder={t('code') as string} value={form.code} onChange={e=>setForm({...form, code: e.target.value})} className="input" />
-        <input type="number" step="0.01" placeholder={t('price') as string} value={form.price} onChange={e=>setForm({...form, price: Number(e.target.value)})} className="input" />
-        <button className="btn btn-primary">{t('create')}</button>
+      <form onSubmit={submit} className="flex gap-3 mb-4">
+        <input placeholder={t('name') as string} value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className="input flex-1" />
+        <input placeholder={t('code') as string} value={form.code} onChange={e=>setForm({...form, code: e.target.value})} className="input w-32" />
+        <input type="number" step="0.01" placeholder={t('price') as string} value={form.price} onChange={e=>setForm({...form, price: Number(e.target.value)})} className="input w-32" />
+        <button className="btn btn-primary transition-all duration-200 hover:shadow-lg">{t('create')}</button>
       </form>
+      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
       <table className="w-full text-sm">
-        <thead><tr><th className="text-left">{t('name')}</th><th>{t('code')}</th><th>{t('price')}</th><th></th></tr></thead>
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr className="border-b border-gray-200 dark:border-gray-700">
+            <th className="text-left px-4 py-3 font-semibold">{t('name')}</th>
+            <th className="px-4 py-3 font-semibold text-center">{t('code')}</th>
+            <th className="px-4 py-3 font-semibold text-center">{t('price')}</th>
+            <th className="px-4 py-3 font-semibold"></th>
+          </tr>
+        </thead>
         <tbody>
           {items.map((s:any)=> (
-            <tr key={s.id} className="border-t">
-              <td className="py-1">{s.name}</td>
-              <td className="text-center">{s.code || ''}</td>
-              <td className="text-center">{s.price ?? ''}</td>
-              <td className="text-right"><button onClick={()=>remove(s.id)} className="text-red-600">{t('remove')}</button></td>
+            <tr key={s.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
+              <td className="px-4 py-3">{s.name}</td>
+              <td className="px-4 py-3 text-center">{s.code || ''}</td>
+              <td className="px-4 py-3 text-center">{s.price ?? ''}</td>
+              <td className="px-4 py-3 text-right"><button onClick={()=>remove(s.id)} className="text-red-600 hover:text-red-800 dark:hover:text-red-400 transition-colors font-medium">{t('remove')}</button></td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
@@ -437,22 +449,22 @@ function DocumentTypes(){
   const submit = async (e: React.FormEvent)=>{ e.preventDefault(); await createDocumentType(form); setForm({ name:'', extension:''}); reload() }
   const remove = async (id: string)=>{ await deleteDocumentType(id); reload() }
   return (
-    <div>
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
       <SectionHeader title={t('document_types')} onReload={reload} />
-      <div className="flex items-center gap-2 mb-2">
-        <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input" />
-        {loading && <span>…</span>}
+      <div className="flex items-center gap-2 mb-4">
+        <input placeholder={t('search') as string} value={q} onChange={e=>setQ(e.target.value)} className="input flex-1" />
+        {loading && <span className="text-gray-500">…</span>}
       </div>
-      <form onSubmit={submit} className="flex gap-2 mb-3">
-        <input placeholder={t('name') as string} value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className="input" />
-        <input placeholder={t('extension') as string} value={form.extension} onChange={e=>setForm({...form, extension: e.target.value})} className="input" />
-        <button className="btn btn-primary">{t('create')}</button>
+      <form onSubmit={submit} className="flex gap-3 mb-4">
+        <input placeholder={t('name') as string} value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className="input flex-1" />
+        <input placeholder={t('extension') as string} value={form.extension} onChange={e=>setForm({...form, extension: e.target.value})} className="input w-32" />
+        <button className="btn btn-primary transition-all duration-200 hover:shadow-lg">{t('create')}</button>
       </form>
-      <ul className="space-y-1">
+      <ul className="space-y-2">
         {items.map((d:any)=> (
-          <li key={d.id} className="border p-2 rounded flex items-center justify-between">
-            <div>{d.name} {d.extension? `(.${d.extension})`:''}</div>
-            <button onClick={()=>remove(d.id)} className="text-red-600">{t('remove')}</button>
+          <li key={d.id} className="border border-gray-200 dark:border-gray-700 p-4 rounded-lg flex items-center justify-between hover:shadow-md transition-all duration-200">
+            <div className="font-medium text-gray-900 dark:text-gray-100">{d.name} {d.extension? `(.${d.extension})`:''}</div>
+            <button onClick={()=>remove(d.id)} className="text-red-600 hover:text-red-800 dark:hover:text-red-400 transition-colors font-medium">{t('remove')}</button>
           </li>
         ))}
       </ul>
@@ -537,11 +549,21 @@ export default function MasterData(){
   const allTabs = [...tabs, ...extraTabs]
   const [tab, setTab] = React.useState<any>('clients')
   return (
-    <div>
+    <div className="space-y-6">
       <h1 className="text-xl font-semibold mb-4">{t('masterdata')}</h1>
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-6">
         {allTabs.map(ti => (
-          <button key={ti.key} onClick={()=>setTab(ti.key)} className={`px-3 py-1 rounded border ${tab===ti.key?'bg-gray-900 text-white dark:bg-gray-700':''}`}>{ti.label}</button>
+          <button 
+            key={ti.key} 
+            onClick={()=>setTab(ti.key)} 
+            className={`px-4 py-2 rounded-lg border transition-all duration-200 font-medium ${
+              tab===ti.key
+                ?'bg-gray-900 text-white dark:bg-gray-700 border-gray-900 dark:border-gray-700 shadow-md'
+                :'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
+            }`}
+          >
+            {ti.label}
+          </button>
         ))}
       </div>
       <div className="space-y-6">

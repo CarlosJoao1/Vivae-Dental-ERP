@@ -123,11 +123,14 @@ export default function SalesInvoices(){
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <h1 className="text-xl font-semibold mb-4">{t('sales_invoices') || 'Sales Invoices'}</h1>
-      <form onSubmit={submit} className="space-y-4 mb-6">
+      
+      {/* Create Form */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
+      <form onSubmit={submit} className="space-y-4">
         {/* Header box */}
-        <div className="border rounded-md p-3 space-y-2">
+        <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 space-y-3 bg-gray-50 dark:bg-gray-800/50">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
             <div className="text-xs text-gray-500">{t('number')||'Number'}: <span className="font-medium">{hdr.number ? hdr.number : (t('auto')||'auto')}</span></div>
             <input type="date" value={hdr.date} onChange={e=>setHdr({...hdr, date:e.target.value})} className="input" />
@@ -215,23 +218,37 @@ export default function SalesInvoices(){
             <TotalsSummary hdr={hdr} lines={lines} />
           </div>
         </div>
-        <div className="flex items-center justify-end gap-4 border-t pt-3">
+          <div className="flex items-center justify-end gap-4 border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
           <GrandTotal hdr={hdr} lines={lines} />
-          <button className="btn btn-primary">{t('create')||'Create'}</button>
+          <button className="btn btn-primary transition-all duration-200 hover:shadow-lg">{t('create')||'Create'}</button>
         </div>
       </form>
+      </div>
 
-      <h2 className="text-lg font-semibold mb-2">{t('list')||'List'}</h2>
-      <table className="w-full text-sm"><thead><tr><th>{t('number')||'Number'}</th><th>{t('date')||'Date'}</th><th>{t('total')||'Total'}</th><th>{t('status')||'Status'}</th><th></th></tr></thead><tbody>
+      {/* List Table */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg font-semibold mb-4">{t('list')||'List'}</h2>
+      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr className="border-b border-gray-200 dark:border-gray-700">
+            <th className="px-4 py-3 font-semibold text-center">{t('number')||'Number'}</th>
+            <th className="px-4 py-3 font-semibold text-center">{t('date')||'Date'}</th>
+            <th className="px-4 py-3 font-semibold text-center">{t('total')||'Total'}</th>
+            <th className="px-4 py-3 font-semibold text-center">{t('status')||'Status'}</th>
+            <th className="px-4 py-3 font-semibold"></th>
+          </tr>
+        </thead>
+        <tbody>
         {items.map((inv:any)=>(
-          <tr key={inv.id} className="border-t">
-            <td className="text-center">{inv.number||''}</td>
-            <td className="text-center">{inv.date||''}</td>
-            <td className="text-center">{inv.total?.toFixed? inv.total.toFixed(2): inv.total ?? ''}</td>
-            <td className="text-center">{inv.status||''}</td>
-            <td className="text-right flex gap-2 justify-end px-2 py-1">
-              <button className="px-2 py-1 rounded border" onClick={async()=>{ try{ const { invoice } = await (async()=>({ invoice: await getInvoice(inv.id) }))(); setEditing({ id:inv.id }); setEditHdr({ number:invoice.number||'', date:invoice.date||'', currency:invoice.currency||'EUR', client:invoice.client||'', client_name:'', status:invoice.status||'draft', notes:(invoice as any).notes||'', discount_rate:(invoice as any).discount_rate||0, discount_amount:(invoice as any).discount_amount||0, tax_rate:(invoice as any).tax_rate||0 }); setEditLines((invoice.lines as any)||[]) } catch(e:any){ alert(e?.message||'') } }}>{t('edit')||'Edit'}</button>
-              <button className="px-2 py-1 rounded border" onClick={async()=>{
+          <tr key={inv.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
+            <td className="px-4 py-3 text-center">{inv.number||''}</td>
+            <td className="px-4 py-3 text-center">{inv.date||''}</td>
+            <td className="px-4 py-3 text-center">{inv.total?.toFixed? inv.total.toFixed(2): inv.total ?? ''}</td>
+            <td className="px-4 py-3 text-center">{inv.status||''}</td>
+            <td className="px-4 py-3 text-right"><div className="flex gap-2 justify-end flex-wrap">
+              <button className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium" onClick={async()=>{ try{ const { invoice } = await (async()=>({ invoice: await getInvoice(inv.id) }))(); setEditing({ id:inv.id }); setEditHdr({ number:invoice.number||'', date:invoice.date||'', currency:invoice.currency||'EUR', client:invoice.client||'', client_name:'', status:invoice.status||'draft', notes:(invoice as any).notes||'', discount_rate:(invoice as any).discount_rate||0, discount_amount:(invoice as any).discount_amount||0, tax_rate:(invoice as any).tax_rate||0 }); setEditLines((invoice.lines as any)||[]) } catch(e:any){ alert(e?.message||'') } }}>{t('edit')||'Edit'}</button>
+              <button className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium" onClick={async()=>{
                 try {
                   const res = await fetch(`${invoicePdfUrl(inv.id)}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')||''}`, 'Accept-Language': i18n.language || 'en' } })
                   if (!res.ok) {
@@ -243,8 +260,8 @@ export default function SalesInvoices(){
                   const a = document.createElement('a'); a.href = url; a.download = `invoice_${inv.number||inv.id}.pdf`; a.click(); URL.revokeObjectURL(url);
                 } catch (e:any) { alert(`${t('save_pdf')||'Save PDF'}: ${e?.message||''}`) }
               }}>{t('save_pdf')||'Save PDF'}</button>
-              <button className="px-2 py-1 rounded border" onClick={async()=>{ try { const res = await fetch(`${invoicePdfUrl(inv.id)}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')||''}`, 'Accept-Language': i18n.language || 'en' } }); if (!res.ok) { let msg = `${res.status}`; try { const j = await res.json(); if (j?.error) msg = j.error } catch {}; alert(`${t('print')||'Print'}: ${msg}`); return } const blob = await res.blob(); const url = URL.createObjectURL(blob); const w = window.open(url, '_blank'); if (w) { setTimeout(()=>{ try { w.focus(); w.print(); } catch {} }, 500) } } catch (e:any) { alert(`${t('print')||'Print'}: ${e?.message||''}`) } }}>{t('print')||'Print'}</button>
-              <button className="px-2 py-1 rounded border" onClick={async()=>{
+              <button className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium" onClick={async()=>{ try { const res = await fetch(`${invoicePdfUrl(inv.id)}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')||''}`, 'Accept-Language': i18n.language || 'en' } }); if (!res.ok) { let msg = `${res.status}`; try { const j = await res.json(); if (j?.error) msg = j.error } catch {}; alert(`${t('print')||'Print'}: ${msg}`); return } const blob = await res.blob(); const url = URL.createObjectURL(blob); const w = window.open(url, '_blank'); if (w) { setTimeout(()=>{ try { w.focus(); w.print(); } catch {} }, 500) } } catch (e:any) { alert(`${t('print')||'Print'}: ${e?.message||''}`) } }}>{t('print')||'Print'}</button>
+              <button className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium" onClick={async()=>{
                 try {
                   const iv = await getInvoice(inv.id)
                   let suggested = ''
@@ -255,10 +272,12 @@ export default function SalesInvoices(){
                   setEmailing({ id:inv.id, to:'', cc:'', bcc:'', suggestedTo: suggested, defaultMessage })
                 } catch (e:any) { alert(e?.message||'') }
               }}>{t('email')||'Email'}</button>
-            </td>
+            </div></td>
           </tr>
         ))}
       </tbody></table>
+      </div>
+      </div>
   <EmailModal
     onSend={async (payload) => {
       if (!emailing) return;
@@ -300,9 +319,12 @@ export default function SalesInvoices(){
     onClose={() => setEmailing(null)}
   />
   {editing && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl p-4">
-        <div className="flex items-center justify-between mb-3"><h3 className="text-lg font-semibold">{t('edit')||'Edit'}</h3><button onClick={()=>setEditing(null)}>✕</button></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('edit')||'Edit'}</h3>
+          <button onClick={()=>setEditing(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">✕</button>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
           <input placeholder={t('number')||'Number'} value={editHdr.number||''} readOnly className="input bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
           <input type="date" value={editHdr.date||''} onChange={e=>setEditHdr({...editHdr, date:e.target.value})} className="input" />
@@ -339,9 +361,9 @@ export default function SalesInvoices(){
             ))}
           </tbody>
         </table>
-        <div className="flex justify-end gap-2">
-          <button className="px-3 py-1 rounded border" onClick={()=>setEditing(null)}>{t('cancel') as string}</button>
-          <button className="px-3 py-1 rounded bg-gray-900 text-white dark:bg-gray-700" onClick={async()=>{ try{ await updateInvoice(editing.id, { ...editHdr, lines: editLines }); setEditing(null); reload() } catch(e:any){ alert(e?.message||'') } }}>{t('save') as string}</button>
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <button className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 font-medium" onClick={()=>setEditing(null)}>{t('cancel') as string}</button>
+          <button className="px-4 py-2 rounded-lg bg-gray-900 text-white dark:bg-gray-700 hover:shadow-lg transition-all duration-200 font-medium" onClick={async()=>{ try{ await updateInvoice(editing.id, { ...editHdr, lines: editLines }); setEditing(null); reload() } catch(e:any){ alert(e?.message||'') } }}>{t('save') as string}</button>
         </div>
       </div>
     </div>
