@@ -100,7 +100,25 @@ tbody td {
   text-align: right;
 }
 
-[dir="rtl"] .flex {
+/* Preserve LTR for main layout containers */
+[dir="rtl"] .flex-col,
+[dir="rtl"] .min-h-screen,
+[dir="rtl"] main,
+[dir="rtl"] .space-y-4,
+[dir="rtl"] .space-y-6,
+[dir="rtl"] .grid {
+  flex-direction: column !important;
+}
+
+/* Preserve row direction for container layouts */
+[dir="rtl"] .justify-between,
+[dir="rtl"] .items-center {
+  flex-direction: row !important;
+}
+
+/* Only reverse specific button/icon groups */
+[dir="rtl"] .inline-flex.gap-1,
+[dir="rtl"] .inline-flex.gap-2 {
   flex-direction: row-reverse;
 }
 
@@ -110,4 +128,44 @@ tbody td {
 [dir="rtl"] input[type="tel"] {
   direction: ltr;
   text-align: left;
+}
+
+/* RTL adjustments for tables */
+[dir="rtl"] table {
+  text-align: right;
+}
+
+[dir="rtl"] th:first-child,
+[dir="rtl"] td:first-child {
+  text-align: right;
+}
+
+/* RTL adjustments for buttons with icons */
+[dir="rtl"] .btn svg {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}
+
+/* Preserve correct layout for topbar in RTL */
+[dir="rtl"] .topbar-container {
+  flex-direction: row !important;
+}
+
+[dir="rtl"] .topbar-left {
+  flex-direction: row !important;
+}
+
+[dir="rtl"] .topbar-right {
+  flex-direction: row-reverse !important;
+}
+
+/* Fix padding/margin for RTL */
+[dir="rtl"] .mr-2 {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+[dir="rtl"] .ml-2 {
+  margin-left: 0;
+  margin-right: 0.5rem;
 }
