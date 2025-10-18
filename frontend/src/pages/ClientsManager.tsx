@@ -13,9 +13,9 @@ import { listServices, type Service } from '@/api/masterdata'
 function SectionHeader({ title, onReload }: { title: string, onReload: ()=>void }){
   const { t } = useTranslation()
   return (
-    <div className="flex items-center justify-between mb-3">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <button onClick={onReload} className="px-3 py-1 rounded border">{t('reload')}</button>
+    <div className="flex items-center justify-between mb-4">
+      <h2 className="text-base font-semibold text-gray-800">{title}</h2>
+      <button onClick={onReload} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">{t('reload')}</button>
     </div>
   )
 }
@@ -23,11 +23,11 @@ function SectionHeader({ title, onReload }: { title: string, onReload: ()=>void 
 function Modal({ open, title, children, onClose }: { open: boolean; title: string; children: React.ReactNode; onClose: ()=>void }){
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-[95vw] md:max-w-5xl p-4 md:p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <button onClick={onClose} className="px-2 py-1">✕</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-[95vw] md:max-w-5xl p-6 border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+          <button onClick={onClose} className="px-2 py-1 text-gray-500 hover:text-gray-700 transition-colors text-xl">✕</button>
         </div>
         {children}
       </div>
@@ -218,57 +218,64 @@ export default function ClientsManager(){
   }, [editing?.id, loadClientAddrs, loadClientPrices])
 
   return (
-    <div>
+    <div className="space-y-4">
       <SectionHeader title={t('clients') as string} onReload={reload} />
-      <div className="flex items-center gap-2 mb-3">
-        <input value={q} onChange={e=>{ setQ(e.target.value); setPage(1) }} placeholder={t('search') as string} className="input" />
-        {loading && <span>…</span>}
-        <div className="ml-auto flex items-center gap-2">
-          <label className="flex items-center gap-1 text-sm opacity-80">
+      <div className="flex items-center gap-3 mb-4">
+        <input value={q} onChange={e=>{ setQ(e.target.value); setPage(1) }} placeholder={t('search') as string} className="input flex-1 max-w-md" />
+        {loading && <span className="text-sm text-gray-500">A carregar...</span>}
+        <div className="ml-auto flex items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input
               type="checkbox"
               checked={!!preferences?.wideForm}
               onChange={(e)=> setPreference('wideForm', e.target.checked)}
+              className="rounded"
             />
             {t('wide_form') as string || 'Formulário Largo'}
           </label>
-          <button type="button" onClick={openCreate} className="px-3 py-1 rounded bg-gray-900 text-white dark:bg-gray-700">{t('create') as string}</button>
+          <button type="button" onClick={openCreate} className="btn btn-primary">{t('create') as string}</button>
         </div>
       </div>
-      <table className="w-full text-sm">
-        <thead><tr>
-          <th className="text-left">{t('name')}</th>
-          <th>{t('email')}</th>
-          <th>{t('phone')}</th>
-          <th>{t('tax_id')}</th>
-          <th></th>
-        </tr></thead>
+      <div className="card overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200 dark:border-gray-700">
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{t('name')}</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{t('email')}</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{t('phone')}</th>
+              <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{t('tax_id')}</th>
+              <th className="text-right py-3 px-4 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Ações</th>
+            </tr>
+          </thead>
         <tbody>
           {items.map((c:any)=> (
-            <tr key={c.id} className="border-t">
-              <td className="py-1">{(c.first_name||c.last_name)? `${c.first_name||''} ${c.last_name||''}`.trim() : c.name}</td>
-              <td className="text-center">{c.email||''}</td>
-              <td className="text-center">{c.phone||''}</td>
-              <td className="text-center">{c.tax_id||''}</td>
-              <td className="text-right flex gap-2 justify-end">
-                <button onClick={()=>openEdit(c)} className="text-blue-600">{t('edit')}</button>
-                <button onClick={()=>remove(c.id as string)} className="text-red-600">{t('remove')}</button>
+            <tr key={c.id} className="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+              <td className="py-3 px-4 text-sm text-gray-900 dark:text-gray-100">{(c.first_name||c.last_name)? `${c.first_name||''} ${c.last_name||''}`.trim() : c.name}</td>
+              <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{c.email||'—'}</td>
+              <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{c.phone||'—'}</td>
+              <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-400">{c.tax_id||'—'}</td>
+              <td className="py-3 px-4 text-right">
+                <div className="flex gap-2 justify-end">
+                  <button onClick={()=>openEdit(c)} className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors">{t('edit')}</button>
+                  <button onClick={()=>remove(c.id as string)} className="px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors">{t('remove')}</button>
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="flex items-center justify-between mt-3">
-        <div className="text-sm">{t('list')}: {total}</div>
+      </div>
+      <div className="flex items-center justify-between mt-4">
+        <div className="text-sm text-gray-600">{t('list')}: <span className="font-semibold">{total}</span></div>
         <div className="flex gap-2">
-          <button disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))} className="px-3 py-1 rounded border">«</button>
-          <div className="px-3 py-1">{page} / {totalPages}</div>
-          <button disabled={page>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className="px-3 py-1 rounded border">»</button>
+          <button disabled={page<=1} onClick={()=>setPage(p=>Math.max(1,p-1))} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">«</button>
+          <div className="px-4 py-1.5 text-sm font-medium">{page} / {totalPages}</div>
+          <button disabled={page>=totalPages} onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">»</button>
         </div>
       </div>
 
       <Modal open={!!editing} title={t('edit') as string} onClose={closeEdit}>
-        {editErr && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{editErr}</div>}
+        {editErr && <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200">{editErr}</div>}
         <form onSubmit={saveEdit} className={`grid grid-cols-2 ${preferences?.wideForm ? 'md:grid-cols-8' : 'md:grid-cols-6'} gap-3`}>
           <input placeholder={t('first_name') as string} value={editForm.first_name || ''} onChange={e=>setEditForm({...editForm, first_name: e.target.value})} className="input" />
           <input placeholder={t('last_name') as string} value={editForm.last_name || ''} onChange={e=>setEditForm({...editForm, last_name: e.target.value})} className="input" />

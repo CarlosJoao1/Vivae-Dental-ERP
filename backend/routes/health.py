@@ -48,8 +48,25 @@ def _compute_version() -> str:
     ev = (os.getenv("APP_VERSION") or "").strip()
     if ev:
         return ev
-    # Default: v[AnoSemana].01 using ISO week
-    # Use timezone-aware UTC datetime
+    
+    # Try to get branch name from git or env
+    branch = os.getenv("RENDER_GIT_BRANCH") or os.getenv("GIT_BRANCH") or ""
+    
+    # If we have a branch, try to extract meaningful version from it
+    if branch:
+        # Remove common prefixes
+        branch_clean = branch.replace("feature/", "").replace("hotfix/", "").replace("release/", "")
+        
+        # Check if branch looks like it has version info (contains digits)
+        if any(c.isdigit() for c in branch_clean):
+            # Try to extract something version-like
+            parts = branch_clean.split("-")
+            for part in parts:
+                if any(c.isdigit() for c in part):
+                    # Found a part with numbers, use it
+                    return f"v{part}" if not part.startswith("v") else part
+    
+    # Fallback: v[AnoSemana].01 using ISO week
     base = _iso_year_week(datetime.now(timezone.utc))
     return f"v{base}.01"
 

@@ -6,11 +6,13 @@ import NotFound from '@/pages/NotFound';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import '@/i18n';
 import MasterData from '@/pages/MasterData';
+import Production from '@/pages/Production';
 import ProductionAdmin from '@/pages/ProductionAdmin';
 import WorkCenters from '@/pages/WorkCenters';
 import MachineCenters from '@/pages/MachineCenters';
 import SalesOrders from '@/pages/SalesOrders';
 import SalesInvoices from '@/pages/SalesInvoices';
+import Sales from '@/pages/Sales';
 import CRM from '@/pages/CRM';
 import ModuleInDevelopment from '@/pages/ModuleInDevelopment';
 export default function App() {
@@ -22,10 +24,12 @@ export default function App() {
           <Route element={<DashboardLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/masterdata" element={<MasterData />} />
+            <Route path="/production" element={<Production />} />
             <Route path="/production/admin" element={<ProductionAdmin />} />
             <Route path="/production/workcenters" element={<WorkCenters />} />
             <Route path="/production/machines" element={<MachineCenters />} />
             <Route path="/crm" element={<CRM />} />
+            <Route path="/sales" element={<Sales />} />
             <Route path="/sales/orders" element={<SalesOrders />} />
             <Route path="/sales/invoices" element={<SalesInvoices />} />
             {/* Module routes */}
