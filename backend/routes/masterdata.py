@@ -29,9 +29,9 @@ import os
 from services.permissions import ensure
 
 # Constants for error messages
-ERR_NOT_FOUND = ERR_NOT_FOUND
+ERR_NOT_FOUND = "not found"
 ERR_CLIENT_EXISTS = "client exists"
-ERR_INVALID_COUNTRY_CODE = ERR_INVALID_COUNTRY_CODE
+ERR_INVALID_COUNTRY_CODE = "invalid country_code"
 ERROR_CLIENT_NOT_FOUND = "client not found"
 ERROR_ADDRESS_EXISTS = "address exists"
 
