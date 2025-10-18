@@ -64,5 +64,9 @@
   "contact_sales": "Contact Sales",
   "contact_sales_description": "Get in touch to learn more about pricing and licensing options.",
   "contact_sales_action": "Please contact sales for licensing information.",
-  "request_license": "Request License"
+  "request_license": "Request License",
+  "companies": "Companies",
+  "available_in_system": "available in the system",
+  "active_users": "Active Users",
+  "in_active_company": "in active company"
 }

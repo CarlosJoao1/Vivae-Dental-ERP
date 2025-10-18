@@ -1645,7 +1645,7 @@ def client_resolve_price(cid):
     try:
         cli = Client.objects.get(id=cid, lab=lab)
     except DoesNotExist:
-        return jsonify({"error": "client not found"}), 404
+        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
     sale_type = (request.args.get('sale_type') or '').strip().lower()
     code = (request.args.get('code') or '').strip()
     try:
@@ -1712,10 +1712,10 @@ def shipaddrs_create():
             try:
                 cli = Client.objects.get(id=cli_id, lab=lab)
             except Exception:
-                return jsonify({"error": "client not found", "field": "client"}), 400
+                return jsonify({"error": ERROR_CLIENT_NOT_FOUND, "field": "client"}), 400
         # unique code per lab
         if ShippingAddress.objects(lab=lab, client=cli, code=data.get('code')).first():
-            return jsonify({"error": "address exists", "field": "code"}), 409
+            return jsonify({"error": ERROR_ADDRESS_EXISTS, "field": "code"}), 409
         # validate country_code exists if provided
         cc = (data.get('country_code') or '').upper() or None
         if cc:
@@ -1750,13 +1750,13 @@ def shipaddrs_update(aid):
                 try:
                     cli = Client.objects.get(id=cli_id, lab=lab)
                 except Exception:
-                    return jsonify({"error": "client not found", "field": "client"}), 400
+                    return jsonify({"error": ERROR_CLIENT_NOT_FOUND, "field": "client"}), 400
             a.client = cli
         if 'code' in data:
             new_code = data.get('code')
             dup = ShippingAddress.objects(lab=lab, client=getattr(a,'client',None), code=new_code, id__ne=a.id).first()
             if dup:
-                return jsonify({"error": "address exists", "field": "code"}), 409
+                return jsonify({"error": ERROR_ADDRESS_EXISTS, "field": "code"}), 409
         # Normalize and validate country_code if present
         if 'country_code' in data:
             cc = (data.get('country_code') or '').upper() or None
@@ -1801,7 +1801,7 @@ def client_shipaddrs_list(cid):
     try:
         cli = Client.objects.get(id=cid, lab=lab)
     except DoesNotExist:
-        return jsonify({"error": "client not found"}), 404
+        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
     items = ShippingAddress.objects(lab=lab, client=cli).order_by("code")
     return jsonify({"items": [_shipaddr_to_dict(x) for x in items]})
 
@@ -1813,11 +1813,11 @@ def client_shipaddrs_create(cid):
     try:
         cli = Client.objects.get(id=cid, lab=lab)
     except DoesNotExist:
-        return jsonify({"error": "client not found"}), 404
+        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
     try:
         # unique code per client
         if ShippingAddress.objects(lab=lab, client=cli, code=data.get('code')).first():
-            return jsonify({"error": "address exists", "field": "code"}), 409
+            return jsonify({"error": ERROR_ADDRESS_EXISTS, "field": "code"}), 409
         cc = (data.get('country_code') or '').upper() or None
         if cc and not Country.objects(code=cc).first():
             return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
@@ -1842,7 +1842,7 @@ def client_shipaddrs_update(cid, aid):
     try:
         cli = Client.objects.get(id=cid, lab=lab)
     except DoesNotExist:
-        return jsonify({"error": "client not found"}), 404
+        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
     data = request.get_json(force=True, silent=True) or {}
     try:
         a = ShippingAddress.objects.get(id=aid, lab=lab, client=cli)
@@ -1850,7 +1850,7 @@ def client_shipaddrs_update(cid, aid):
             new_code = data.get('code')
             dup = ShippingAddress.objects(lab=lab, client=cli, code=new_code, id__ne=a.id).first()
             if dup:
-                return jsonify({"error": "address exists", "field": "code"}), 409
+                return jsonify({"error": ERROR_ADDRESS_EXISTS, "field": "code"}), 409
         if 'country_code' in data:
             cc = (data.get('country_code') or '').upper() or None
             if cc and not Country.objects(code=cc).first():
@@ -1873,7 +1873,7 @@ def client_shipaddrs_delete(cid, aid):
     try:
         cli = Client.objects.get(id=cid, lab=lab)
     except DoesNotExist:
-        return jsonify({"error": "client not found"}), 404
+        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
     try:
         a = ShippingAddress.objects.get(id=aid, lab=lab, client=cli)
         # Clear client's default if this code was default
@@ -1894,7 +1894,7 @@ def client_prices_list(cid):
     try:
         cli = Client.objects.get(id=cid, lab=lab)
     except DoesNotExist:
-        return jsonify({"error": "client not found"}), 404
+        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
     items = ClientPrice.objects(lab=lab, client=cli).order_by("code")
     return jsonify({"items": [_clientprice_to_dict(x) for x in items]})
 
@@ -1906,7 +1906,7 @@ def client_prices_create(cid):
     try:
         cli = Client.objects.get(id=cid, lab=lab)
     except DoesNotExist:
-        return jsonify({"error": "client not found"}), 404
+        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
     try:
         cp = ClientPrice(
             lab=lab,
@@ -1932,7 +1932,7 @@ def client_prices_update(cid, pid):
     try:
         cli = Client.objects.get(id=cid, lab=lab)
     except DoesNotExist:
-        return jsonify({"error": "client not found"}), 404
+        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
     try:
         cp = ClientPrice.objects.get(id=pid, lab=lab, client=cli)
         for f in ['sale_type','sale_code','code','uom']:
@@ -1966,7 +1966,7 @@ def client_prices_delete(cid, pid):
     try:
         cli = Client.objects.get(id=cid, lab=lab)
     except DoesNotExist:
-        return jsonify({"error": "client not found"}), 404
+        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
     try:
         cp = ClientPrice.objects.get(id=pid, lab=lab, client=cli)
         cp.delete()
