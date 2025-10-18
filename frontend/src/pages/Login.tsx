@@ -30,6 +30,10 @@ export default function Login() {
   return (
     <div className="min-h-screen grid place-items-center bg-gray-50 px-4">
       <form onSubmit={onSubmit} className="w-full max-w-sm bg-white p-6 rounded-xl shadow">
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <img src="/assets/logos/vivae-erp-logo-main.svg" alt="VIVAE ERP" className="h-10 w-auto" />
+          <span className="text-2xl font-bold text-gray-800">VIVAE ERP</span>
+        </div>
         <h1 className="text-xl font-semibold mb-4">Entrar</h1>
         {err && <div className="bg-red-100 text-red-700 p-2 rounded mb-3">{err}</div>}
         <label className="block text-sm mb-1">Utilizador</label>
