@@ -208,39 +208,57 @@ def refresh():
     access = create_access_token(identity=str(user.id), additional_claims=claims)
     return jsonify({"access_token": access})
 
+def _resolve_active_lab(user, header_tid):
+    """Resolve active lab from header or user's default tenant."""
+    if not header_tid:
+        return getattr(user, 'tenant_id', None)
+    
+    try:
+        if getattr(user, 'is_sysadmin', False):
+            return Laboratory.objects.get(id=header_tid)
+        
+        allowed_ids = [str(getattr(x, 'id', '')) for x in (getattr(user, 'allowed_labs', []) or [])]
+        if header_tid in allowed_ids:
+            return Laboratory.objects.get(id=header_tid)
+    except Exception:
+        pass
+    
+    return getattr(user, 'tenant_id', None)
+
+def _compute_user_permissions(user, active_lab):
+    """Compute role-based feature permissions for user."""
+    try:
+        if getattr(user, 'is_sysadmin', False):
+            return {"__role__": "sysadmin", "all": True}
+        
+        if active_lab is None:
+            return {}
+        
+        rp = RolePolicy.objects(lab=active_lab).first()
+        if not rp:
+            return {}
+        
+        role = (user.role or '').lower()
+        return (rp.policies or {}).get(role, {})
+    except Exception:
+        return {}
+
 @bp.get("/me")
 @jwt_required()
 def me():
     user_id = get_jwt_identity()
     user = User.objects.get(id=user_id)
-    # Enriquecemos com `tenants` para o frontend ter tudo num só request
+    
+    # Get all tenants accessible by user
     tenants = _resolve_tenants_for_user(user)
-    # Resolve active lab (header override allowed if permitted) to compute permissions
+    
+    # Resolve active lab (header override allowed if permitted)
     header_tid = (request.headers.get("X-Tenant-Id") or "").strip()
-    active_lab = None
-    if header_tid:
-        try:
-            if getattr(user, 'is_sysadmin', False):
-                active_lab = Laboratory.objects.get(id=header_tid)
-            else:
-                allowed_ids = [str(getattr(x, 'id', '')) for x in (getattr(user, 'allowed_labs', []) or [])]
-                if header_tid in allowed_ids:
-                    active_lab = Laboratory.objects.get(id=header_tid)
-        except Exception:
-            active_lab = None
-    if not active_lab and getattr(user, 'tenant_id', None):
-        active_lab = user.tenant_id
-    # Compute role-based feature permissions for current role and active lab
-    permissions = {}
-    try:
-        if getattr(user, 'is_sysadmin', False):
-            permissions = {"__role__": "sysadmin", "all": True}
-        elif active_lab is not None:
-            rp = RolePolicy.objects(lab=active_lab).first()
-            role = (user.role or '').lower()
-            permissions = (rp.policies or {}).get(role, {}) if rp else {}
-    except Exception:
-        permissions = {}
+    active_lab = _resolve_active_lab(user, header_tid)
+    
+    # Compute permissions
+    permissions = _compute_user_permissions(user, active_lab)
+    
     return jsonify({
         "id": str(user.id),
         "username": user.username,
@@ -294,6 +312,23 @@ def stats():
             "total_users": None,
         })
 
+def _validate_tenant_for_creator(lab, creator):
+    """Validate if creator can assign users to the given lab."""
+    if not lab:
+        return None
+    allowed_ids = [str(getattr(x, 'id', '')) for x in (getattr(creator, 'allowed_labs', []) or [])]
+    current_tid = str(getattr(getattr(creator, 'tenant_id', None), 'id', '') or '')
+    lab_id = str(getattr(lab, 'id', ''))
+    if lab_id not in allowed_ids or lab_id != current_tid:
+        return "not allowed for this lab / wrong active tenant"
+    return None
+
+def _validate_role_assignment(role, creator):
+    """Validate if creator can assign the given role."""
+    if not getattr(creator, "is_sysadmin", False) and role == "sysadmin":
+        return "not allowed to assign sysadmin"
+    return None
+
 @bp.post("/register")
 @jwt_required()
 def register():
@@ -304,7 +339,8 @@ def register():
         return jsonify({"error": "username & password required"}), 400
     if User.objects(username=username).first():
         return jsonify({"error": "username exists"}), 409
-    # Optional tenant_id
+    
+    # Get tenant
     tenant_id = (data.get("tenant_id") or data.get("lab_id") or "").strip()
     lab = None
     if tenant_id:
@@ -312,22 +348,24 @@ def register():
             lab = Laboratory.objects.get(id=tenant_id)
         except Exception:
             return jsonify({"error": "invalid tenant_id"}), 400
-    # Permission rules: only sysadmin can create sysadmin; non-sysadmin can only create users for labs they can access.
+    
+    # Validate permissions
     creator_id = get_jwt_identity()
     creator = User.objects.get(id=creator_id)
     role = (data.get("role") or "user").lower()
+    
+    # Check role assignment permission
+    role_error = _validate_role_assignment(role, creator)
+    if role_error:
+        return jsonify({"error": role_error}), 403
+    
+    # Check tenant permission for non-sysadmin
     if not getattr(creator, "is_sysadmin", False):
-        # Non-sysadmin cannot assign sysadmin role
-        if role == "sysadmin":
-            return jsonify({"error": "not allowed to assign sysadmin"}), 403
-        # Non-sysadmin can only create in allowed labs
-        if lab:
-            allowed_ids = [str(getattr(x, 'id', '')) for x in (getattr(creator, 'allowed_labs', []) or [])]
-            # Must be both allowed AND equal to current selected tenant in JWT
-            current_tid = str(getattr(getattr(creator, 'tenant_id', None), 'id', '') or '')
-            if str(getattr(lab, 'id', '')) not in allowed_ids or str(getattr(lab, 'id', '')) != current_tid:
-                return jsonify({"error": "not allowed for this lab / wrong active tenant"}), 403
+        tenant_error = _validate_tenant_for_creator(lab, creator)
+        if tenant_error:
+            return jsonify({"error": tenant_error}), 403
 
+    # Create user
     u = User(
         username=username,
         email=data.get("email"),
@@ -335,13 +373,14 @@ def register():
         tenant_id=lab,
     )
     u.set_password(password)
-    # Manage allowed_labs: sysadmin ignored; for others, initialize allowed_labs with provided tenant if present
-    try:
-        if not getattr(u, "is_sysadmin", False):
-            if lab:
-                u.allowed_labs = [lab]
-    except Exception:
-        pass
+    
+    # Initialize allowed_labs for non-sysadmin
+    if not getattr(u, "is_sysadmin", False) and lab:
+        try:
+            u.allowed_labs = [lab]
+        except Exception:
+            pass
+    
     u.save()
     return jsonify({"id": str(u.id), "username": u.username, "tenant_id": str(getattr(lab,'id','')) or None}), 201
 
