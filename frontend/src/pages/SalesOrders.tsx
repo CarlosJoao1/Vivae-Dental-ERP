@@ -4,7 +4,7 @@ import i18n from '@/i18n'
 import { listOrders, createOrder, type Line, orderPdfUrl, sendOrderEmail, getOrder, updateOrder, convertOrderToInvoice } from '@/api/sales'
 import { searchClientsBrief, type Client, listServices, type Service, getClient, listSeries, resolveClientUnitPrice } from '@/api/masterdata'
 import { useTranslation } from 'react-i18next'
-import { calcGross, calcDiscount, calcNet, computeGlobalDiscount } from '@/lib/pricing'
+import { calcGross, calcNet, computeGlobalDiscount } from '@/lib/pricing'
 import EmailModal, { type EmailingState } from '@/components/EmailModal'
 import TotalsSummary, { GrandTotal } from '@/components/TotalsSummary'
 

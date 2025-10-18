@@ -60,7 +60,9 @@ export default function Topbar(){
         const id = ev?.detail?.tenantId as string | undefined
         const tn = (tenants||[]).find(x => (x.id as any) === id)
         const name = (tn?.name as string) || id || ''
-        const text = (t('welcome_to_lab', { name }) as string) || `${t('Bem-vindo')} ${name ? `— ${name}` : ''}`
+        const welcomeText = t('welcome_to_lab', { name }) as string
+        const fallbackWelcome = name ? `${t('Bem-vindo')} — ${name}` : t('Bem-vindo')
+        const text = welcomeText || fallbackWelcome
         setWelcome({ text })
         // auto-hide after a short delay
         setTimeout(()=> setWelcome(null), 2500)
