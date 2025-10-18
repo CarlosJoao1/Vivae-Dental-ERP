@@ -6,10 +6,18 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+# Security: Restrict permissions to minimum required
+permissions:
+  contents: read
+  pull-requests: read
+  security-events: write
+
 jobs:
   build-and-analyze:
     name: Build and analyze
     runs-on: ubuntu-latest
+    # Security: Only run on trusted events (not from forks for security)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,11 +46,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # Security: Validate environment before sensitive operations
+      - name: Check SonarCloud configuration
+        run: |
+          echo "🔍 Checking SonarCloud configuration..."
+          if [ -f "sonar-project.properties" ]; then
+            echo "✅ sonar-project.properties found"
+          else
+            echo "⚠️  sonar-project.properties not found"
+          fi
+          echo "ℹ️  SonarCloud analysis will run if SONAR_TOKEN is configured"
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v2
         env:
+          # Security: Use GitHub token for checkout, SONAR_TOKEN for analysis
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           projectBaseDir: .
+        # Security: Only run if SONAR_TOKEN is available (prevents errors on forks)
+        if: env.SONAR_TOKEN != ''
 
-      # Optional: PR decoration requires SONAR_TOKEN and repository linked to SonarCloud
+      # Security Note: PR decoration requires SONAR_TOKEN and repository linked to SonarCloud
+      # SONAR_TOKEN should be configured as a repository secret with 'Execute Analysis' permission
