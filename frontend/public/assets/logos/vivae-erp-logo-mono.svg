@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <style>
+      .blue { fill: #111111; }
+      .white { fill: #111111; }
+      .stroke { fill: none; stroke: #111111; stroke-width: 64; }
+    </style>
+  </defs>
+  <rect x="82" y="82" width="860" height="860" rx="180" ry="180" class="stroke"/>
+  <!-- Tooth -->
+  <path class="blue" d="M220,330 C220,255 310,210 400,210 C490,210 580,255 580,330
+                         C580,440 535,515 490,525 C455,533 445,720 400,720
+                         C355,720 345,533 310,525 C265,515 220,440 220,330 Z"/>
+  <!-- Flask neck -->
+  <rect x="650" y="230" width="120" height="160" rx="20" class="blue"/>
+  <!-- Flask body -->
+  <path class="blue" d="M600,390 L820,390 L740,800 L600,800 Z"/>
+  <!-- Liquid -->
+  <path class="white" d="M630,480 L790,480 L740,760 L650,760
+                          C680,700 690,675 675,640 C660,600 645,560 630,520 Z"/>
+  <!-- Bubbles -->
+  <circle cx="690" cy="450" r="18" class="white"/>
+  <circle cx="735" cy="505" r="14" class="white"/>
+</svg>

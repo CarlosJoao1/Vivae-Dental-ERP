@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="600" viewBox="0 0 1600 600">
+  <defs>
+    <style>
+      .blue { fill: #1E40AF; }
+      .stroke { fill: none; stroke: #1E40AF; stroke-width: 28; }
+      .txt { fill: #1E40AF; font-family: 'Inter', 'Segoe UI', 'Roboto', Arial, sans-serif; font-weight: 800; }
+    </style>
+  </defs>
+  <g transform="translate(40,40) scale(0.52)">
+    <rect x="82" y="82" width="860" height="860" rx="180" ry="180" class="stroke"/>
+    <path class="blue" d="M220,330 C220,255 310,210 400,210 C490,210 580,255 580,330
+                         C580,440 535,515 490,525 C455,533 445,720 400,720
+                         C355,720 345,533 310,525 C265,515 220,440 220,330 Z"/>
+    <rect x="650" y="230" width="120" height="160" rx="20" class="blue"/>
+    <path class="blue" d="M600,390 L820,390 L740,800 L600,800 Z"/>
+    <path class="blue" d="M630,480 L790,480 L740,760 L650,760 Z" fill-opacity="0"/>
+  </g>
+  <text x="520" y="280" font-size="220" class="txt">VIVAE</text>
+  <text x="520" y="440" font-size="180" class="txt" style="font-weight:700;">ERP</text>
+</svg>
