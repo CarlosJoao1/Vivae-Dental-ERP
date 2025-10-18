@@ -51,18 +51,6 @@ export default function Dashboard() {
           <div className="text-xs text-gray-500 mt-1">no laboratório ativo</div>
         </div>
       </section>
-      <section className="card">
-        <div className="flex items-center justify-between mb-3"><h2 className="text-lg font-semibold">Laboratórios</h2></div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead><tr className="text-left text-sm text-gray-600"><th className="py-2">Nome</th><th className="py-2">ID</th></tr></thead>
-            <tbody>
-              {tenants.map(t => (<tr key={t.id} className="border-t"><td className="py-2">{t.name}</td><td className="py-2 text-gray-500">{t.id}</td></tr>))}
-              {tenants.length === 0 && !loading && (<tr><td className="py-2 text-gray-500" colSpan={2}>Sem dados</td></tr>)}
-            </tbody>
-          </table>
-        </div>
-      </section>
 
       {/* Nova seção de módulos */}
       <section className="card">
@@ -96,6 +84,20 @@ export default function Dashboard() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Seção de Laboratórios movida para baixo */}
+      <section className="card">
+        <div className="flex items-center justify-between mb-3"><h2 className="text-lg font-semibold">Laboratórios</h2></div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full">
+            <thead><tr className="text-left text-sm text-gray-600"><th className="py-2">Nome</th><th className="py-2">ID</th></tr></thead>
+            <tbody>
+              {tenants.map(t => (<tr key={t.id} className="border-t"><td className="py-2">{t.name}</td><td className="py-2 text-gray-500">{t.id}</td></tr>))}
+              {tenants.length === 0 && !loading && (<tr><td className="py-2 text-gray-500" colSpan={2}>Sem dados</td></tr>)}
+            </tbody>
+          </table>
         </div>
       </section>
     </div>
