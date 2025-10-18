@@ -28,6 +28,10 @@ import socket
 import os
 from services.permissions import ensure
 
+# Constants for error messages
+ERROR_CLIENT_NOT_FOUND = "client not found"
+ERROR_ADDRESS_EXISTS = "address exists"
+
 bp = Blueprint("masterdata", __name__, url_prefix="/api/masterdata")
 
 # --- Helpers ---

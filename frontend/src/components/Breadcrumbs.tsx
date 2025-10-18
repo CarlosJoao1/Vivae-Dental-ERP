@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getBreadcrumbsForPath, type NavigationItem } from '@/lib/navigation';
+import { getBreadcrumbsForPath } from '@/lib/navigation';
 
 export default function Breadcrumbs() {
   const { t } = useTranslation();

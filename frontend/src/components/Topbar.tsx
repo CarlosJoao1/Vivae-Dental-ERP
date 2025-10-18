@@ -66,12 +66,12 @@ export default function Topbar(){
         setTimeout(()=> setWelcome(null), 2500)
       } catch {}
       // Hint: trigger a lightweight refresh signal other parts can listen to
-      try { window.dispatchEvent(new CustomEvent('tenant:refresh', { detail: ev?.detail })) } catch {}
+      try { globalThis.dispatchEvent(new CustomEvent('tenant:refresh', { detail: ev?.detail })) } catch {}
       // optional: ping something lightweight to keep status updated
       api.get('/health').catch(()=>{})
     }
-    window.addEventListener('tenant:changed', handler)
-    return () => window.removeEventListener('tenant:changed', handler)
+    globalThis.addEventListener('tenant:changed', handler)
+    return () => globalThis.removeEventListener('tenant:changed', handler)
   }, [t, tenants])
   const shortCommit = commit ? commit.substring(0, 7) : null
   let versionTooltip: string | undefined
@@ -208,3 +208,4 @@ function DiagnosticsPanel({ onClose }:{ onClose:()=>void }){
     </div>
   )
 }
+

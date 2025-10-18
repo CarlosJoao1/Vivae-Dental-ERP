@@ -114,8 +114,8 @@ export function searchNavigation(query: string, limit = 10): NavigationItem[] {
     }
   }
 
-  // Ordenar por score e retornar
-  return results
+  // Ordenar por score e retornar (usando spread para evitar mutação)
+  return [...results]
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(r => r.item);
