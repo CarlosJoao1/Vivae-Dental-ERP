@@ -141,11 +141,14 @@ export default function SalesOrders(){
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       <h1 className="text-xl font-semibold mb-4">{t('sales_orders') || 'Sales Orders'}</h1>
-      <form onSubmit={submit} className="space-y-4 mb-6">
+      
+      {/* Create Form */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
+      <form onSubmit={submit} className="space-y-4">
         {/* Header box */}
-        <div className="border rounded-md p-3 space-y-2">
+        <div className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 space-y-3 bg-gray-50 dark:bg-gray-800/50">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <div className="text-xs text-gray-500">{t('number')||'Number'}: <span className="font-medium">{hdr.number ? hdr.number : (t('auto')||'auto')}</span></div>
             <input type="date" value={hdr.date} onChange={e=>setHdr({...hdr, date:e.target.value})} className="input" />
@@ -229,23 +232,36 @@ export default function SalesOrders(){
             <TotalsSummary hdr={hdr} lines={lines} />
           </div>
         </div>
-        <div className="flex items-center justify-end gap-4 border-t pt-3">
+          <div className="flex items-center justify-end gap-4 border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
           <GrandTotal hdr={hdr} lines={lines} />
-          <button className="btn btn-primary">{t('create')||'Create'}</button>
+          <button className="btn btn-primary transition-all duration-200 hover:shadow-lg">{t('create')||'Create'}</button>
         </div>
       </form>
+      </div>
 
-      <h2 className="text-lg font-semibold mb-2">{t('list')||'List'}</h2>
-      <table className="w-full text-sm"><thead><tr><th>{t('number')||'Number'}</th><th>{t('date')||'Date'}</th><th>{t('total')||'Total'}</th><th></th></tr></thead><tbody>
+      {/* List Table */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-6 border border-gray-200 dark:border-gray-700">
+      <h2 className="text-lg font-semibold mb-4">{t('list')||'List'}</h2>
+      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 dark:bg-gray-800">
+          <tr className="border-b border-gray-200 dark:border-gray-700">
+            <th className="px-4 py-3 font-semibold text-center">{t('number')||'Number'}</th>
+            <th className="px-4 py-3 font-semibold text-center">{t('date')||'Date'}</th>
+            <th className="px-4 py-3 font-semibold text-center">{t('total')||'Total'}</th>
+            <th className="px-4 py-3 font-semibold"></th>
+          </tr>
+        </thead>
+        <tbody>
         {items.map((o:any)=>(
-          <tr key={o.id} className="border-t">
-            <td className="text-center">{o.number||''}</td>
-            <td className="text-center">{o.date||''}</td>
-            <td className="text-center">{o.total?.toFixed? o.total.toFixed(2): o.total ?? ''}</td>
-            <td className="text-right flex gap-2 justify-end px-2 py-1">
-              <button className="px-2 py-1 rounded border" onClick={async()=>{ try{ const { order } = await (async()=>({ order: await getOrder(o.id) }))(); setEditing({ id:o.id }); setEditHdr({ number:order.number||'', date:order.date||'', currency:order.currency||'EUR', client:order.client||'', client_name:'', notes:(order as any).notes||'', discount_rate:(order as any).discount_rate||0, discount_amount:(order as any).discount_amount||0, tax_rate:(order as any).tax_rate||0 }); const linesAny = (order.lines as any)||[]; setEditLines(linesAny); const mm: Record<number,'rate'|'amount'> = {}; (linesAny||[]).forEach((ln:any, idx:number)=>{ mm[idx] = (ln?.discount_amount||0) > 0 ? 'amount' : 'rate' }); setEditDiscMode(mm); } catch(e:any){ alert(e?.message||'') } }}>{t('edit')||'Edit'}</button>
-              <button className="px-2 py-1 rounded border" onClick={()=> startConvert(o.id)}>{t('convert_to_invoice')||'To Invoice'}</button>
-              <button className="px-2 py-1 rounded border" onClick={async()=>{
+          <tr key={o.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-150">
+            <td className="px-4 py-3 text-center">{o.number||''}</td>
+            <td className="px-4 py-3 text-center">{o.date||''}</td>
+            <td className="px-4 py-3 text-center">{o.total?.toFixed? o.total.toFixed(2): o.total ?? ''}</td>
+            <td className="px-4 py-3 text-right"><div className="flex gap-2 justify-end flex-wrap">
+              <button className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium" onClick={async()=>{ try{ const { order } = await (async()=>({ order: await getOrder(o.id) }))(); setEditing({ id:o.id }); setEditHdr({ number:order.number||'', date:order.date||'', currency:order.currency||'EUR', client:order.client||'', client_name:'', notes:(order as any).notes||'', discount_rate:(order as any).discount_rate||0, discount_amount:(order as any).discount_amount||0, tax_rate:(order as any).tax_rate||0 }); const linesAny = (order.lines as any)||[]; setEditLines(linesAny); const mm: Record<number,'rate'|'amount'> = {}; (linesAny||[]).forEach((ln:any, idx:number)=>{ mm[idx] = (ln?.discount_amount||0) > 0 ? 'amount' : 'rate' }); setEditDiscMode(mm); } catch(e:any){ alert(e?.message||'') } }}>{t('edit')||'Edit'}</button>
+              <button className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium" onClick={()=> startConvert(o.id)}>{t('convert_to_invoice')||'To Invoice'}</button>
+              <button className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium" onClick={async()=>{
                 // fetch PDF with auth and save
                 try {
                   const res = await fetch(`${orderPdfUrl(o.id)}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')||''}`, 'Accept-Language': i18n.language || 'en' } })
@@ -260,7 +276,7 @@ export default function SalesOrders(){
                   const a = document.createElement('a'); a.href = url; a.download = `order_${o.number||o.id}.pdf`; a.click(); URL.revokeObjectURL(url);
                 } catch (e:any) { alert(`${t('save_pdf')||'Save PDF'}: ${e?.message||''}`) }
               }}>{t('save_pdf')||'Save PDF'}</button>
-              <button className="px-2 py-1 rounded border" onClick={async()=>{
+              <button className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium" onClick={async()=>{
                 try {
                   const res = await fetch(`${orderPdfUrl(o.id)}`, { headers: { Authorization: `Bearer ${localStorage.getItem('access_token')||''}`, 'Accept-Language': i18n.language || 'en' } })
                   if (!res.ok) {
@@ -272,7 +288,7 @@ export default function SalesOrders(){
                   const w = window.open(url, '_blank'); if (w) { setTimeout(()=>{ try { w.focus(); w.print(); } catch {} }, 500) }
                 } catch (e:any) { alert(`${t('print')||'Print'}: ${e?.message||''}`) }
               }}>{t('print')||'Print'}</button>
-              <button className="px-2 py-1 rounded border" onClick={async()=>{
+              <button className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 text-sm font-medium" onClick={async()=>{
                 // open email modal prefilled with client email if available
                 try {
                   const ord = await getOrder(o.id)
@@ -284,10 +300,13 @@ export default function SalesOrders(){
                   setEmailing({ id:o.id, to:'', cc:'', bcc:'', suggestedTo: suggested, defaultMessage })
                 } catch (e:any) { alert(e?.message||'') }
               }}>{t('email')||'Email'}</button>
-            </td>
+            </div></td>
           </tr>
         ))}
       </tbody></table>
+      </div>
+      </div>
+      
       {/* Email modal */}
   <EmailModal
     onSend={async (payload) => {
@@ -331,9 +350,12 @@ export default function SalesOrders(){
   />
   {/* Edit modal */}
   {editing && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl p-4">
-        <div className="flex items-center justify-between mb-3"><h3 className="text-lg font-semibold">{t('edit')||'Edit'}</h3><button onClick={()=>setEditing(null)}>✕</button></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-4xl p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('edit')||'Edit'}</h3>
+          <button onClick={()=>setEditing(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">✕</button>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
           <input placeholder={t('number')||'Number'} value={editHdr.number||''} readOnly className="input bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
           <input type="date" value={editHdr.date||''} onChange={e=>setEditHdr({...editHdr, date:e.target.value})} className="input" />
@@ -376,18 +398,21 @@ export default function SalesOrders(){
           </tbody>
         </table>
         <div className="mb-3"><button className="px-3 py-1 rounded border" onClick={()=>setEditLines([...editLines, { description:'', qty:1, price:0 }])}>+ {t('add_line')||'Add line'}</button></div>
-        <div className="flex justify-end gap-2">
-          <button className="px-3 py-1 rounded border" onClick={()=>setEditing(null)}>{t('cancel') as string}</button>
-          <button className="px-3 py-1 rounded bg-gray-900 text-white dark:bg-gray-700" onClick={async()=>{ try{ await updateOrder(editing.id, { ...editHdr, lines: editLines }); setEditing(null); reload() } catch(e:any){ alert(e?.message||'') } }}>{t('save') as string}</button>
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <button className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 font-medium" onClick={()=>setEditing(null)}>{t('cancel') as string}</button>
+          <button className="px-4 py-2 rounded-lg bg-gray-900 text-white dark:bg-gray-700 hover:shadow-lg transition-all duration-200 font-medium" onClick={async()=>{ try{ await updateOrder(editing.id, { ...editHdr, lines: editLines }); setEditing(null); reload() } catch(e:any){ alert(e?.message||'') } }}>{t('save') as string}</button>
         </div>
       </div>
     </div>
   )}
   {/* Convert dialog */}
   {convertDlg.open && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-4">
-        <div className="flex items-center justify-between mb-3"><h3 className="text-lg font-semibold">{t('convert_to_invoice')||'Convert to Invoice'}</h3><button onClick={()=>setConvertDlg({ open:false })}>✕</button></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('convert_to_invoice')||'Convert to Invoice'}</h3>
+          <button onClick={()=>setConvertDlg({ open:false })} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">✕</button>
+        </div>
         <div className="space-y-2">
           <label className="text-sm">{t('choose_series')||'Choose series'}</label>
           <select value={convertDlg.seriesId||''} onChange={(e)=>setConvertDlg(prev=> ({ ...prev, seriesId: e.target.value }))} className="input w-full">
@@ -397,9 +422,9 @@ export default function SalesOrders(){
             ))}
           </select>
         </div>
-        <div className="flex justify-end gap-2 mt-4">
-          <button className="px-3 py-1 rounded border" onClick={()=>setConvertDlg({ open:false })}>{t('cancel')||'Cancel'}</button>
-          <button className="px-3 py-1 rounded bg-gray-900 text-white dark:bg-gray-700" onClick={doConvert}>{t('convert_to_invoice')||'Convert'}</button>
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <button className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 font-medium" onClick={()=>setConvertDlg({ open:false })}>{t('cancel')||'Cancel'}</button>
+          <button className="px-4 py-2 rounded-lg bg-gray-900 text-white dark:bg-gray-700 hover:shadow-lg transition-all duration-200 font-medium" onClick={doConvert}>{t('convert_to_invoice')||'Convert'}</button>
         </div>
       </div>
     </div>
