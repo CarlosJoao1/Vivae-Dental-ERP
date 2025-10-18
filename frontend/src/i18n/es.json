@@ -42,5 +42,18 @@
   "document_capture": "Captura de Documentos",
   "under_development": "En Desarrollo",
   "licensing_required": "Requiere Licencia",
-  "status_dev_license": "En Desarrollo - Requiere Licencia"
+  "status_dev_license": "En Desarrollo - Requiere Licencia",
+  "module_not_found": "Módulo no encontrado",
+  "back_to_dashboard": "Volver al Panel",
+  "planned_features": "Características Planificadas",
+  "feature_admin_panel": "Panel de Administración",
+  "feature_data_management": "Gestión de Datos",
+  "feature_reporting": "Informes y Análisis",
+  "feature_integrations": "Integraciones de Terceros",
+  "licensing_info": "Información de Licencia",
+  "licensing_description": "Este módulo requiere una licencia válida para acceder.",
+  "contact_sales": "Contactar Ventas",
+  "contact_sales_description": "Póngase en contacto para obtener más información sobre precios y opciones de licencia.",
+  "contact_sales_action": "Por favor contacte ventas para información sobre licencias.",
+  "request_license": "Solicitar Licencia"
 }

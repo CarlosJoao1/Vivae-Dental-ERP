@@ -12,6 +12,7 @@ import MachineCenters from '@/pages/MachineCenters';
 import SalesOrders from '@/pages/SalesOrders';
 import SalesInvoices from '@/pages/SalesInvoices';
 import CRM from '@/pages/CRM';
+import ModuleInDevelopment from '@/pages/ModuleInDevelopment';
 export default function App() {
   return (
     <BrowserRouter>
@@ -27,6 +28,8 @@ export default function App() {
             <Route path="/crm" element={<CRM />} />
             <Route path="/sales/orders" element={<SalesOrders />} />
             <Route path="/sales/invoices" element={<SalesInvoices />} />
+            {/* Module routes */}
+            <Route path="/module/:moduleId" element={<ModuleInDevelopment />} />
           </Route>
         </Route>
         <Route path="*" element={<NotFound />} />

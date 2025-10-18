@@ -50,5 +50,18 @@
   "document_capture": "Document Capture",
   "under_development": "Under Development",
   "licensing_required": "Licensing Required",
-  "status_dev_license": "Under Development - Licensing Required"
+  "status_dev_license": "Under Development - Licensing Required",
+  "module_not_found": "Module not found",
+  "back_to_dashboard": "Back to Dashboard",
+  "planned_features": "Planned Features",
+  "feature_admin_panel": "Administration Panel",
+  "feature_data_management": "Data Management",
+  "feature_reporting": "Reporting & Analytics",
+  "feature_integrations": "Third-party Integrations",
+  "licensing_info": "Licensing Information",
+  "licensing_description": "This module requires a valid license to access.",
+  "contact_sales": "Contact Sales",
+  "contact_sales_description": "Get in touch to learn more about pricing and licensing options.",
+  "contact_sales_action": "Please contact sales for licensing information.",
+  "request_license": "Request License"
 }
