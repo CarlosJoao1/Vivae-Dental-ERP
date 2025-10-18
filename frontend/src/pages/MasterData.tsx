@@ -480,18 +480,62 @@ function Currencies(){
   React.useEffect(()=>{ reload() }, [])
   const submit = async (e: React.FormEvent)=>{ e.preventDefault(); await createCurrency(form); setForm({ code:'', name:'', symbol:'', is_default:false}); reload() }
   return (
-    <div>
+    <div className="space-y-6">
       <SectionHeader title={t('currencies')} onReload={reload} />
-      <form onSubmit={submit} className="flex flex-wrap gap-2 mb-3">
-        <input placeholder={t('code') as string} value={form.code} onChange={e=>setForm({...form, code:e.target.value})} className="input" />
-        <input placeholder={t('name') as string} value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="input" />
-        <input placeholder={t('symbol') as string} value={form.symbol} onChange={e=>setForm({...form, symbol:e.target.value})} className="input" />
-        <label className="flex items-center gap-2"><input type="checkbox" checked={form.is_default} onChange={e=>setForm({...form, is_default:e.target.checked})} />{t('is_default')}</label>
-        <button className="btn btn-primary">{t('create')}</button>
-      </form>
-      <table className="w-full text-sm"><thead><tr><th>{t('code')}</th><th>{t('name')}</th><th>{t('symbol')}</th><th>{t('is_default')}</th></tr></thead><tbody>
-        {items.map((c:any)=>(<tr key={c.id} className="border-t"><td className="text-center">{c.code}</td><td className="text-center">{c.name}</td><td className="text-center">{c.symbol}</td><td className="text-center">{c.is_default? '✓':''}</td></tr>))}
-      </tbody></table>
+      
+      {/* Form Card */}
+      <div className="card">
+        <h3 className="text-sm font-semibold mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">{t('create')} {t('currencies')}</h3>
+        <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">{t('code')}</label>
+            <input placeholder={t('code') as string} value={form.code} onChange={e=>setForm({...form, code:e.target.value})} className="input w-full" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">{t('name')}</label>
+            <input placeholder={t('name') as string} value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="input w-full" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">{t('symbol')}</label>
+            <input placeholder={t('symbol') as string} value={form.symbol} onChange={e=>setForm({...form, symbol:e.target.value})} className="input w-full" required />
+          </div>
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.is_default} onChange={e=>setForm({...form, is_default:e.target.checked})} className="w-4 h-4" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('is_default')}</span>
+            </label>
+          </div>
+          <div className="md:col-span-2 lg:col-span-4">
+            <button type="submit" className="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-700 hover:shadow-lg transition-all duration-200 font-medium">{t('create')}</button>
+          </div>
+        </form>
+      </div>
+
+      {/* Table Card */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">{t('code')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">{t('name')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">{t('symbol')}</th>
+                <th className="px-4 py-3 text-center font-semibold text-gray-700 dark:text-gray-300">{t('is_default')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((c:any)=>(
+                <tr key={c.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <td className="px-4 py-3">{c.code}</td>
+                  <td className="px-4 py-3">{c.name}</td>
+                  <td className="px-4 py-3">{c.symbol}</td>
+                  <td className="px-4 py-3 text-center">{c.is_default ? <span className="inline-block w-5 h-5 rounded-full bg-green-500 text-white flex items-center justify-center text-xs">✓</span> : ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
@@ -504,16 +548,48 @@ function SimpleFinList({ title, loader, creator }:{ title:string, loader:()=>Pro
   React.useEffect(()=>{ reload() }, [])
   const submit = async (e: React.FormEvent)=>{ e.preventDefault(); await creator(form); setForm({ code:'', name:''}); reload() }
   return (
-    <div>
+    <div className="space-y-6">
       <SectionHeader title={title} onReload={reload} />
-      <form onSubmit={submit} className="flex flex-wrap gap-2 mb-3">
-        <input placeholder={t('code') as string} value={form.code} onChange={e=>setForm({...form, code:e.target.value})} className="input" />
-        <input placeholder={t('name') as string} value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="input" />
-        <button className="btn btn-primary">{t('create')}</button>
-      </form>
-      <table className="w-full text-sm"><thead><tr><th>{t('code')}</th><th>{t('name')}</th></tr></thead><tbody>
-        {items.map((it:any)=>(<tr key={it.id} className="border-t"><td className="text-center">{it.code||''}</td><td className="text-center">{it.name}</td></tr>))}
-      </tbody></table>
+      
+      {/* Form Card */}
+      <div className="card">
+        <h3 className="text-sm font-semibold mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">{t('create')} {title}</h3>
+        <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">{t('code')}</label>
+            <input placeholder={t('code') as string} value={form.code} onChange={e=>setForm({...form, code:e.target.value})} className="input w-full" required />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">{t('name')}</label>
+            <input placeholder={t('name') as string} value={form.name} onChange={e=>setForm({...form, name:e.target.value})} className="input w-full" required />
+          </div>
+          <div className="md:col-span-2">
+            <button type="submit" className="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-700 hover:shadow-lg transition-all duration-200 font-medium">{t('create')}</button>
+          </div>
+        </form>
+      </div>
+
+      {/* Table Card */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">{t('code')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">{t('name')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((it:any)=>(
+                <tr key={it.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                  <td className="px-4 py-3">{it.code||''}</td>
+                  <td className="px-4 py-3">{it.name}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
@@ -630,26 +706,96 @@ function CountriesTab(){
     }
   }
   return (
-    <div>
+    <div className="space-y-6">
       <SectionHeader title={(t('countries') as string) || 'Countries'} onReload={reload} />
-      {err && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{err}</div>}
-      <form onSubmit={submit} className="flex flex-wrap gap-2 mb-3">
-        <input placeholder={(t('code') as string)||'Code'} value={form.code||''} onChange={e=>setForm({...form, code:e.target.value})} className="input" />
-        <input placeholder={(t('name') as string)||'Name'} value={form.name||''} onChange={e=>setForm({...form, name:e.target.value})} className="input" />
-        <button className="btn btn-primary">{editingId ? (t('save') as string) : (t('create') as string)}</button>
-      </form>
-      <table className="w-full text-sm"><thead><tr><th>{t('code')}</th><th>{t('name')}</th><th></th></tr></thead><tbody>
-        {items.map(c=> (
-          <tr key={c.id} className="border-t">
-            <td className="text-center">{c.code}</td>
-            <td className="text-center">{c.name}</td>
-            <td className="text-right px-2 py-1 flex gap-2 justify-end">
-              <button className="text-blue-600" onClick={()=>startEdit(c)}>{t('edit')}</button>
-              <button className="text-red-600" onClick={()=>remove(c.id as string)}>{t('remove')}</button>
-            </td>
-          </tr>
-        ))}
-      </tbody></table>
+      
+      {/* Error Alert */}
+      {err && (
+        <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm border border-red-200 dark:border-red-800 flex items-center gap-3">
+          <span className="text-lg">⚠️</span>
+          <span>{err}</span>
+        </div>
+      )}
+      
+      {/* Form Card */}
+      <div className="card">
+        <h3 className="text-sm font-semibold mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+          {editingId ? `${t('edit')} ${t('countries')}` : `${t('create')} ${t('countries')}`}
+        </h3>
+        <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">{t('code')}</label>
+            <input 
+              placeholder={(t('code') as string)||'Code'} 
+              value={form.code||''} 
+              onChange={e=>setForm({...form, code:e.target.value})} 
+              className="input w-full" 
+              required 
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">{t('name')}</label>
+            <input 
+              placeholder={(t('name') as string)||'Name'} 
+              value={form.name||''} 
+              onChange={e=>setForm({...form, name:e.target.value})} 
+              className="input w-full" 
+              required 
+            />
+          </div>
+          <div className="md:col-span-2">
+            <button type="submit" className="px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-700 hover:shadow-lg transition-all duration-200 font-medium">
+              {editingId ? (t('save') as string) : (t('create') as string)}
+            </button>
+            {editingId && (
+              <button 
+                type="button" 
+                onClick={()=>{ setEditingId(''); setForm({ code:'', name:'' }) }} 
+                className="ml-2 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
+              >
+                {t('cancel')}
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      {/* Table Card */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">{t('code')}</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">{t('name')}</th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">{t('actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(c=> (
+                <tr key={c.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <td className="px-4 py-3 font-mono font-semibold">{c.code}</td>
+                  <td className="px-4 py-3">{c.name}</td>
+                  <td className="px-4 py-3 text-right flex gap-2 justify-end">
+                    <button 
+                      className="px-3 py-1.5 rounded-lg text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all" 
+                      onClick={()=>startEdit(c)}
+                    >
+                      {t('edit')}
+                    </button>
+                    <button 
+                      className="px-3 py-1.5 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all" 
+                      onClick={()=>remove(c.id as string)}
+                    >
+                      {t('remove')}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }
