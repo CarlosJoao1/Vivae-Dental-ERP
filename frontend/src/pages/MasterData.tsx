@@ -694,7 +694,7 @@ function ShippingAddressesTab(){
 
 function LabSettings(){
   const { t } = useTranslation()
-  const { user } = useAuth()
+  const { user, tenantId } = useAuth()
   const sysadmin = !!(user && (user as any).is_sysadmin)
   const [labs, setLabs] = React.useState<Laboratory[]>([])
   const [form, setForm] = React.useState<Partial<Laboratory>>({})
@@ -705,11 +705,29 @@ function LabSettings(){
   const reload = async ()=>{
     const { laboratories } = await listLaboratories()
     setLabs(laboratories||[])
-    const first = laboratories?.[0]
-    if (first) { setLabId(first.id as string); setForm(first) }
+    // Prefer the active tenant's lab if available, otherwise fallback to first
+    const preferredId = (tenantId as string) || (laboratories?.[0]?.id as string)
+    const chosen = (laboratories||[]).find(l => (l.id as string) === preferredId) || laboratories?.[0]
+    if (chosen) { setLabId(chosen.id as string); setForm(chosen) }
   }
   React.useEffect(()=>{ reload() }, [])
-  const save = async (e: React.FormEvent)=>{ e.preventDefault(); if (!labId) return; const body = { ...form }; const saved = await updateLaboratory(labId, body); setForm(saved) }
+  // When the active tenant changes, reselect corresponding lab if present
+  React.useEffect(()=>{
+    if (!labs?.length) return
+    const chosen = labs.find(l => (l.id as string) === (tenantId as string)) || labs[0]
+    if (chosen) { setLabId(chosen.id as string); setForm(chosen) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId])
+
+  const save = async (e: React.FormEvent)=>{
+    e.preventDefault();
+    if (!labId) return;
+    const body = { ...form };
+    const saved = await updateLaboratory(labId, body);
+    setForm(saved)
+    // Keep local labs list in sync so other UI uses the updated values
+    setLabs(prev => (prev||[]).map(l => ((l.id as string) === (saved.id as string) ? saved : l)))
+  }
   return (
     <div>
       <SectionHeader title={t('laboratory') as string || 'Laboratory'} onReload={reload} />

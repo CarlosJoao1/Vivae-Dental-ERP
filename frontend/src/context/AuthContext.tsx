@@ -197,6 +197,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (chosen) {
           setTenantId(chosen);
           localStorage.setItem(LS_TENANT, chosen);
+          // Emit tenant changed on first selection so UI shows welcome and refreshes
+          try {
+            const ev = new CustomEvent('tenant:changed', { detail: { tenantId: chosen } });
+            window.dispatchEvent(ev);
+            window.dispatchEvent(new CustomEvent('tenant:refresh', { detail: { tenantId: chosen } }));
+          } catch {}
         }
 
         // Load user preferences
@@ -253,11 +259,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const validStored =
           stored && ts.some((t) => (t.id ?? t._id) === stored) ? stored : null;
 
-        const chosen = validStored ?? pickTenantId(me, ts);
-        if (chosen) {
-          setTenantId(chosen);
-          localStorage.setItem(LS_TENANT, chosen);
-        } else {
+          const chosen = validStored ?? pickTenantId(me, ts);
+          if (chosen) {
+            setTenantId(chosen);
+            localStorage.setItem(LS_TENANT, chosen);
+            try {
+              const ev = new CustomEvent('tenant:changed', { detail: { tenantId: chosen } });
+              window.dispatchEvent(ev);
+              window.dispatchEvent(new CustomEvent('tenant:refresh', { detail: { tenantId: chosen } }));
+            } catch {}
+          } else {
           setTenantId(null);
           localStorage.removeItem(LS_TENANT);
         }
@@ -286,6 +297,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (chosen) {
             setTenantId(chosen);
             localStorage.setItem(LS_TENANT, chosen);
+            try {
+              const ev = new CustomEvent('tenant:changed', { detail: { tenantId: chosen } });
+              window.dispatchEvent(ev);
+              window.dispatchEvent(new CustomEvent('tenant:refresh', { detail: { tenantId: chosen } }));
+            } catch {}
           } else {
             setTenantId(null);
             localStorage.removeItem(LS_TENANT);

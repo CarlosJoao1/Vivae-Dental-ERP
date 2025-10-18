@@ -13,9 +13,18 @@
 - Base de dados: **vivae_dental_erp**
 
 ## Como correr
+
+### Opção 1: Docker Compose (recomendado)
 ```bash
 docker compose up --build
-# abre: http://localhost:5000/api  (health)
+# Backend: http://localhost:5000/api
+# Frontend será servido automaticamente
+```
+
+### Opção 2: Setup automático para desenvolvimento
+```powershell
+# Windows PowerShell (run uma vez para configurar ambiente)
+.\setup-dev.ps1
 ```
 
 ### Login (seed automático)
@@ -106,3 +115,21 @@ Se ao fazer refresh em URLs como `/masterdata` no domínio de produção do fron
 	- Master Data: abas Countries e Shipping Addresses com feedback de erro inline; validações e regras de integridade no backend (não permitir apagar/alterar country em uso; validar/normalizar country_code; validar default_shipping_address).
 	- Fiabilidade/UX: SPA deep-link fix, i18n parity gate, melhorias SMTP e diagnósticos; versão exibida no Topbar a partir de `/api/health/info`.
 	- Tag: v0.2.0; package.json (frontend) atualizado para 0.2.0.
+
+## SonarCloud
+
+Este repositório já inclui configuração para análise no SonarCloud (frontend + backend) e decoração de PR:
+
+- Ficheiro `sonar-project.properties` na raiz (substitua `YOUR_ORG_KEY` e `YOUR_PROJECT_KEY`).
+- Workflow GitHub Actions em `.github/workflows/sonarcloud.yml` que constrói o frontend e prepara o backend antes do scan.
+
+Como ativar:
+1. Crie o projeto no SonarCloud e copie:
+	- Organization key → coloque em `sonar-project.properties` (sonar.organization)
+	- Project key → coloque em `sonar-project.properties` (sonar.projectKey)
+2. Em GitHub → Settings → Secrets and variables → Actions → adicione o segredo `SONAR_TOKEN` (token do SonarCloud com permissões de análise).
+3. Faça push ou abra um PR. O bot do SonarCloud vai comentar no PR com problemas encontrados, duplicações e Quality Gate.
+
+Cobertura (opcional):
+- Se adicionar testes no frontend, exporte `lcov.info` e aponte em `sonar.javascript.lcov.reportPaths`.
+- Para backend Python, pode gerar `coverage.xml` (pytest + coverage) e apontar em `sonar.python.coverage.reportPaths`.
