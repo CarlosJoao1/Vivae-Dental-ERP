@@ -22,7 +22,7 @@ export default function Sidebar(){
   const { t } = useTranslation()
   return (
     <aside className="w-64 shrink-0 h-screen sticky top-0 overflow-y-auto border-r bg-white dark:bg-gray-900 dark:border-gray-800">
-      <div className="p-4 text-xl font-bold">Vivae Dental ERP</div>
+      <div className="p-4 text-xl font-bold">VIVAE ERP</div>
       <nav className="px-2 pb-6">
         {nav.map(item => (
           <NavLink key={item.to} to={item.to}

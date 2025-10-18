@@ -1,4 +1,4 @@
-# Vivae Dental ERP – Frontend (React + TypeScript + Tailwind + Vite)
+# VIVAE ERP – Frontend (React + TypeScript + Tailwind + Vite)
 
 ## Requisitos
 - Node 18+ / 20+

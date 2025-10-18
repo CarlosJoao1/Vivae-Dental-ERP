@@ -24,7 +24,7 @@ export default function DashboardLayout() {
   return (
     <div className="min-h-screen flex">
       <aside className="w-64 bg-white border-r px-4 py-6 hidden md:block">
-        <div className="text-xl font-bold mb-6">Vivae Dental ERP</div>
+        <div className="text-xl font-bold mb-6">VIVAE ERP</div>
         <nav className="space-y-1">
           {nav.map((n) => (
             <Link key={n.to} to={n.to} className={`block px-3 py-2 rounded-lg hover:bg-gray-100 ${pathname === n.to ? 'bg-gray-100 font-semibold' : ''}`}>
