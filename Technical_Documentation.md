@@ -111,11 +111,13 @@ This document provides a structured overview of the system’s architecture, API
 	- `SECRET_KEY` (required in production)
 	- `JWT_SECRET_KEY` (required; falls back to `SECRET_KEY` with a warning if absent)
 	- `APP_VERSION` (optional) to override default versioning
-	- `FRONTEND_ORIGINS` (CORS)
+	- `FRONTEND_ORIGINS` (CORS exact matches)
+	- `FRONTEND_ORIGINS_EXTRA` (CORS wildcard patterns, e.g., `https://vivae-dental-erp-*.onrender.com`)
 	- Nota: deve permitir a origem do frontend (ex.: `https://<frontend>.onrender.com`) e locais de dev.
 	- `MONGO_URI`
 - Frontend env vars:
 	- `VITE_API_BASE` (preferred) or `VITE_API_BASE_URL`
+	- Em Render (static), prefira configurar `VITE_API_BASE` "From Service" → backend web; evite hardcode no `.env.production`.
 - Dev: `.env.example` provided for both backend and frontend
 
 ## Deployment
@@ -133,6 +135,7 @@ This document provides a structured overview of the system’s architecture, API
 - Backend fails to start (prod): ensure `SECRET_KEY` and `JWT_SECRET_KEY` are set
 - JWT warnings: set `JWT_SECRET_KEY` different from `SECRET_KEY` to remove fallback warning
 - CORS errors: validate `FRONTEND_ORIGINS` includes deployed frontend URL
+	- Se o frontend usar subdomínios efémeros (xyz.onrender.com), configure `FRONTEND_ORIGINS_EXTRA` com um wildcard.
 - Preflight bloqueado com `X-Tenant-Id`:
 	- Verifique que o backend expõe `Access-Control-Allow-Headers: Content-Type, Authorization, X-Tenant-Id`.
 	- Se necessário, reinicie o container/backend e faça Hard Refresh no navegador.
