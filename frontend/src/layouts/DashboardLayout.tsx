@@ -9,16 +9,12 @@ export default function DashboardLayout() {
   const nav = [
     { to: '/', label: t('dashboard') as string },
     { to: '/masterdata', label: t('master_data') as string },
-    // Produção será tratada como grupo colapsável abaixo
     { to: '/crm', label: t('crm') as string },
-    // Vendas será tratado como grupo colapsável abaixo
   ];
 
-  const [openProduction, setOpenProduction] = React.useState<boolean>(false);
   const [openSales, setOpenSales] = React.useState<boolean>(false);
   React.useEffect(() => {
-    // Se o utilizador já está numa rota de produção, manter aberto
-    if (pathname.startsWith('/production')) setOpenProduction(true);
+    // Se o utilizador já está numa rota de vendas, manter aberto
     if (pathname.startsWith('/sales')) setOpenSales(true);
   }, [pathname]);
   return (
@@ -34,29 +30,6 @@ export default function DashboardLayout() {
               {n.label}
             </Link>
           ))}
-
-          {/* Grupo Produção (colapsável) */}
-          <button
-            type="button"
-            onClick={() => setOpenProduction((v) => !v)}
-            className={`w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 flex items-center justify-between ${pathname.startsWith('/production') ? 'bg-gray-100 font-semibold' : ''}`}
-          >
-            <span>{t('production') as string}</span>
-            <span>{openProduction ? '−' : '+'}</span>
-          </button>
-          {openProduction && (
-            <div className="ml-4 space-y-1">
-              <Link to={'/production/admin'} className={`block px-3 py-2 rounded-lg hover:bg-gray-100 ${pathname === '/production/admin' ? 'bg-gray-100 font-semibold' : ''}`}>
-                {(t('production_admin') as string) || 'Administração'}
-              </Link>
-              <Link to={'/production/workcenters'} className={`block px-3 py-2 rounded-lg hover:bg-gray-100 ${pathname === '/production/workcenters' ? 'bg-gray-100 font-semibold' : ''}`}>
-                {(t('work_centers') as string) || 'Centros de Trabalho'}
-              </Link>
-              <Link to={'/production/machines'} className={`block px-3 py-2 rounded-lg hover:bg-gray-100 ${pathname === '/production/machines' ? 'bg-gray-100 font-semibold' : ''}`}>
-                {(t('machine_centers') as string) || 'Centro Máquina'}
-              </Link>
-            </div>
-          )}
 
           {/* Grupo Vendas (colapsável) */}
           <button

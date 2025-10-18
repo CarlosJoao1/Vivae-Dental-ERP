@@ -63,6 +63,7 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
+            { key: 'production', icon: '🏭', color: 'bg-orange-50 border-orange-200 hover:bg-orange-100', url: 'production' },
             { key: 'financial_management', icon: '💰', color: 'bg-green-50 border-green-200 hover:bg-green-100', url: 'financial-management' },
             { key: 'purchasing', icon: '🛒', color: 'bg-blue-50 border-blue-200 hover:bg-blue-100', url: 'purchasing' },
             { key: 'warehouse', icon: '📦', color: 'bg-purple-50 border-purple-200 hover:bg-purple-100', url: 'warehouse' },

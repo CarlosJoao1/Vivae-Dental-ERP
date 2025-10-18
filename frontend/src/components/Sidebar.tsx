@@ -3,19 +3,9 @@ import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 const nav = [
-  { to:'/dashboard', labelKey:'dashboard', icon:'🏠' },
-  { to:'/modules/billing', labelKey:'billing', icon:'💳' },
-  { to:'/modules/production', labelKey:'production', icon:'🏭' },
-  { to:'/modules/purchases', labelKey:'purchases', icon:'🧾' },
-  { to:'/modules/hr', labelKey:'hr', icon:'👥' },
-  { to:'/modules/finance', labelKey:'finance', icon:'💼' },
-  { to:'/modules/inventory', labelKey:'inventory', icon:'📦' },
-  { to:'/modules/crm', labelKey:'crm', icon:'🤝' },
-  { to:'/modules/mes', labelKey:'mes', icon:'🧩' },
-  { to:'/modules/dispatch', labelKey:'dispatch', icon:'📤' },
-  { to:'/modules/webservices', labelKey:'webservices', icon:'🔗' },
-  { to:'/modules/sequencing', labelKey:'sequencing', icon:'🗂️' },
-  { to:'/modules/labeling', labelKey:'labeling', icon:'🏷️' }
+  { to:'/', labelKey:'dashboard', icon:'🏠' },
+  { to:'/masterdata', labelKey:'master_data', icon:'�' },
+  { to:'/crm', labelKey:'crm', icon:'🤝' }
 ]
 
 export default function Sidebar(){

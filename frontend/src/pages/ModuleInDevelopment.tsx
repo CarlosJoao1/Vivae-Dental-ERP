@@ -10,6 +10,11 @@ interface ModuleInfo {
 }
 
 const moduleInfo: ModuleInfo = {
+  'production': {
+    icon: '🏭',
+    color: 'from-orange-400 to-orange-600',
+    description: 'Production management, workflow optimization, and manufacturing control'
+  },
   'financial-management': {
     icon: '💰',
     color: 'from-green-400 to-green-600',
