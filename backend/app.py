@@ -32,8 +32,12 @@ def create_app():
             "FRONTEND_ORIGINS",
             "http://localhost:5173,http://127.0.0.1:5173,http://0.0.0.0:5173"
         )
+        # Extra patterns (e.g., wildcard) that we might accept at runtime
+        raw_extra = os.getenv("FRONTEND_ORIGINS_EXTRA", "")
         origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+        extra_origins = [o.strip() for o in raw_extra.split(",") if o.strip()]
 
+        # Base CORS registration uses the explicit origins list (exact matches)
         CORS(
             app,
             resources={r"/*": {"origins": origins}},
@@ -44,6 +48,9 @@ def create_app():
             methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             max_age=86400,
         )
+        # Keep a cached set of allowed origins and wildcard patterns for after_request
+        app.config["_ALLOWED_ORIGINS"] = set(origins)
+        app.config["_ALLOWED_ORIGINS_PATTERNS"] = extra_origins
     except Exception as e:
         app.logger.warning(f"CORS setup failed: {e}")
 
@@ -65,21 +72,35 @@ def create_app():
     # Ensure CORS headers are always present (backup for preflight OPTIONS)
     @app.after_request
     def after_request(response):
+        import re
         origin = request.headers.get('Origin')
-        raw_origins = os.getenv(
-            "FRONTEND_ORIGINS",
-            "http://localhost:5173,http://127.0.0.1:5173,http://0.0.0.0:5173"
-        )
-        allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
-        
-        if origin in allowed_origins:
+
+        # Exact list from env at startup
+        allowed_list = app.config.get("_ALLOWED_ORIGINS") or set()
+        # Optional wildcard patterns (e.g., https://vivae-dental-erp-*.onrender.com)
+        pattern_list = app.config.get("_ALLOWED_ORIGINS_PATTERNS") or []
+
+        def _match_origin(o: str) -> bool:
+            if o in allowed_list:
+                return True
+            for pat in pattern_list:
+                try:
+                    # convert simple glob to regex
+                    rx = "^" + re.escape(pat).replace("\\*", ".*") + "$"
+                    if re.match(rx, o or ""):
+                        return True
+                except Exception:
+                    continue
+            return False
+
+        if origin and _match_origin(origin):
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Access-Control-Allow-Credentials'] = 'true'
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
             # Mirror allow headers here as a fallback for preflight requests
             response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Tenant-Id'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
-        
+
         app.logger.info(f"[RESPONSE] {response.status_code} for {request.path}")
         return response
 
