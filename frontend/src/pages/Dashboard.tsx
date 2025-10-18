@@ -37,19 +37,19 @@ export default function Dashboard() {
   }, []);
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Dashboard</h1>
-      {loading && <div className="card">A carregar…</div>}
+      <h1 className="text-xl font-semibold">{t('dashboard')}</h1>
+      {loading && <div className="card">{t('loading')}</div>}
       {error && <div className="card bg-red-50 text-red-700">{error}</div>}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="card hover:shadow-md transition cursor-pointer p-4">
-          <div className="text-xs text-gray-500 uppercase tracking-wide">Empresas</div>
+          <div className="text-xs text-gray-500 uppercase tracking-wide">{t('companies')}</div>
           <div className="text-2xl font-bold mt-1">{tenants.length}</div>
-          <div className="text-xs text-gray-500 mt-1">disponíveis no sistema</div>
+          <div className="text-xs text-gray-500 mt-1">{t('available_in_system')}</div>
         </div>
         <div className="card hover:shadow-md transition cursor-pointer p-4">
-          <div className="text-xs text-gray-500 uppercase tracking-wide">Utilizadores Ativos</div>
+          <div className="text-xs text-gray-500 uppercase tracking-wide">{t('active_users')}</div>
           <div className="text-2xl font-bold mt-1">{activeUsers != null ? activeUsers : '—'}</div>
-          <div className="text-xs text-gray-500 mt-1">na empresa ativa</div>
+          <div className="text-xs text-gray-500 mt-1">{t('in_active_company')}</div>
         </div>
       </section>
 
