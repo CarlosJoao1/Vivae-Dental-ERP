@@ -92,8 +92,8 @@ export default function Topbar(){
   else if (apiOk === true && dbOk === true) { statusColor = 'bg-green-600'; statusTip = 'API OK, DB OK' }
   return (
     <header className="w-full border-b bg-white/70 dark:bg-gray-900/70 backdrop-blur sticky top-0 z-10">
-      <div className="h-14 px-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="h-14 px-4 flex items-center justify-between topbar-container">
+        <div className="flex items-center gap-3 topbar-left">
           {/* Logo + Dashboard Link */}
           <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity mr-2">
             <img src="/assets/logos/vivae-erp-logo-main.svg" alt="VIVAE ERP" className="h-7 w-auto" />
@@ -120,7 +120,7 @@ export default function Topbar(){
           </select>
           <DiagnosticsButton />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 topbar-right">
           {/* Saudação no canto superior direito */}
           <span className="text-sm font-medium text-gray-700 dark:text-gray-200 mr-2">
             {t('Bem-vindo')}, {user?.username || 'user'} ({lang})
