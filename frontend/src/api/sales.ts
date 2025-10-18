@@ -1,7 +1,7 @@
 import api from '@/api/api'
 import type { Id } from '@/api/masterdata'
 
-export type Line = { description: string; qty: number; price: number; total?: number; discount_rate?: number; discount_amount?: number }
+export type Line = { description: string; qty: number; price: number; total?: number; discount_rate?: number; discount_amount?: number; sale_type?: string; code?: string }
 export type Order = { id?: Id; number?: string; date?: string; client?: Id | string; currency?: string; lines?: Line[]; total?: number; series?: Id | string; notes?: string; discount_rate?: number; discount_amount?: number; tax_rate?: number; tax_amount?: number }
 export type Invoice = { id?: Id; number?: string; date?: string; client?: Id | string; currency?: string; lines?: Line[]; total?: number; status?: string; series?: Id | string; notes?: string; discount_rate?: number; discount_amount?: number; tax_rate?: number; tax_amount?: number }
 

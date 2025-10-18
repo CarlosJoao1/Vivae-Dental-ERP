@@ -1,6 +1,6 @@
 # backend/routes/tenants.py
 from flask import Blueprint, jsonify, current_app
-from flask_jwt_extended import jwt_required, get_jwt
+from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 
 # Imports opcionais (compatível com os teus modelos)
 try:
@@ -12,6 +12,11 @@ try:
     from models.laboratory import Laboratory  # type: ignore
 except Exception:  # pragma: no cover
     Laboratory = None  # type: ignore
+
+try:
+    from models.user import User  # type: ignore
+except Exception:  # pragma: no cover
+    User = None  # type: ignore
 
 bp = Blueprint("tenants", __name__, url_prefix="/api/tenants")
 
@@ -28,30 +33,47 @@ def _doc_to_tenant(doc) -> dict:
     )
     return {"id": doc_id, "_id": doc_id, "name": name}
 
-def _load_all_tenants() -> list[dict]:
-    """Devolve uma lista de tenants a partir dos modelos disponíveis."""
+def _load_tenants_for_user(user) -> list[dict]:
+    """Devolve a lista de tenants visíveis para o utilizador.
+
+    Regra:
+    - Sysadmin → todos os Laboratory
+    - Não-sysadmin → apenas `allowed_labs` + `tenant_id` (se existir)
+    """
     items: list[dict] = []
 
-    # Preferência: Tenant, se existir
-    if Tenant:
-        try:
-            for t in Tenant.objects:  # type: ignore[attr-defined]
-                items.append(_doc_to_tenant(t))
-        except Exception as e:  # pragma: no cover
-            current_app.logger.warning("Falha a listar Tenant: %s", e)
+    if Laboratory is None or user is None:
+        return [{"id": "default", "_id": "default", "name": "Default"}]
 
-    # Alternativa: Laboratory (o seed cria um)
-    if not items and Laboratory:
-        try:
-            for lab in Laboratory.objects:  # type: ignore[attr-defined]
-                items.append(_doc_to_tenant(lab))
-        except Exception as e:  # pragma: no cover
-            current_app.logger.warning("Falha a listar Laboratory: %s", e)
+    try:
+        if getattr(user, "is_sysadmin", False):
+            qs = Laboratory.objects  # type: ignore[attr-defined]
+        else:
+            allowed_ids = []
+            try:
+                allowed_ids = [
+                    str(getattr(x, "id", ""))
+                    for x in ((getattr(user, "allowed_labs", []) or []))
+                    if getattr(x, "id", None)
+                ]
+            except Exception:
+                allowed_ids = []
+            # incluir tenant_id atual se existir e não estiver na lista
+            tid = str(getattr(getattr(user, "tenant_id", None), "id", "") or "")
+            if tid and tid not in allowed_ids:
+                allowed_ids.append(tid)
+            if allowed_ids:
+                qs = Laboratory.objects(id__in=allowed_ids)  # type: ignore[attr-defined]
+            else:
+                qs = Laboratory.objects.none()  # type: ignore[attr-defined]
+        for lab in qs:  # type: ignore
+            items.append(_doc_to_tenant(lab))
+    except Exception as e:  # pragma: no cover
+        current_app.logger.warning("Falha a listar tenants para utilizador: %s", e)
+        items = []
 
-    # Fallback final
     if not items:
         items = [{"id": "default", "_id": "default", "name": "Default"}]
-
     return items
 
 # Aceita /api/tenants (sem barra) e /api/tenants/ (com barra)
@@ -64,7 +86,16 @@ def list_tenants():
     Devolve a lista de tenants que o utilizador pode ver.
     Responde com um ARRAY para bater certo com o frontend.
     """
-    items = _load_all_tenants()
+    # Carrega utilizador para aplicar scoping por permissões
+    user = None
+    try:
+        uid = get_jwt_identity()
+        if User is not None and uid is not None:
+            user = User.objects.get(id=uid)  # type: ignore[attr-defined]
+    except Exception:
+        user = None
+
+    items = _load_tenants_for_user(user)
 
     # Opcional: mover o tenant_id do JWT para o topo
     try:

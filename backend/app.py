@@ -38,7 +38,8 @@ def create_app():
             app,
             resources={r"/*": {"origins": origins}},
             supports_credentials=True,
-            allow_headers=["Content-Type", "Authorization"],
+            # Include custom tenant header to allow cross-origin requests with X-Tenant-Id
+            allow_headers=["Content-Type", "Authorization", "X-Tenant-Id"],
             expose_headers=["Authorization"],
             methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             max_age=86400,
@@ -75,7 +76,8 @@ def create_app():
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Access-Control-Allow-Credentials'] = 'true'
             response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            # Mirror allow headers here as a fallback for preflight requests
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Tenant-Id'
             response.headers['Access-Control-Expose-Headers'] = 'Authorization'
         
         app.logger.info(f"[RESPONSE] {response.status_code} for {request.path}")
@@ -104,6 +106,10 @@ def create_app():
                     dest = f"{base}{path}"
                     if request.query_string:
                         dest = f"{dest}?{request.query_string.decode('utf-8', 'ignore')}"
+                    try:
+                        app.logger.info(f"[SPA-REDIRECT] 404 for {path} -> {dest}")
+                    except Exception:
+                        pass
                     return redirect(dest, code=302)
         except Exception:
             pass

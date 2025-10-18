@@ -2,7 +2,7 @@ import React from 'react'
 import { useLocation } from 'react-router-dom'
 import i18n from '@/i18n'
 import { listInvoices, createInvoice, type Line, invoicePdfUrl, getInvoice, sendInvoiceEmail, updateInvoice } from '@/api/sales'
-import { searchClientsBrief, type Client, listServices, type Service, getClient, listSeries } from '@/api/masterdata'
+import { searchClientsBrief, type Client, listServices, type Service, getClient, listSeries, resolveClientUnitPrice } from '@/api/masterdata'
 import { useTranslation } from 'react-i18next'
 import { calcGross, calcDiscount, calcNet, computeGlobalDiscount } from '@/lib/pricing'
 import EmailModal, { type EmailingState } from '@/components/EmailModal'
@@ -12,7 +12,7 @@ export default function SalesInvoices(){
   const { t } = useTranslation()
   const [items, setItems] = React.useState<any[]>([])
   const [hdr, setHdr] = React.useState({ number:'', date:'', client:'', client_name:'', currency:'EUR', status:'draft', notes:'', discount_rate: 0, discount_amount: 0, tax_rate: 0 })
-  const [lines, setLines] = React.useState<Line[]>([{ description:'', qty:1, price:0 }])
+  const [lines, setLines] = React.useState<Line[]>([{ description:'', qty:1, price:0, sale_type:'service', code:'' }])
   const [series, setSeries] = React.useState<any[]>([])
   const [seriesId, setSeriesId] = React.useState<string>('')
   const [emailing, setEmailing] = React.useState<EmailingState>(null)
@@ -46,7 +46,7 @@ export default function SalesInvoices(){
     }
   }, [location.search])
 
-  const addLine = ()=> setLines([...lines, { description:'', qty:1, price:0 }])
+  const addLine = ()=> setLines([...lines, { description:'', qty:1, price:0, sale_type:'service', code:'' }])
   const setLine = (i:number, patch: Partial<Line>)=> setLines(lines.map((ln,idx)=> idx===i ? { ...ln, ...patch } : ln ))
   const total = lines.reduce((s, ln) => s + calcNet(ln), 0)
   React.useEffect(()=>{
@@ -82,10 +82,38 @@ export default function SalesInvoices(){
     })
     return ()=> timers.forEach(t=> window.clearTimeout(t))
   }, [svcQ])
-  const pickService = (i:number, s: Service)=>{
-    setLine(i, { description: s.name, price: Number(s.price||0) })
+  const pickService = async (i:number, s: Service)=>{
+    setLine(i, { description: s.name, price: Number(s.price||0), sale_type:'service', code: s.code||'' })
     setSvcOpts(prev=> ({ ...prev, [i]: [] }))
+    try{
+      const clientId = (hdr.client||'').trim()
+      if (clientId && (s.code||'').trim()){
+        const today = (hdr.date||'').trim()
+        const { unit_price } = await resolveClientUnitPrice(clientId, { sale_type: 'service', code: s.code!, qty: lines[i]?.qty||1, date: today||undefined })
+        if (unit_price!=null){ setLine(i, { price: Number(unit_price) }) }
+      }
+    } catch{}
   }
+
+  React.useEffect(()=>{
+    const doResolve = async ()=>{
+      const clientId = (hdr.client||'').trim()
+      if (!clientId) return
+      const dt = (hdr.date||'').trim() || undefined
+      const updated = await Promise.all(lines.map(async (ln)=>{
+        if (!ln?.code) return ln
+        try{
+          const { unit_price } = await resolveClientUnitPrice(clientId, { sale_type: ln.sale_type||'service', code: ln.code!, qty: ln.qty||1, date: dt })
+          if (unit_price!=null && Number(unit_price) !== Number(ln.price)) return { ...ln, price: Number(unit_price) }
+        } catch{}
+        return ln
+      }))
+      const changed = updated.some((u, idx)=> Number(u.price) !== Number(lines[idx].price))
+      if (changed) setLines(updated)
+    }
+    doResolve()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hdr.client, hdr.date, JSON.stringify(lines.map(l=>({ code: l.code||'', qty: l.qty||0 })))])
 
   const submit = async (e: React.FormEvent)=>{
     e.preventDefault()

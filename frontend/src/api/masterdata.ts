@@ -54,6 +54,10 @@ export async function listLaboratories() {
   const { data } = await api.get(`/masterdata/laboratories`)
   return data as { laboratories: Laboratory[] }
 }
+export async function createLaboratory(body: Partial<Laboratory>) {
+  const { data } = await api.post(`/masterdata/laboratories`, body)
+  return data.laboratory as Laboratory
+}
 export async function updateLaboratory(id: Id, body: Partial<Laboratory>) {
   const { data } = await api.put(`/masterdata/laboratories/${id}`, body)
   return data.laboratory as Laboratory
@@ -104,7 +108,7 @@ export async function deleteCountry(id: Id) {
 }
 
 // Shipping Addresses
-export type ShippingAddress = { id?: Id; code: string; address1?: string; address2?: string; postal_code?: string; city?: string; country_code?: string }
+export type ShippingAddress = { id?: Id; client?: Id | null; code: string; address1?: string; address2?: string; postal_code?: string; city?: string; country_code?: string }
 export async function listShippingAddresses() {
   const { data } = await api.get(`/masterdata/shipping-addresses`)
   return data as { items: ShippingAddress[] }
@@ -120,6 +124,60 @@ export async function updateShippingAddress(id: Id, body: Partial<ShippingAddres
 export async function deleteShippingAddress(id: Id) {
   const { data } = await api.delete(`/masterdata/shipping-addresses/${id}`)
   return data
+}
+
+// Client-scoped Shipping Addresses
+export async function listClientShippingAddresses(clientId: Id) {
+  const { data } = await api.get(`/masterdata/clients/${clientId}/shipping-addresses`)
+  return data as { items: ShippingAddress[] }
+}
+export async function createClientShippingAddress(clientId: Id, body: Partial<ShippingAddress>) {
+  const { data } = await api.post(`/masterdata/clients/${clientId}/shipping-addresses`, body)
+  return data.shipping_address as ShippingAddress
+}
+export async function updateClientShippingAddress(clientId: Id, id: Id, body: Partial<ShippingAddress>) {
+  const { data } = await api.put(`/masterdata/clients/${clientId}/shipping-addresses/${id}`, body)
+  return data.shipping_address as ShippingAddress
+}
+export async function deleteClientShippingAddress(clientId: Id, id: Id) {
+  const { data } = await api.delete(`/masterdata/clients/${clientId}/shipping-addresses/${id}`)
+  return data
+}
+
+// Client Prices
+export type ClientPrice = {
+  id?: Id
+  client_id?: Id
+  sale_type?: string
+  sale_code?: string
+  code?: string
+  uom?: string
+  min_qty?: number
+  unit_price?: number
+  start_date?: string
+  end_date?: string
+}
+export async function listClientPrices(clientId: Id) {
+  const { data } = await api.get(`/masterdata/clients/${clientId}/prices`)
+  return data as { items: ClientPrice[] }
+}
+export async function createClientPrice(clientId: Id, body: Partial<ClientPrice>) {
+  const { data } = await api.post(`/masterdata/clients/${clientId}/prices`, body)
+  return data.price as ClientPrice
+}
+export async function updateClientPrice(clientId: Id, id: Id, body: Partial<ClientPrice>) {
+  const { data } = await api.put(`/masterdata/clients/${clientId}/prices/${id}`, body)
+  return data.price as ClientPrice
+}
+export async function deleteClientPrice(clientId: Id, id: Id) {
+  const { data } = await api.delete(`/masterdata/clients/${clientId}/prices/${id}`)
+  return data
+}
+
+// Client price resolver
+export async function resolveClientUnitPrice(clientId: Id, params: { sale_type?: string; code: string; qty?: number; date?: string }) {
+  const { data } = await api.get(`/masterdata/clients/${clientId}/resolve-price`, { params })
+  return data as { unit_price: number | null }
 }
 
 // Patients

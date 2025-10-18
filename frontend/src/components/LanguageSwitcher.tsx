@@ -1,11 +1,16 @@
 import React from 'react'
-import i18n from '@/i18n'
+import i18n, { setAppLanguage } from '@/i18n'
 
 const langs = [{code:'pt',label:'PT'},{code:'en',label:'EN'},{code:'es',label:'ES'},{code:'fr',label:'FR'},{code:'cn',label:'CN'},{code:'de',label:'DE'}]
 
 export default function LanguageSwitcher() {
   const [lng, setLng] = React.useState(i18n.language)
-  const change = (c:string)=>{ i18n.changeLanguage(c); setLng(c) }
+  React.useEffect(()=>{
+    const handler = (lng:string)=> setLng(lng)
+    i18n.on('languageChanged', handler as any)
+    return ()=>{ i18n.off('languageChanged', handler as any) }
+  },[])
+  const change = (c:string)=>{ setAppLanguage(c) }
   return (
     <div className="flex gap-2">
       {langs.map(l=>(

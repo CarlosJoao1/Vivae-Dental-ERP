@@ -1,5 +1,6 @@
+from datetime import date, datetime
 from flask import Blueprint, request, jsonify, make_response, send_file
-from flask_jwt_extended import jwt_required, get_jwt
+from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from datetime import date, datetime
 from models.laboratory import Laboratory
 from models.order import Order
@@ -17,11 +18,30 @@ from email.utils import formataddr
 from urllib.request import urlopen
 import fitz  # PyMuPDF
 import io
+from models.user import User
+from services.permissions import ensure
 
 bp = Blueprint("sales", __name__, url_prefix="/api/sales")
 
 
 def _lab() -> Laboratory:
+    """Resolve active lab with header override (X-Tenant-Id) respecting permissions."""
+    # Header override when permitted
+    try:
+        uid = get_jwt_identity()
+    except Exception:
+        uid = None
+    header_tid = (request.headers.get("X-Tenant-Id") or "").strip()
+    if uid and header_tid:
+        try:
+            user = User.objects.get(id=uid)
+            if getattr(user, 'is_sysadmin', False):
+                return Laboratory.objects.get(id=header_tid)
+            allowed_ids = [str(getattr(x, 'id', '')) for x in (getattr(user, 'allowed_labs', []) or [])]
+            if header_tid in allowed_ids:
+                return Laboratory.objects.get(id=header_tid)
+        except Exception:
+            pass
     claims = get_jwt() or {}
     tid = claims.get("tenant_id")
     if tid and tid != "default":
@@ -115,6 +135,29 @@ def _labels_for(lang: str) -> dict:
         'lines': 'Lines', 'total': 'Total', 'born': 'Born', 'tax_id': 'Tax ID',
         'description': 'Description', 'qty': 'Qty', 'price': 'Price', 'discount':'Discount', 'line_discount':'Line discount', 'global_discount':'Global discount', 'subtotal_after_discount':'Subtotal', 'decimal': '.'
     }
+
+# --- Date helpers (defensive against strings) ---
+def _date_to_iso(val) -> str:
+    if not val:
+        return ''
+    if isinstance(val, str):
+        return val.strip()
+    if isinstance(val, datetime):
+        try:
+            return val.date().isoformat()
+        except Exception:
+            return ''
+    if isinstance(val, date):
+        try:
+            return val.isoformat()
+        except Exception:
+            return ''
+    try:
+        # last resort: extract first 10 chars if looks like ISO string
+        s = str(val)
+        return s[:10]
+    except Exception:
+        return ''
 def _order_to_dict(o: Order):
     return {
         "id": str(o.id),
@@ -430,7 +473,7 @@ def _client_to_info(c: Client | None) -> dict:
         "first_name": getattr(c, 'first_name', ''),
         "last_name": getattr(c, 'last_name', ''),
         "gender": getattr(c, 'gender', ''),
-        "birthdate": getattr(c, 'birthdate', None).isoformat() if getattr(c, 'birthdate', None) else '',
+        "birthdate": _date_to_iso(getattr(c, 'birthdate', None)),
         "type": getattr(c, 'type', ''),
         "tax_id": getattr(c, 'tax_id', ''),
         "email": getattr(c, 'email', ''),
@@ -455,6 +498,15 @@ def _pdf_response(filename: str, content: bytes):
 @jwt_required()
 def orders_list():
     lab = _lab()
+    # Permission: sales_orders.read
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'sales_orders', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     items = Order.objects(lab=lab).order_by("-date")
     return jsonify({"items": [{"id": str(o.id), "number": o.number, "date": o.date.isoformat() if o.date else None, "total": o.total} for o in items]})
 
@@ -462,6 +514,15 @@ def orders_list():
 @jwt_required()
 def orders_get(oid):
     lab = _lab()
+    # Permission: sales_orders.read
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'sales_orders', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     o = Order.objects.get(id=oid, lab=lab)
     return jsonify({"order": _order_to_dict(o)})
 
@@ -490,6 +551,15 @@ def _next_number(lab: Laboratory, doc_type: str, series_id: str | None, fallback
 @jwt_required()
 def orders_create():
     lab = _lab()
+    # Permission: sales_orders.create
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'sales_orders', 'create')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     # Client required
     cli_id = (data.get("client") or '').strip()
@@ -526,6 +596,15 @@ def orders_create():
 @jwt_required()
 def orders_update(oid):
     lab = _lab()
+    # Permission: sales_orders.update
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'sales_orders', 'update')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     try:
         o = Order.objects.get(id=oid, lab=lab)
@@ -574,6 +653,15 @@ def orders_update(oid):
 def orders_pdf(oid):
     try:
         lab = _lab()
+        # Permission: sales_orders.read
+        try:
+            uid = get_jwt_identity()
+            user = User.objects.get(id=uid)
+            err = ensure(user, lab, 'sales_orders', 'read')
+            if err:
+                return jsonify(err), 403
+        except Exception:
+            pass
         o = Order.objects.get(id=oid, lab=lab)
         c_obj = None
         try:
@@ -605,6 +693,15 @@ def orders_pdf(oid):
 @jwt_required()
 def orders_email(oid):
     lab = _lab()
+    # Permission: sales_orders.read (for doc access) and implicit email right for now
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'sales_orders', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     to_raw = (data.get('to') or '').strip()
     cc_raw = (data.get('cc') or '').strip()
@@ -730,6 +827,14 @@ def orders_convert_to_invoice(oid):
     Optional payload: { "series": "<series_id>" } to select invoice series.
     """
     lab = _lab()
+    # Permission: sales_orders.update (conversion), and sales_invoices.create
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        if ensure(user, lab, 'sales_orders', 'update') or ensure(user, lab, 'sales_invoices', 'create'):
+            return jsonify({"error":"not allowed","action":"convert"}), 403
+    except Exception:
+        pass
     try:
         o = Order.objects.get(id=oid, lab=lab)
     except Exception:
@@ -762,6 +867,15 @@ def orders_convert_to_invoice(oid):
 @jwt_required()
 def invoices_list():
     lab = _lab()
+    # Permission: sales_invoices.read
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'sales_invoices', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     items = Invoice.objects(lab=lab).order_by("-date")
     return jsonify({"items": [{"id": str(i.id), "number": i.number, "date": i.date.isoformat() if i.date else None, "total": i.total, "status": i.status} for i in items]})
 
@@ -769,6 +883,15 @@ def invoices_list():
 @jwt_required()
 def invoices_get(iid):
     lab = _lab()
+    # Permission: sales_invoices.read
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'sales_invoices', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     inv = Invoice.objects.get(id=iid, lab=lab)
     return jsonify({"invoice": _invoice_to_dict(inv)})
 
@@ -776,6 +899,15 @@ def invoices_get(iid):
 @jwt_required()
 def invoices_create():
     lab = _lab()
+    # Permission: sales_invoices.create
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'sales_invoices', 'create')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     cli_id = (data.get("client") or '').strip()
     if not cli_id:
@@ -809,6 +941,15 @@ def invoices_create():
 @jwt_required()
 def invoices_update(iid):
     lab = _lab()
+    # Permission: sales_invoices.update
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'sales_invoices', 'update')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     try:
         inv = Invoice.objects.get(id=iid, lab=lab)
@@ -852,6 +993,15 @@ def invoices_update(iid):
 def invoices_pdf(iid):
     try:
         lab = _lab()
+        # Permission: sales_invoices.read
+        try:
+            uid = get_jwt_identity()
+            user = User.objects.get(id=uid)
+            err = ensure(user, lab, 'sales_invoices', 'read')
+            if err:
+                return jsonify(err), 403
+        except Exception:
+            pass
         inv = Invoice.objects.get(id=iid, lab=lab)
         c_obj = None
         try:
@@ -883,6 +1033,15 @@ def invoices_pdf(iid):
 @jwt_required()
 def invoices_email(iid):
     lab = _lab()
+    # Permission: sales_invoices.read (for doc access) and implicit email right for now
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'sales_invoices', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     to_raw = (data.get('to') or '').strip()
     cc_raw = (data.get('cc') or '').strip()
