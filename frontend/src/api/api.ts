@@ -61,18 +61,18 @@ function ensureAuthHeader(headers: unknown, token?: string | null): AxiosHeaders
  */
 api.interceptors.request.use(
   (config) => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    const token = typeof globalThis.window !== "undefined" ? localStorage.getItem("access_token") : null;
     config.headers = ensureAuthHeader(config.headers, token);
     // Propagate selected tenant to backend if present
     try {
-      const tid = typeof window !== 'undefined' ? localStorage.getItem('tenant_id') : null;
+      const tid = typeof globalThis.window !== 'undefined' ? localStorage.getItem('tenant_id') : null;
       if (tid) {
         const h = config.headers instanceof AxiosHeaders ? config.headers : AxiosHeaders.from(config.headers as any);
         if (!h.has('X-Tenant-Id')) h.set('X-Tenant-Id', tid);
         config.headers = h;
       }
       // Propagate language preference to backend
-      const lang = typeof window !== 'undefined' ? (localStorage.getItem('lang') || navigator.language || 'pt') : 'pt';
+      const lang = typeof globalThis.window !== 'undefined' ? (localStorage.getItem('lang') || navigator.language || 'pt') : 'pt';
       const h2 = config.headers instanceof AxiosHeaders ? config.headers : AxiosHeaders.from(config.headers as any);
       if (!h2.has('Accept-Language')) h2.set('Accept-Language', lang);
       config.headers = h2;

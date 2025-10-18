@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearTimer = () => {
     if (refreshTimer.current) {
-      window.clearTimeout(refreshTimer.current);
+      globalThis.clearTimeout(refreshTimer.current);
       refreshTimer.current = null;
     }
   };
@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const now = Date.now();
     // refrescar 60s antes de expirar, mínimo 5s
     const delay = Math.max(expMs - now - 60_000, 5_000);
-    refreshTimer.current = window.setTimeout(async () => {
+    refreshTimer.current = globalThis.setTimeout(async () => {
       try {
         await doRefresh();
       } catch {
@@ -200,8 +200,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Emit tenant changed on first selection so UI shows welcome and refreshes
           try {
             const ev = new CustomEvent('tenant:changed', { detail: { tenantId: chosen } });
-            window.dispatchEvent(ev);
-            window.dispatchEvent(new CustomEvent('tenant:refresh', { detail: { tenantId: chosen } }));
+            globalThis.dispatchEvent(ev);
+            globalThis.dispatchEvent(new CustomEvent('tenant:refresh', { detail: { tenantId: chosen } }));
           } catch {}
         }
 
@@ -265,8 +265,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem(LS_TENANT, chosen);
             try {
               const ev = new CustomEvent('tenant:changed', { detail: { tenantId: chosen } });
-              window.dispatchEvent(ev);
-              window.dispatchEvent(new CustomEvent('tenant:refresh', { detail: { tenantId: chosen } }));
+              globalThis.dispatchEvent(ev);
+              globalThis.dispatchEvent(new CustomEvent('tenant:refresh', { detail: { tenantId: chosen } }));
             } catch {}
           } else {
           setTenantId(null);
@@ -299,8 +299,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem(LS_TENANT, chosen);
             try {
               const ev = new CustomEvent('tenant:changed', { detail: { tenantId: chosen } });
-              window.dispatchEvent(ev);
-              window.dispatchEvent(new CustomEvent('tenant:refresh', { detail: { tenantId: chosen } }));
+              globalThis.dispatchEvent(ev);
+              globalThis.dispatchEvent(new CustomEvent('tenant:refresh', { detail: { tenantId: chosen } }));
             } catch {}
           } else {
             setTenantId(null);
@@ -328,7 +328,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Notify app to refresh data for the new tenant
     try {
       const ev = new CustomEvent('tenant:changed', { detail: { tenantId: id } });
-      window.dispatchEvent(ev);
+      globalThis.dispatchEvent(ev);
     } catch {}
   }, []);
 
@@ -368,3 +368,4 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
   return ctx;
 }
+
