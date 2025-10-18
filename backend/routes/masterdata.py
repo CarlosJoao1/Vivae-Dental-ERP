@@ -29,6 +29,9 @@ import os
 from services.permissions import ensure
 
 # Constants for error messages
+ERR_NOT_FOUND = ERR_NOT_FOUND
+ERR_CLIENT_EXISTS = "client exists"
+ERR_INVALID_COUNTRY_CODE = ERR_INVALID_COUNTRY_CODE
 ERROR_CLIENT_NOT_FOUND = "client not found"
 ERROR_ADDRESS_EXISTS = "address exists"
 
@@ -468,7 +471,7 @@ def labs_update(lab_id):
         lab.save()
         return jsonify({"laboratory": _lab_to_dict(lab)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -556,7 +559,7 @@ def patients_update(pid):
         p.save()
         return jsonify({"patient": _patient_to_dict(p)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -578,7 +581,7 @@ def patients_delete(pid):
         p.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
 
 # --- Technicians ---
 @bp.get("/technicians")
@@ -650,7 +653,7 @@ def techs_update(tid):
         t.save()
         return jsonify({"technician": _technician_to_dict(t)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -672,7 +675,7 @@ def techs_delete(tid):
         t.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
 
 # --- Services ---
 @bp.get("/services")
@@ -744,7 +747,7 @@ def services_update(sid):
         s.save()
         return jsonify({"service": _service_to_dict(s)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -766,7 +769,7 @@ def services_delete(sid):
         s.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
 
 # --- Document Types ---
 @bp.get("/document-types")
@@ -836,7 +839,7 @@ def doctypes_update(did):
         d.save()
         return jsonify({"document_type": _doctype_to_dict(d)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -858,7 +861,7 @@ def doctypes_delete(did):
         d.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
 
 # --- Clients ---
 @bp.get("/clients")
@@ -888,11 +891,11 @@ def clients_create():
         email = (data.get("email") or "").strip() or None
         # Duplicate check (per lab)
         if Client.objects(lab=lab, code=code).first():
-            return jsonify({"error": "client exists", "field": "code"}), 409
+            return jsonify({"error": ERR_CLIENT_EXISTS, "field": "code"}), 409
         if tax_id and Client.objects(lab=lab, tax_id=tax_id).first():
-            return jsonify({"error": "client exists", "field": "tax_id"}), 409
+            return jsonify({"error": ERR_CLIENT_EXISTS, "field": "tax_id"}), 409
         if email and Client.objects(lab=lab, email=email).first():
-            return jsonify({"error": "client exists", "field": "email"}), 409
+            return jsonify({"error": ERR_CLIENT_EXISTS, "field": "email"}), 409
 
         # Resolve references
         pc = None
@@ -921,7 +924,7 @@ def clients_create():
         # Validate country_code
         cc = (data.get("country_code") or '').upper() or None
         if cc and not Country.objects(code=cc).first():
-            return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+            return jsonify({"error": ERR_INVALID_COUNTRY_CODE, "field": "country_code"}), 400
         # Validate default_shipping_address code exists for this client within lab
         dsa = (data.get("default_shipping_address") or '').strip()
         if dsa:
@@ -985,24 +988,24 @@ def clients_update(cid):
                 new_code = c.code
             dup = Client.objects(lab=lab, code=new_code, id__ne=c.id).first()
             if dup:
-                return jsonify({"error": "client exists", "field": "code"}), 409
+                return jsonify({"error": ERR_CLIENT_EXISTS, "field": "code"}), 409
         tax_id = (data.get("tax_id") if "tax_id" in data else c.tax_id) or None
         email = (data.get("email") if "email" in data else c.email) or None
         # Duplicate check excluding current
         if tax_id:
             dup = Client.objects(lab=lab, tax_id=tax_id, id__ne=c.id).first()
             if dup:
-                return jsonify({"error": "client exists", "field": "tax_id"}), 409
+                return jsonify({"error": ERR_CLIENT_EXISTS, "field": "tax_id"}), 409
         if email:
             dup = Client.objects(lab=lab, email=email, id__ne=c.id).first()
             if dup:
-                return jsonify({"error": "client exists", "field": "email"}), 409
+                return jsonify({"error": ERR_CLIENT_EXISTS, "field": "email"}), 409
 
         # Normalize and validate country_code if present
         if 'country_code' in data:
             cc = (data.get('country_code') or '').upper() or None
             if cc and not Country.objects(code=cc).first():
-                return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+                return jsonify({"error": ERR_INVALID_COUNTRY_CODE, "field": "country_code"}), 400
             data['country_code'] = cc
         # Validate default_shipping_address if present (must belong to this client)
         if 'default_shipping_address' in data:
@@ -1048,7 +1051,7 @@ def clients_update(cid):
         c.save()
         return jsonify({"client": _client_to_dict(c)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -1061,7 +1064,7 @@ def clients_delete(cid):
         c.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
 
 # Single client
 @bp.get("/clients/<cid>")
@@ -1081,7 +1084,7 @@ def clients_get(cid):
         c = Client.objects.get(id=cid, lab=lab)
         return jsonify({"client": _client_to_dict(c)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
 
 # --- Financial: Currencies ---
 @bp.get("/financial/currencies")
@@ -1231,7 +1234,7 @@ def series_update(sid):
         s.save()
         return jsonify({"series": _series_to_dict(s)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -1578,7 +1581,7 @@ def countries_update(cid):
         c.save()
         return jsonify({"country": _country_to_dict(c)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -1598,7 +1601,7 @@ def countries_delete(cid):
         c.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
 
 # --- Shipping Addresses ---
 def _shipaddr_to_dict(a: ShippingAddress):
@@ -1720,7 +1723,7 @@ def shipaddrs_create():
         cc = (data.get('country_code') or '').upper() or None
         if cc:
             if not Country.objects(code=cc).first():
-                return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+                return jsonify({"error": ERR_INVALID_COUNTRY_CODE, "field": "country_code"}), 400
         a = ShippingAddress(
             lab=lab,
             client=cli,
@@ -1761,7 +1764,7 @@ def shipaddrs_update(aid):
         if 'country_code' in data:
             cc = (data.get('country_code') or '').upper() or None
             if cc and not Country.objects(code=cc).first():
-                return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+                return jsonify({"error": ERR_INVALID_COUNTRY_CODE, "field": "country_code"}), 400
             data['country_code'] = cc
         for f in ['code','address1','address2','postal_code','city','country_code']:
             if f in data:
@@ -1769,7 +1772,7 @@ def shipaddrs_update(aid):
         a.save()
         return jsonify({"shipping_address": _shipaddr_to_dict(a)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -1791,7 +1794,7 @@ def shipaddrs_delete(aid):
         a.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
 
 # Nested shipping addresses under a specific client
 @bp.get("/clients/<cid>/shipping-addresses")
@@ -1820,7 +1823,7 @@ def client_shipaddrs_create(cid):
             return jsonify({"error": ERROR_ADDRESS_EXISTS, "field": "code"}), 409
         cc = (data.get('country_code') or '').upper() or None
         if cc and not Country.objects(code=cc).first():
-            return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+            return jsonify({"error": ERR_INVALID_COUNTRY_CODE, "field": "country_code"}), 400
         a = ShippingAddress(
             lab=lab,
             client=cli,
@@ -1854,7 +1857,7 @@ def client_shipaddrs_update(cid, aid):
         if 'country_code' in data:
             cc = (data.get('country_code') or '').upper() or None
             if cc and not Country.objects(code=cc).first():
-                return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+                return jsonify({"error": ERR_INVALID_COUNTRY_CODE, "field": "country_code"}), 400
             data['country_code'] = cc
         for f in ['code','address1','address2','postal_code','city','country_code']:
             if f in data:
@@ -1862,7 +1865,7 @@ def client_shipaddrs_update(cid, aid):
         a.save()
         return jsonify({"shipping_address": _shipaddr_to_dict(a)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -1884,7 +1887,7 @@ def client_shipaddrs_delete(cid, aid):
         a.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
 
 # --- Client Prices (nested under client) ---
 @bp.get("/clients/<cid>/prices")
@@ -1955,7 +1958,7 @@ def client_prices_update(cid, pid):
         cp.save()
         return jsonify({"price": _clientprice_to_dict(cp)})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
 
@@ -1972,4 +1975,5 @@ def client_prices_delete(cid, pid):
         cp.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERR_NOT_FOUND}), 404
+
