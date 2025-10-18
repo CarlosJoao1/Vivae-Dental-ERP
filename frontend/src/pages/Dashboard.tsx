@@ -4,13 +4,34 @@ import api from '@/api/api';
 type Tenant = { id: string; name: string };
 export default function Dashboard() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [activeUsers, setActiveUsers] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { (async () => {
-      try { const { data } = await api.get('/tenants'); setTenants(data.tenants || []); }
-      catch (e: any) { setError(e?.response?.data?.error || 'Erro a carregar tenants'); }
-      finally { setLoading(false); }
-  })(); }, []);
+  useEffect(() => { 
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      try {
+        // /api/tenants devolve um ARRAY simples
+        const ten = await api.get('/tenants');
+        if (cancelled) return
+        const items: Tenant[] = Array.isArray(ten.data) ? ten.data : (ten.data?.tenants || []);
+        setTenants(items || []);
+        // /api/auth/stats devolve métricas para o dashboard
+        const st = await api.get('/auth/stats');
+        if (cancelled) return
+        const au = st?.data?.users_in_tenant;
+        setActiveUsers(typeof au === 'number' ? au : null);
+      } catch (e: any) {
+        if (cancelled) return
+        setError(e?.response?.data?.error || e?.message || 'Erro a carregar dados');
+      } finally { if (!cancelled) setLoading(false); }
+    }
+    load()
+    const handler = () => load()
+    window.addEventListener('tenant:changed', handler)
+    return () => { cancelled = true; window.removeEventListener('tenant:changed', handler) }
+  }, []);
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
@@ -24,8 +45,8 @@ export default function Dashboard() {
         </div>
         <div className="card hover:shadow-md transition cursor-pointer">
           <div className="text-sm text-gray-500">Utilizadores ativos</div>
-          <div className="text-3xl font-bold">—</div>
-          <div className="text-xs text-gray-500 mt-1">(por implementar)</div>
+          <div className="text-3xl font-bold">{activeUsers != null ? activeUsers : '—'}</div>
+          <div className="text-xs text-gray-500 mt-1">no laboratório ativo</div>
         </div>
       </section>
       <section className="card">

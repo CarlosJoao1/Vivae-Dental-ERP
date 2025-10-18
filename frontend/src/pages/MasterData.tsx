@@ -5,14 +5,18 @@ import {
   listTechnicians, createTechnician, updateTechnician, deleteTechnician,
   listServices, createService, updateService, deleteService,
   listDocumentTypes, createDocumentType, updateDocumentType, deleteDocumentType,
-  Client, Patient, Laboratory, listLaboratories, updateLaboratory,
+  Client, Patient, Laboratory, listLaboratories, createLaboratory, updateLaboratory,
   listCurrencies, createCurrency, listPaymentTypes, createPaymentType, listPaymentForms, createPaymentForm, listPaymentMethods, createPaymentMethod,
   listSeries, createSeries, updateSeries, getSmtpConfig, updateSmtpConfig, testSmtp, diagnoseSmtp, type SmtpConfig,
   listCountries, createCountry, updateCountry, deleteCountry, type Country,
   listShippingAddresses, createShippingAddress, updateShippingAddress, deleteShippingAddress, type ShippingAddress
 } from '@/api/masterdata'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '@/context/AuthContext'
+import { listUsers, updateUserAllowedLabs, updateUserRole, updateUserTenant } from '@/api/auth'
 import ClientsManager from '@/pages/ClientsManager'
+import { registerUser } from '@/api/auth'
+import { listFeatures as listRoleFeatures, getPolicies as getRolePolicies, updatePolicies as saveRolePolicies } from '@/api/roles'
 
 function useList<T>(fetcher: (q?: string) => Promise<{ total: number, items: T[] }>) {
   const [q, setQ] = React.useState('')
@@ -69,10 +73,9 @@ function Clients(){
     { code:'', name:'', first_name:'', last_name:'', gender:'other', birthdate:'', address:'', postal_code:'', country_code:'', type:'clinic', tax_id:'', email:'', phone:'', default_shipping_address:'', location_code:'', preferred_currency:'', payment_type:'', payment_form:'', payment_method:'' }
   )
   const [err, setErr] = React.useState<string>('')
-  // Countries & shipping addresses for selects
+  // Countries for selects
   const [countries, setCountries] = React.useState<any[]>([])
-  const [shipAddrs, setShipAddrs] = React.useState<any[]>([])
-  React.useEffect(()=>{ (async()=>{ try{ const cs = await listCountries(); setCountries(cs.items||[]) }catch{} try{ const sa = await listShippingAddresses(); setShipAddrs(sa.items||[]) }catch{} })() }, [])
+  React.useEffect(()=>{ (async()=>{ try{ const cs = await listCountries(); setCountries(cs.items||[]) }catch{} })() }, [])
   // Financial lists for selects
   const [currs, setCurrs] = React.useState<any[]>([])
   const [payTypes, setPayTypes] = React.useState<any[]>([])
@@ -105,7 +108,17 @@ function Clients(){
   const [editing, setEditing] = React.useState<Client | null>(null)
   const [editForm, setEditForm] = React.useState<Partial<Client>>({})
   const [editErr, setEditErr] = React.useState<string>('')
-  const openEdit = (c: Client) => { setEditing(c); setEditForm({ ...c }) }
+  const [clientAddrs, setClientAddrs] = React.useState<ShippingAddress[]>([])
+  const [addrErr, setAddrErr] = React.useState<string>('')
+  const [addrForm, setAddrForm] = React.useState<Partial<ShippingAddress>>({ code:'', address1:'', address2:'', postal_code:'', city:'', country_code:'' })
+  const [addrEditingId, setAddrEditingId] = React.useState<string>('')
+  const loadClientAddrs = React.useCallback(async (cid: string)=>{
+    try {
+      const { items } = await listShippingAddresses();
+      setClientAddrs((items||[]).filter(a => (a as any).client === cid))
+    } catch { setClientAddrs([]) }
+  }, [])
+  const openEdit = (c: Client) => { setEditing(c); setEditForm({ ...c }); if (c.id) loadClientAddrs(c.id) }
   const closeEdit = () => { setEditing(null); setEditForm({}) }
   const saveEdit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -154,7 +167,6 @@ function Clients(){
         <input placeholder={t('tax_id') as string} value={form.tax_id} onChange={e=>setForm({...form, tax_id: e.target.value})} className="input" />
         <select value={form.default_shipping_address||''} onChange={e=>setForm({...form, default_shipping_address: e.target.value})} className="input">
           <option value="">{t('default_shipping_address') as string || 'Endereço Envio (predef.)'}</option>
-          {shipAddrs.map((a:any)=> (<option key={a.id} value={a.code}>{a.code} - {a.address1}</option>))}
         </select>
         <input placeholder={t('location_code') as string || 'Código Localização'} value={form.location_code||''} onChange={e=>setForm({...form, location_code: e.target.value})} className="input" />
         <select value={form.preferred_currency||''} onChange={e=>setForm({...form, preferred_currency: e.target.value})} className="input">
@@ -227,7 +239,7 @@ function Clients(){
           <input placeholder={t('tax_id') as string} value={editForm.tax_id || ''} onChange={e=>setEditForm({...editForm, tax_id: e.target.value})} className="input" />
           <select value={(editForm as any).default_shipping_address || ''} onChange={e=>setEditForm({...editForm, default_shipping_address: e.target.value})} className="input">
             <option value="">{t('default_shipping_address') as string || 'Endereço Envio (predef.)'}</option>
-            {shipAddrs.map((a:any)=> (<option key={a.id} value={a.code}>{a.code} - {a.address1}</option>))}
+            {clientAddrs.map((a:any)=> (<option key={a.id} value={a.code}>{a.code} - {a.address1}</option>))}
           </select>
           <input placeholder={t('location_code') as string || 'Código Localização'} value={(editForm as any).location_code || ''} onChange={e=>setEditForm({...editForm, location_code: e.target.value})} className="input" />
           <select value={(editForm as any).preferred_currency || ''} onChange={e=>setEditForm({...editForm, preferred_currency: e.target.value})} className="input">
@@ -251,6 +263,52 @@ function Clients(){
             <button type="submit" className="px-3 py-1 rounded bg-gray-900 text-white dark:bg-gray-700">{t('save')}</button>
           </div>
         </form>
+        {/* Client Shipping Addresses subsection (outside the client form to avoid nested forms) */}
+        <div className="mt-4">
+          <div className="text-sm font-semibold mb-2">{t('shipping_addresses') as string || 'Shipping Addresses'}</div>
+          {addrErr && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{addrErr}</div>}
+          <form onSubmit={async (e)=>{
+            e.preventDefault(); if (!editing?.id) return; setAddrErr('')
+            try {
+              const body = { ...addrForm, country_code: (addrForm.country_code||'').toUpperCase() }
+              if (addrEditingId) {
+                await updateShippingAddress(addrEditingId, { ...body, client: editing.id });
+                setAddrEditingId('')
+              } else {
+                await createShippingAddress({ ...body, client: editing.id })
+              }
+              setAddrForm({ code:'', address1:'', address2:'', postal_code:'', city:'', country_code:'' }); loadClientAddrs(editing.id)
+            } catch(e:any) { setAddrErr(e?.response?.data?.error || e?.message || 'Error') }
+          }} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+            <input placeholder={(t('code') as string)||'Code'} value={String(addrForm.code||'')} onChange={e=>setAddrForm({...addrForm, code:e.target.value})} className="input" />
+            <input placeholder={(t('address1') as string)||'Address 1'} value={String(addrForm.address1||'')} onChange={e=>setAddrForm({...addrForm, address1:e.target.value})} className="input col-span-2" />
+            <input placeholder={(t('address2') as string)||'Address 2'} value={String(addrForm.address2||'')} onChange={e=>setAddrForm({...addrForm, address2:e.target.value})} className="input col-span-2" />
+            <input placeholder={(t('postal_code') as string)||'Postal Code'} value={String(addrForm.postal_code||'')} onChange={e=>setAddrForm({...addrForm, postal_code:e.target.value})} className="input" />
+            <input placeholder={(t('city') as string)||'City'} value={String(addrForm.city||'')} onChange={e=>setAddrForm({...addrForm, city:e.target.value})} className="input" />
+            <select value={String(addrForm.country_code||'')} onChange={e=>setAddrForm({...addrForm, country_code:e.target.value})} className="input">
+              <option value="">{(t('country') as string)||'Country'}</option>
+              {countries.map((c:any)=> (<option key={c.id} value={c.code}>{c.code} - {c.name}</option>))}
+            </select>
+            <button className="btn btn-primary">{addrEditingId ? (t('save') as string) : (t('create') as string)}</button>
+          </form>
+          <table className="w-full text-sm"><thead><tr>
+            <th>{t('code')}</th><th>{t('address1')||'Address 1'}</th><th>{t('postal_code')||'Postal Code'}</th><th>{t('city')||'City'}</th><th>{t('country')||'Country'}</th><th></th>
+          </tr></thead><tbody>
+            {clientAddrs.map((a:any)=> (
+              <tr key={a.id} className="border-t">
+                <td className="text-center">{a.code}</td>
+                <td className="text-center">{a.address1}</td>
+                <td className="text-center">{a.postal_code}</td>
+                <td className="text-center">{a.city}</td>
+                <td className="text-center">{a.country_code}</td>
+                <td className="text-right px-2 py-1 flex gap-2 justify-end">
+                  <button type="button" className="text-blue-600" onClick={()=>{ setAddrEditingId(a.id as string); setAddrForm({ code:a.code, address1:a.address1, address2:a.address2, postal_code:a.postal_code, city:a.city, country_code:a.country_code }) }}>{t('edit')}</button>
+                  <button type="button" className="text-red-600" onClick={async()=>{ if (!editing?.id) return; await deleteShippingAddress(a.id as string); loadClientAddrs(editing.id) }}>{t('remove')}</button>
+                </td>
+              </tr>
+            ))}
+          </tbody></table>
+        </div>
       </Modal>
     </div>
   )
@@ -450,7 +508,8 @@ function SimpleFinList({ title, loader, creator }:{ title:string, loader:()=>Pro
 
 export default function MasterData(){
   const { t } = useTranslation()
-  const tabs: Array<{key: 'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp'|'lab'|'countries'|'shipping_addresses', label: string}> = [
+  const { user } = useAuth()
+  const tabs: Array<{key: 'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp'|'lab'|'countries', label: string}> = [
     { key: 'lab', label: (t('laboratory') as string) || 'Laboratory' },
     { key: 'clients', label: t('clients') as string },
     { key: 'clients_list', label: (t('all_clients') as string) || 'Todos os Clientes' },
@@ -458,8 +517,7 @@ export default function MasterData(){
     { key: 'technicians', label: t('technicians') as string },
     { key: 'services', label: t('services') as string },
     { key: 'doctypes', label: t('document_types') as string },
-    { key: 'countries', label: (t('countries') as string) || 'Countries' },
-    { key: 'shipping_addresses', label: (t('shipping_addresses') as string) || 'Shipping Addresses' },
+  { key: 'countries', label: (t('countries') as string) || 'Countries' },
     { key: 'currencies', label: t('currencies') as string },
     { key: 'payment_types', label: t('payment_types') as string },
     { key: 'payment_forms', label: t('payment_forms') as string },
@@ -467,12 +525,22 @@ export default function MasterData(){
     { key: 'series', label: (t('series') as string) || 'Series' },
     { key: 'smtp', label: (t('smtp_settings') as string) || 'SMTP' },
   ]
-  const [tab, setTab] = React.useState<'lab'|'clients'|'clients_list'|'patients'|'technicians'|'services'|'doctypes'|'countries'|'shipping_addresses'|'currencies'|'payment_types'|'payment_forms'|'payment_methods'|'series'|'smtp'>('clients')
+  // If sysadmin, add Users tab dynamically
+  const sysadmin = !!(user && (user as any).is_sysadmin)
+  const isAdmin = !!(user && !sysadmin && String((user as any).role||'').toLowerCase()==='admin')
+  const extraTabs = sysadmin
+    ? [
+        { key: 'users', label: (t('users') as string) || 'Users' },
+        { key: 'permissions', label: (t('permissions') as string) || 'Permissions' },
+      ] as any[]
+    : (isAdmin ? [ { key: 'permissions', label: (t('permissions') as string) || 'Permissions' } ] as any[] : [])
+  const allTabs = [...tabs, ...extraTabs]
+  const [tab, setTab] = React.useState<any>('clients')
   return (
     <div>
       <h1 className="text-xl font-semibold mb-4">{t('masterdata')}</h1>
       <div className="flex gap-2 mb-4">
-        {tabs.map(ti => (
+        {allTabs.map(ti => (
           <button key={ti.key} onClick={()=>setTab(ti.key)} className={`px-3 py-1 rounded border ${tab===ti.key?'bg-gray-900 text-white dark:bg-gray-700':''}`}>{ti.label}</button>
         ))}
       </div>
@@ -484,14 +552,15 @@ export default function MasterData(){
         {tab==='technicians' && <Technicians/>}
         {tab==='services' && <Services/>}
         {tab==='doctypes' && <DocumentTypes/>}
-        {tab==='countries' && <CountriesTab />}
-        {tab==='shipping_addresses' && <ShippingAddressesTab />}
+  {tab==='countries' && <CountriesTab />}
         {tab==='currencies' && <Currencies/>}
         {tab==='payment_types' && <SimpleFinList title={t('payment_types') as string} loader={listPaymentTypes} creator={createPaymentType} />}
         {tab==='payment_forms' && <SimpleFinList title={t('payment_forms') as string} loader={listPaymentForms} creator={createPaymentForm} />}
         {tab==='payment_methods' && <SimpleFinList title={t('payment_methods') as string} loader={listPaymentMethods} creator={createPaymentMethod} />}
         {tab==='series' && <SeriesTab />}
         {tab==='smtp' && <SmtpTab />}
+        {tab==='users' && sysadmin && <UsersAdmin />}
+        {tab==='permissions' && (sysadmin || isAdmin) && <PermissionsTab />}
       </div>
     </div>
   )
@@ -625,9 +694,14 @@ function ShippingAddressesTab(){
 
 function LabSettings(){
   const { t } = useTranslation()
+  const { user } = useAuth()
+  const sysadmin = !!(user && (user as any).is_sysadmin)
   const [labs, setLabs] = React.useState<Laboratory[]>([])
   const [form, setForm] = React.useState<Partial<Laboratory>>({})
   const [labId, setLabId] = React.useState<string>('')
+  const [newLab, setNewLab] = React.useState<Partial<Laboratory>>({ name: '' })
+  const [userForm, setUserForm] = React.useState<{ username: string; password: string; email: string; role: 'admin'|'manager'|'operator'|'user' }>({ username:'', password:'', email:'', role:'user' })
+  const [userErr, setUserErr] = React.useState<string>('')
   const reload = async ()=>{
     const { laboratories } = await listLaboratories()
     setLabs(laboratories||[])
@@ -639,8 +713,31 @@ function LabSettings(){
   return (
     <div>
       <SectionHeader title={t('laboratory') as string || 'Laboratory'} onReload={reload} />
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <label className="text-sm opacity-80">{t('select')||'Select'}:</label>
+        <select value={labId} onChange={(e)=>{
+          const id = e.target.value; setLabId(id);
+          const found = labs.find(l=> (l.id as string) === id);
+          if (found) setForm(found);
+        }} className="input">
+          <option value="">{t('choose')||'Choose...'}</option>
+          {labs.map(l=> (<option key={l.id} value={l.id as string}>{l.name}</option>))}
+        </select>
+        {sysadmin && (
+        <div className="ml-auto flex items-center gap-2">
+          <input placeholder={(t('name') as string) || 'Name'} value={newLab.name||''} onChange={e=>setNewLab({ ...newLab, name: e.target.value })} className="input" />
+          <button type="button" className="px-3 py-1 rounded border" onClick={async()=>{
+            if (!newLab.name) return; try {
+              const created = await createLaboratory({ name: newLab.name as string, active: true });
+              setNewLab({ name: '' }); await reload(); if (created?.id) { setLabId(created.id as string); setForm(created); }
+            } catch {}
+          }}>{t('create')||'Create'}</button>
+        </div>
+        )}
+      </div>
       {!labId && <div className="text-sm text-gray-500">{t('loading')||'Loading...'}</div>}
       {labId && (
+        <>
         <form onSubmit={save} className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <input placeholder={t('name') as string || 'Name'} value={form.name||''} onChange={e=>setForm({...form, name:e.target.value})} className="input" />
           <input placeholder={t('address') as string || 'Address'} value={form.address||''} onChange={e=>setForm({...form, address:e.target.value})} className="input col-span-2" />
@@ -656,7 +753,202 @@ function LabSettings(){
             <button className="btn btn-primary">{t('save') as string || 'Save'}</button>
           </div>
         </form>
+
+        <div className="mt-6 border-t pt-4">
+          <div className="text-base font-semibold mb-2">{t('create_user') || 'Create User'}</div>
+          {userErr && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{userErr}</div>}
+          <form onSubmit={async (e)=>{
+            e.preventDefault();
+            setUserErr('');
+            if (!userForm.username || !userForm.password) { setUserErr('username & password required'); return; }
+            try {
+              await registerUser({ username: userForm.username, password: userForm.password, email: userForm.email, role: userForm.role, tenant_id: labId });
+              setUserForm({ username:'', password:'', email:'', role:'user' });
+              alert('User created');
+            } catch (e:any) {
+              setUserErr(e?.response?.data?.error || e?.message || 'Error');
+            }
+          }} className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <input placeholder={t('username') as string || 'Username'} value={userForm.username} onChange={e=>setUserForm({...userForm, username:e.target.value})} className="input" />
+            <input type="password" placeholder={t('password') as string || 'Password'} value={userForm.password} onChange={e=>setUserForm({...userForm, password:e.target.value})} className="input" />
+            <input type="email" placeholder={t('email') as string || 'Email'} value={userForm.email} onChange={e=>setUserForm({...userForm, email:e.target.value})} className="input" />
+            <select value={userForm.role} onChange={e=>setUserForm({...userForm, role: e.target.value as any})} className="input">
+              <option value="user">User</option>
+              <option value="operator">Operator</option>
+              <option value="manager">Manager</option>
+              <option value="admin">Admin</option>
+            </select>
+            <div className="col-span-2 md:col-span-4 flex justify-end">
+              <button className="btn btn-primary">{t('create') as string || 'Create'}</button>
+            </div>
+          </form>
+        </div>
+        </>
       )}
+    </div>
+  )
+}
+
+function UsersAdmin(){
+  const { t } = useTranslation()
+  const [loading, setLoading] = React.useState(false)
+  const [items, setItems] = React.useState<Array<{ id: string; username: string; email?: string; role: string; tenant_id?: string | null; allowed_labs: string[] }>>([])
+  const [labs, setLabs] = React.useState<Laboratory[]>([])
+  // Create user form
+  const [newUser, setNewUser] = React.useState<{ username: string; password: string; email: string; role: 'user'|'operator'|'manager'|'admin'; labIds: string[]; tenantId: string }>(
+    { username: '', password: '', email: '', role: 'user', labIds: [], tenantId: '' }
+  )
+  const [createErr, setCreateErr] = React.useState<string>('')
+  const roleOptions = [
+    { value: 'user', label: 'User' },
+    { value: 'operator', label: 'Operator' },
+    { value: 'manager', label: 'Manager' },
+    { value: 'admin', label: 'Admin' },
+  ]
+  const reload = async ()=>{
+    setLoading(true)
+    try{
+      const [u, labRes] = await Promise.all([listUsers(), listLaboratories()])
+      setItems(u.items || [])
+      setLabs(labRes.laboratories || [])
+    } finally { setLoading(false) }
+  }
+  React.useEffect(()=>{ reload() }, [])
+  return (
+    <div>
+      <SectionHeader title={(t('users') as string) || 'Users'} onReload={reload} />
+      {/* Create User Panel */}
+      <div className="mb-4 border rounded p-3">
+        <div className="text-sm font-semibold mb-2">{t('create_user') || 'Create User'}</div>
+        {createErr && <div className="mb-2 p-2 rounded bg-red-50 text-red-700 text-xs border border-red-200">{createErr}</div>}
+        <form onSubmit={async (e)=>{
+          e.preventDefault();
+          setCreateErr('')
+          if (!newUser.username || !newUser.password) { setCreateErr('username & password required'); return }
+          try {
+            // Ensure tenant is included in allowed labs if provided
+            const labIds = new Set(newUser.labIds || [])
+            if (newUser.tenantId) labIds.add(newUser.tenantId)
+            const tenant_id = newUser.tenantId || undefined
+            const created = await registerUser({ username: newUser.username, password: newUser.password, email: newUser.email, role: newUser.role, tenant_id })
+            const uid = created.id
+            const idsArr = Array.from(labIds)
+            if (idsArr.length) {
+              await updateUserAllowedLabs(uid, idsArr)
+            }
+            if (tenant_id) {
+              await updateUserTenant(uid, tenant_id)
+            }
+            setNewUser({ username: '', password: '', email: '', role: 'user', labIds: [], tenantId: '' })
+            await reload()
+          } catch (err: any) {
+            setCreateErr(err?.response?.data?.error || err?.message || 'Error')
+          }
+        }} className="grid grid-cols-2 md:grid-cols-6 gap-2">
+          <input className="input" placeholder={t('username') as string || 'Username'} value={newUser.username} onChange={e=>setNewUser({...newUser, username: e.target.value})} />
+          <input className="input" type="password" placeholder={t('password') as string || 'Password'} value={newUser.password} onChange={e=>setNewUser({...newUser, password: e.target.value})} />
+          <input className="input" type="email" placeholder={t('email') as string || 'Email'} value={newUser.email} onChange={e=>setNewUser({...newUser, email: e.target.value})} />
+          <select className="input" value={newUser.role} onChange={e=>setNewUser({...newUser, role: e.target.value as any})}>
+            {roleOptions.map(r => (<option key={r.value} value={r.value}>{r.label}</option>))}
+          </select>
+          <select className="input" value={newUser.tenantId} onChange={e=>setNewUser({...newUser, tenantId: e.target.value})}>
+            <option value="">{t('laboratory') || 'Laboratory'} — {t('optional') || 'optional'}</option>
+            {labs.map(l => (<option key={`t-${l.id}`} value={l.id as string}>{l.name}</option>))}
+          </select>
+          <div className="col-span-2 md:col-span-6">
+            <div className="text-xs text-gray-600 mb-1">{t('permissions') || 'Permissions'}: {t('laboratories') || 'Laboratories'}</div>
+            <div className="flex flex-wrap gap-2">
+              {labs.map(l => {
+                const checked = newUser.labIds.includes(l.id as string)
+                return (
+                  <label key={`nu-${l.id}`} className="flex items-center gap-1 text-xs border rounded px-2 py-1">
+                    <input type="checkbox" checked={checked} onChange={(e)=>{
+                      const next = new Set(newUser.labIds)
+                      if (e.target.checked) next.add(l.id as string)
+                      else next.delete(l.id as string)
+                      setNewUser({...newUser, labIds: Array.from(next)})
+                    }} />
+                    {l.name}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+          <div className="col-span-2 md:col-span-6 flex justify-end">
+            <button className="btn btn-primary">{t('create') as string || 'Create'}</button>
+          </div>
+        </form>
+      </div>
+      {loading && <div className="text-sm opacity-70">{t('loading')||'Loading...'}</div>}
+      <table className="w-full text-sm">
+        <thead><tr><th className="text-left">{t('username')||'Username'}</th><th>{t('email')||'Email'}</th><th>{t('role')||'Role'}</th><th>{t('laboratory')||'Laboratory'}</th><th>{t('permissions')||'Permissions'}</th></tr></thead>
+        <tbody>
+          {items.map(u => (
+            <tr key={u.id} className="border-t">
+              <td className="py-1">{u.username}</td>
+              <td className="text-center">{u.email||''}</td>
+              <td className="text-center">
+                <select
+                  className="input"
+                  value={u.role || 'user'}
+                  onChange={async (e)=>{
+                    const role = e.target.value
+                    try {
+                      await updateUserRole(u.id, role)
+                      setItems(prev => prev.map(x => x.id===u.id ? { ...x, role } : x))
+                    } catch (err: any) {
+                      alert(err?.response?.data?.error || err?.message || 'Error')
+                    }
+                  }}
+                >
+                  {roleOptions.map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </td>
+              <td className="text-center">
+                <select
+                  className="input"
+                  value={u.tenant_id || ''}
+                  onChange={async (e)=>{
+                    const tenantId = e.target.value
+                    try {
+                      await updateUserTenant(u.id, tenantId || null)
+                      setItems(prev => prev.map(x => x.id===u.id ? { ...x, tenant_id: tenantId || null } : x))
+                    } catch (err: any) {
+                      alert(err?.response?.data?.error || err?.message || 'Error')
+                    }
+                  }}
+                >
+                  <option value="">—</option>
+                  {labs
+                    .filter(l => (u.allowed_labs || []).includes(l.id as string))
+                    .map(l => (<option key={l.id} value={l.id as string}>{l.name}</option>))}
+                </select>
+              </td>
+              <td className="px-2 py-1">
+                <div className="flex flex-wrap gap-2 items-center">
+                  {labs.map(l => {
+                    const checked = u.allowed_labs?.includes(l.id as string)
+                    return (
+                      <label key={`${u.id}-${l.id}`} className="flex items-center gap-1 text-xs border rounded px-2 py-1">
+                        <input type="checkbox" checked={!!checked} onChange={async (e)=>{
+                          const next = new Set(u.allowed_labs || [])
+                          if (e.target.checked) next.add(l.id as string)
+                          else next.delete(l.id as string)
+                          await updateUserAllowedLabs(u.id, Array.from(next))
+                          setItems(prev => prev.map(x => x.id===u.id ? { ...x, allowed_labs: Array.from(next), tenant_id: (x.tenant_id && !Array.from(next).includes(x.tenant_id)) ? null : x.tenant_id } : x))
+                        }} />
+                        {l.name}
+                      </label>
+                    )
+                  })}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -762,6 +1054,75 @@ function SmtpTab(){
           </div>
         )}
       </form>
+    </div>
+  )
+}
+
+function PermissionsTab(){
+  const { t } = useTranslation()
+  const [features, setFeatures] = React.useState<any[]>([])
+  const [policies, setPolicies] = React.useState<Record<string, Record<string, Record<string, boolean>>>>({})
+  const [loading, setLoading] = React.useState(false)
+  const roles = ['admin','manager','operator','user']
+  const reload = async ()=>{
+    setLoading(true)
+    try {
+      const [f, p] = await Promise.all([listRoleFeatures(), getRolePolicies()])
+      setFeatures(f.items || [])
+      setPolicies(p.policies || {})
+    } finally { setLoading(false) }
+  }
+  React.useEffect(()=>{ reload() }, [])
+  const toggle = (role: string, feature: string, action: string)=>{
+    const next = { ...policies }
+    if (!next[role]) next[role] = {}
+    if (!next[role][feature]) next[role][feature] = {}
+    next[role][feature][action] = !next[role][feature][action]
+    setPolicies(next)
+  }
+  const save = async ()=>{
+    await saveRolePolicies(policies)
+    await reload()
+  }
+  return (
+    <div>
+      <SectionHeader title={(t('permissions') as string) || 'Permissions'} onReload={reload} />
+      {loading && <div className="text-sm opacity-70">{t('loading')||'Loading...'}</div>}
+      <div className="overflow-auto">
+        <table className="w-full text-sm min-w-[800px]">
+          <thead>
+            <tr>
+              <th className="text-left">{t('feature')||'Feature'}</th>
+              {roles.map(r => (<th key={r} className="text-center capitalize">{r}</th>))}
+            </tr>
+          </thead>
+          <tbody>
+            {features.map((f:any)=> (
+              <tr key={f.key} className="border-t">
+                <td className="py-1">{f.label}</td>
+                {roles.map(r => (
+                  <td key={`${f.key}-${r}`} className="text-center">
+                    <div className="flex gap-2 justify-center flex-wrap">
+                      {(f.actions||[]).map((a:string)=>{
+                        const checked = !!policies?.[r]?.[f.key]?.[a]
+                        return (
+                          <label key={`${f.key}-${r}-${a}`} className="inline-flex items-center gap-1 text-xs border rounded px-2 py-1">
+                            <input type="checkbox" checked={checked} onChange={()=>toggle(r, f.key, a)} />
+                            {a}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-3 flex justify-end">
+        <button onClick={save} className="btn btn-primary">{t('save') as string || 'Save'}</button>
+      </div>
     </div>
   )
 }

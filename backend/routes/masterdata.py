@@ -1,12 +1,13 @@
 # backend/routes/masterdata.py
 from flask import Blueprint, request, jsonify, current_app
-from flask_jwt_extended import jwt_required, get_jwt
+from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from mongoengine.errors import ValidationError, DoesNotExist
 from mongoengine.queryset.visitor import Q
 from typing import Tuple
-from datetime import date
+from datetime import date, datetime
 
 from models.laboratory import Laboratory
+from models.user import User
 from models.patient import Patient
 from models.technician import Technician
 from models.service import Service
@@ -20,10 +21,12 @@ from models.series import Series
 from models.country import Country
 from models.shipping_address import ShippingAddress
 from models.smtp_config import SmtpConfig
+from models.client_price import ClientPrice
 import smtplib
 from email.message import EmailMessage
 import socket
 import os
+from services.permissions import ensure
 
 bp = Blueprint("masterdata", __name__, url_prefix="/api/masterdata")
 
@@ -39,7 +42,30 @@ def _q() -> str:
 
 
 def _lab() -> Laboratory:
-    """Resolve lab a partir do JWT (tenant_id) ou fallback p/ primeiro laboratório."""
+    """Resolve active lab with header override (X-Tenant-Id) respecting permissions.
+
+    Priority:
+      1) If X-Tenant-Id header present and user allowed (or sysadmin), use it.
+      2) Else use tenant_id claim from JWT.
+      3) Else fallback to first lab (create default if missing).
+    """
+    # Header override when permitted
+    try:
+        uid = get_jwt_identity()
+    except Exception:
+        uid = None
+    header_tid = (request.headers.get("X-Tenant-Id") or "").strip()
+    if uid and header_tid:
+        try:
+            user = User.objects.get(id=uid)
+            if getattr(user, 'is_sysadmin', False):
+                return Laboratory.objects.get(id=header_tid)
+            allowed_ids = [str(getattr(x, 'id', '')) for x in (getattr(user, 'allowed_labs', []) or [])]
+            if header_tid in allowed_ids:
+                return Laboratory.objects.get(id=header_tid)
+        except Exception:
+            pass
+    # JWT tenant_id
     claims = get_jwt() or {}
     tid = claims.get("tenant_id")
     try:
@@ -57,9 +83,89 @@ def _age_from_birthdate(dt) -> int | None:
     try:
         if not dt:
             return None
+        # Accept both date and str
+        b = _parse_date(dt)
+        if not b:
+            return None
         today = date.today()
-        years = today.year - dt.year - ((today.month, today.day) < (dt.month, dt.day))
+        years = today.year - b.year - ((today.month, today.day) < (b.month, b.day))
         return years
+    except Exception:
+        return None
+
+# --- Date helpers ---
+def _parse_date(val) -> date | None:
+    """Parse various date-like inputs to a date object.
+
+    Accepts:
+      - date -> returns as-is
+      - datetime -> returns .date()
+      - str (YYYY-MM-DD or ISO) -> parsed to date
+      - empty/None -> None
+    """
+    if val is None:
+        return None
+    if isinstance(val, date) and not isinstance(val, datetime):
+        return val
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, str):
+        s = val.strip()
+        if not s:
+            return None
+        # Try ISO date first, also tolerate full ISO datetime by slicing first 10 chars
+        try:
+            if len(s) >= 10:
+                return date.fromisoformat(s[:10])
+        except Exception:
+            pass
+        # Try common alt formats
+        for fmt in ("%d/%m/%Y", "%Y/%m/%d", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(s, fmt).date()
+            except Exception:
+                continue
+        return None
+    return None
+
+def _date_to_iso(val) -> str | None:
+    """Serialize date/datetime or pre-existing string to ISO date string (YYYY-MM-DD)."""
+    if not val:
+        return None
+    if isinstance(val, str):
+        # Assume already a date-like string
+        s = val.strip()
+        return s or None
+    if isinstance(val, datetime):
+        return val.date().isoformat()
+    if isinstance(val, date):
+        return val.isoformat()
+    # Unknown type
+    try:
+        # last resort: attempt parse then iso
+        d = _parse_date(val)
+        return d.isoformat() if d else None
+    except Exception:
+        return None
+
+def _dt_to_iso(val) -> str | None:
+    """Serialize datetime-like value to full ISO 8601 string if possible, falling back to date-only when needed."""
+    if not val:
+        return None
+    if isinstance(val, str):
+        s = val.strip()
+        return s or None
+    if isinstance(val, datetime):
+        try:
+            return val.isoformat()
+        except Exception:
+            return None
+    if isinstance(val, date):
+        return val.isoformat()
+    try:
+        # No reliable parse to datetime; attempt parse to date
+        d = _parse_date(val)
+        return d.isoformat() if d else None
     except Exception:
         return None
 
@@ -88,13 +194,13 @@ def _patient_to_dict(p: Patient):
         "first_name": getattr(p, "first_name", None),
         "last_name": getattr(p, "last_name", None),
         "gender": getattr(p, "gender", None),
-        "birthdate": p.birthdate.isoformat() if getattr(p, "birthdate", None) else None,
+        "birthdate": _date_to_iso(getattr(p, "birthdate", None)),
         "age": _age_from_birthdate(getattr(p, "birthdate", None)),
         "email": p.email or "",
         "phone": p.phone or "",
         "address": getattr(p, "address", "") or "",
         "notes": p.notes or "",
-        "created_at": getattr(p, "created_at", None).isoformat() if getattr(p, "created_at", None) else None,
+    "created_at": _dt_to_iso(getattr(p, "created_at", None)),
     }
 
 def _technician_to_dict(t: Technician):
@@ -139,8 +245,8 @@ def _client_to_dict(c: Client):
         "first_name": getattr(c, "first_name", None),
         "last_name": getattr(c, "last_name", None),
         "gender": getattr(c, "gender", None),
-        "birthdate": c.birthdate.isoformat() if getattr(c, "birthdate", None) else None,
-        "age": _age_from_birthdate(getattr(c, "birthdate", None)),
+    "birthdate": _date_to_iso(getattr(c, "birthdate", None)),
+    "age": _age_from_birthdate(getattr(c, "birthdate", None)),
         "email": c.email or "",
         "phone": c.phone or "",
         "address": getattr(c, "address", "") or "",
@@ -150,12 +256,12 @@ def _client_to_dict(c: Client):
         "tax_id": c.tax_id or "",
         "billing_address": c.billing_address or {},
         "shipping_address": c.shipping_address or {},
-    "default_shipping_address": getattr(c, "default_shipping_address", "") or "",
+	"default_shipping_address": getattr(c, "default_shipping_address", "") or "",
         "payment_terms": c.payment_terms or "",
         "notes": c.notes or "",
         "active": bool(getattr(c, "active", True)),
         "contacts": c.contacts or [],
-        "created_at": getattr(c, "created_at", None).isoformat() if getattr(c, "created_at", None) else None,
+    "created_at": _dt_to_iso(getattr(c, "created_at", None)),
         # Financial preferences
         "preferred_currency": (
             {"id": str(getattr(c.preferred_currency, 'id', '')), "code": getattr(c.preferred_currency, 'code', None)}
@@ -266,7 +372,34 @@ def _next_number(lab: Laboratory, doc_type: str, series_id: str | None, fallback
 @bp.get("/laboratories")
 @jwt_required()
 def labs_list():
-    labs = Laboratory.objects.order_by("name")
+    # Permission: laboratories.read
+    try:
+        uid = get_jwt_identity()
+        from models.user import User  # local import to avoid circular
+        user = User.objects.get(id=uid)
+        err = ensure(user, None, 'laboratories', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
+    # Filter by user permissions: sysadmin sees all, others only their allowed_labs
+    try:
+        uid = get_jwt_identity()
+        from models.user import User  # local import to avoid circular
+        user = User.objects.get(id=uid)
+        if getattr(user, 'is_sysadmin', False):
+            labs = Laboratory.objects.order_by("name")
+        else:
+            allowed_ids = [getattr(x, 'id', None) for x in (getattr(user, 'allowed_labs', []) or []) if getattr(x, 'id', None)]
+            # include tenant_id as implicit allowed
+            if getattr(user, 'tenant_id', None):
+                allowed_ids.append(getattr(user.tenant_id, 'id', None))
+            if allowed_ids:
+                labs = Laboratory.objects(id__in=allowed_ids).order_by("name")
+            else:
+                labs = Laboratory.objects.none()
+    except Exception:
+        labs = Laboratory.objects.none()
     return jsonify({"laboratories": [_lab_to_dict(x) for x in labs]})
 
 @bp.post("/laboratories")
@@ -274,6 +407,19 @@ def labs_list():
 def labs_create():
     data = request.get_json(force=True, silent=True) or {}
     try:
+        # Permission: laboratories.create (still requires sysadmin below)
+        uid = get_jwt_identity()
+        from models.user import User
+        user = User.objects.get(id=uid)
+        err = ensure(user, None, 'laboratories', 'create')
+        if err:
+            return jsonify(err), 403
+        # Only sysadmin can create labs
+        uid = get_jwt_identity()
+        from models.user import User
+        user = User.objects.get(id=uid)
+        if not getattr(user, 'is_sysadmin', False):
+            return jsonify({"error": "not allowed"}), 403
         lab = Laboratory(
             name=data.get("name"),
             address=data.get("address"),
@@ -295,7 +441,24 @@ def labs_create():
 def labs_update(lab_id):
     data = request.get_json(force=True, silent=True) or {}
     try:
-        lab = Laboratory.objects.get(id=lab_id)
+        # Permission: laboratories.update
+        uid = get_jwt_identity()
+        from models.user import User
+        user = User.objects.get(id=uid)
+        err = ensure(user, None, 'laboratories', 'update')
+        if err:
+            return jsonify(err), 403
+        # Only sysadmin can update any lab; non-sysadmin only within allowed set
+        uid = get_jwt_identity()
+        from models.user import User
+        user = User.objects.get(id=uid)
+        if getattr(user, 'is_sysadmin', False):
+            lab = Laboratory.objects.get(id=lab_id)
+        else:
+            allowed_ids = [getattr(x, 'id', None) for x in (getattr(user, 'allowed_labs', []) or []) if getattr(x, 'id', None)]
+            if getattr(user, 'tenant_id', None):
+                allowed_ids.append(getattr(user.tenant_id, 'id', None))
+            lab = Laboratory.objects.get(id=lab_id, id__in=allowed_ids)
         for f in ["name","address","country","postal_code","city","tax_id","phone","email","logo_url","active"]:
             if f in data: setattr(lab, f, data[f])
         lab.save()
@@ -310,6 +473,15 @@ def labs_update(lab_id):
 @jwt_required()
 def patients_list():
     lab = _lab()
+    # Permission: patients.read
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'patients', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     page, size = _pagination()
     q = _q()
     qs = Patient.objects(lab=lab)
@@ -323,6 +495,15 @@ def patients_list():
 @jwt_required()
 def patients_create():
     lab = _lab()
+    # Permission: patients.create
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'patients', 'create')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     try:
         p = Patient(
@@ -331,7 +512,7 @@ def patients_create():
             first_name=data.get("first_name"),
             last_name=data.get("last_name"),
             gender=data.get("gender"),
-            birthdate=data.get("birthdate"),
+            birthdate=_parse_date(data.get("birthdate")),
             email=data.get("email"),
             phone=data.get("phone"),
             address=data.get("address"),
@@ -346,10 +527,23 @@ def patients_create():
 def patients_update(pid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
+    # Permission: patients.update
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'patients', 'update')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     try:
         p = Patient.objects.get(id=pid, lab=lab)
+        # Normalize birthdate if present
+        if "birthdate" in data:
+            data["birthdate"] = _parse_date(data.get("birthdate"))
         for f in ["name","first_name","last_name","gender","birthdate","email","phone","address","notes"]:
-            if f in data: setattr(p, f, data[f])
+            if f in data:
+                setattr(p, f, data[f])
         # Atualiza name se não for fornecido mas first/last mudaram
         if not data.get("name") and ("first_name" in data or "last_name" in data):
             full = f"{getattr(p,'first_name','') or ''} {getattr(p,'last_name','') or ''}".strip()
@@ -366,6 +560,15 @@ def patients_update(pid):
 @jwt_required()
 def patients_delete(pid):
     lab = _lab()
+    # Permission: patients.delete
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'patients', 'delete')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     try:
         p = Patient.objects.get(id=pid, lab=lab)
         p.delete()
@@ -378,6 +581,15 @@ def patients_delete(pid):
 @jwt_required()
 def techs_list():
     lab = _lab()
+    # Permission: technicians.read
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'technicians', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     page, size = _pagination()
     q = _q()
     qs = Technician.objects(lab=lab)
@@ -391,6 +603,15 @@ def techs_list():
 @jwt_required()
 def techs_create():
     lab = _lab()
+    # Permission: technicians.create
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'technicians', 'create')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     try:
         t = Technician(
@@ -409,6 +630,15 @@ def techs_create():
 def techs_update(tid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
+    # Permission: technicians.update
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'technicians', 'update')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     try:
         t = Technician.objects.get(id=tid, lab=lab)
         for f in ["name","email","phone","workcenter"]:
@@ -424,6 +654,15 @@ def techs_update(tid):
 @jwt_required()
 def techs_delete(tid):
     lab = _lab()
+    # Permission: technicians.delete
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'technicians', 'delete')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     try:
         t = Technician.objects.get(id=tid, lab=lab)
         t.delete()
@@ -436,6 +675,15 @@ def techs_delete(tid):
 @jwt_required()
 def services_list():
     lab = _lab()
+    # Permission: services.read
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'services', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     page, size = _pagination()
     q = _q()
     qs = Service.objects(lab=lab)
@@ -449,6 +697,15 @@ def services_list():
 @jwt_required()
 def services_create():
     lab = _lab()
+    # Permission: services.create
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'services', 'create')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     try:
         s = Service(
@@ -467,6 +724,15 @@ def services_create():
 def services_update(sid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
+    # Permission: services.update
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'services', 'update')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     try:
         s = Service.objects.get(id=sid, lab=lab)
         for f in ["name","code","price","description"]:
@@ -482,6 +748,15 @@ def services_update(sid):
 @jwt_required()
 def services_delete(sid):
     lab = _lab()
+    # Permission: services.delete
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'services', 'delete')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     try:
         s = Service.objects.get(id=sid, lab=lab)
         s.delete()
@@ -494,6 +769,15 @@ def services_delete(sid):
 @jwt_required()
 def doctypes_list():
     lab = _lab()
+    # Permission: document_types.read
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'document_types', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     page, size = _pagination()
     q = _q()
     qs = DocumentType.objects(lab=lab)
@@ -507,6 +791,15 @@ def doctypes_list():
 @jwt_required()
 def doctypes_create():
     lab = _lab()
+    # Permission: document_types.create
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'document_types', 'create')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     try:
         d = DocumentType(
@@ -523,6 +816,15 @@ def doctypes_create():
 def doctypes_update(did):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
+    # Permission: document_types.update
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'document_types', 'update')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     try:
         d = DocumentType.objects.get(id=did, lab=lab)
         for f in ["name","extension"]:
@@ -538,6 +840,15 @@ def doctypes_update(did):
 @jwt_required()
 def doctypes_delete(did):
     lab = _lab()
+    # Permission: document_types.delete
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'document_types', 'delete')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     try:
         d = DocumentType.objects.get(id=did, lab=lab)
         d.delete()
@@ -607,9 +918,11 @@ def clients_create():
         cc = (data.get("country_code") or '').upper() or None
         if cc and not Country.objects(code=cc).first():
             return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
-        # Validate default_shipping_address code exists within lab
+        # Validate default_shipping_address code exists for this client within lab
         dsa = (data.get("default_shipping_address") or '').strip()
         if dsa:
+            # We will match after client is created; for now, allow only if belongs to target client when explicitly provided with client in shipping-address create
+            # Since we don't have c yet, we will recheck right after creating c
             if not ShippingAddress.objects(lab=lab, code=dsa).first():
                 return jsonify({"error": "invalid default_shipping_address", "field": "default_shipping_address"}), 400
 
@@ -620,7 +933,7 @@ def clients_create():
             first_name=data.get("first_name"),
             last_name=data.get("last_name"),
             gender=data.get("gender"),
-            birthdate=data.get("birthdate"),
+            birthdate=_parse_date(data.get("birthdate")),
             email=email,
             phone=data.get("phone"),
             address=data.get("address"),
@@ -641,6 +954,14 @@ def clients_create():
             payment_method=pm,
             location_code=data.get("location_code"),
         ).save()
+        # Post-create: if default_shipping_address provided, ensure it belongs to this client; otherwise clear it
+        if dsa:
+            try:
+                if not ShippingAddress.objects(lab=lab, client=c, code=dsa).first():
+                    c.update(unset__default_shipping_address=1)
+                    c.reload()
+            except Exception:
+                pass
         return jsonify({"client": _client_to_dict(c)}), 201
     except (ValidationError, Exception) as e:
         return jsonify({"error": str(e)}), 400
@@ -679,18 +1000,22 @@ def clients_update(cid):
             if cc and not Country.objects(code=cc).first():
                 return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
             data['country_code'] = cc
-        # Validate default_shipping_address if present
+        # Validate default_shipping_address if present (must belong to this client)
         if 'default_shipping_address' in data:
             dsa = (data.get('default_shipping_address') or '').strip()
-            if dsa and not ShippingAddress.objects(lab=lab, code=dsa).first():
+            if dsa and not ShippingAddress.objects(lab=lab, client=c, code=dsa).first():
                 return jsonify({"error": "invalid default_shipping_address", "field": "default_shipping_address"}), 400
             data['default_shipping_address'] = dsa or None
 
+        # Normalize birthdate if present
+        if "birthdate" in data:
+            data["birthdate"] = _parse_date(data.get("birthdate"))
         for f in [
             "code","name","first_name","last_name","gender","birthdate","email","phone","address","postal_code","country_code",
             "type","tax_id","billing_address","shipping_address","default_shipping_address","payment_terms","notes","active","contacts","location_code"
         ]:
-            if f in data: setattr(c, f, data[f])
+            if f in data:
+                setattr(c, f, data[f])
         # Refs
         if "preferred_currency" in data:
             try:
@@ -739,6 +1064,15 @@ def clients_delete(cid):
 @jwt_required()
 def clients_get(cid):
     lab = _lab()
+    # Permission: clients.read (single)
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'clients', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     try:
         c = Client.objects.get(id=cid, lab=lab)
         return jsonify({"client": _client_to_dict(c)})
@@ -828,6 +1162,15 @@ def paymethods_create():
 @jwt_required()
 def series_list():
     lab = _lab()
+    # Permission: series.read
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'series', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     items = Series.objects(lab=lab).order_by("doc_type")
     return jsonify({"items": [_series_to_dict(x) for x in items]})
 
@@ -835,6 +1178,15 @@ def series_list():
 @jwt_required()
 def series_create():
     lab = _lab()
+    # Permission: series.create
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'series', 'create')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     s = Series(lab=lab,
                doc_type=data.get('doc_type'),
@@ -849,6 +1201,15 @@ def series_create():
 def series_update(sid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
+    # Permission: series.update
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'series', 'update')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     try:
         s = Series.objects.get(id=sid, lab=lab)
         # Prevent changing doc_type if series has been used (next_number > 1)
@@ -875,6 +1236,15 @@ def series_update(sid):
 @jwt_required()
 def smtp_get():
     lab = _lab()
+    # Permission: smtp.read
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'smtp', 'read')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     # Cleanup deprecated fields if present in the collection (one-time best-effort)
     try:
         col = SmtpConfig._get_collection()
@@ -888,6 +1258,15 @@ def smtp_get():
 @jwt_required()
 def smtp_update():
     lab = _lab()
+    # Permission: smtp.update
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, 'smtp', 'update')
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
     data = request.get_json(force=True, silent=True) or {}
     cfg = SmtpConfig.objects(lab=lab).first()
     if not cfg:
@@ -1222,6 +1601,7 @@ def _shipaddr_to_dict(a: ShippingAddress):
     return {
         "id": str(a.id),
         "lab_id": str(getattr(a.lab, 'id', '')),
+        "client_id": str(getattr(a.client, 'id', '')) if getattr(a, 'client', None) else None,
         "code": a.code,
         "address1": a.address1 or "",
         "address2": a.address2 or "",
@@ -1230,11 +1610,89 @@ def _shipaddr_to_dict(a: ShippingAddress):
         "country_code": a.country_code or "",
     }
 
+def _clientprice_to_dict(p: ClientPrice):
+    return {
+        "id": str(p.id),
+        "lab_id": str(getattr(p.lab, 'id', '')),
+        "client_id": str(getattr(p.client, 'id', '')) if getattr(p, 'client', None) else None,
+        "sale_type": p.sale_type or "",
+        "sale_code": p.sale_code or "",
+        "code": p.code or "",
+        "uom": p.uom or "",
+        "min_qty": int(getattr(p, 'min_qty', 1) or 1),
+        "unit_price": float(getattr(p, 'unit_price', 0) or 0),
+        "start_date": _date_to_iso(getattr(p, 'start_date', None)),
+        "end_date": _date_to_iso(getattr(p, 'end_date', None)),
+    }
+
+@bp.get("/clients/<cid>/resolve-price")
+@jwt_required()
+def client_resolve_price(cid):
+    """Resolve client-specific unit price for a sale item.
+
+    Query params:
+      - sale_type: 'service' | 'product' (optional for now, defaults to any)
+      - code: item code to match (required)
+      - qty: numeric quantity (default 1)
+      - date: 'YYYY-MM-DD' (optional, defaults to today)
+    Returns: { unit_price: number | null }
+    """
+    lab = _lab()
+    try:
+        cli = Client.objects.get(id=cid, lab=lab)
+    except DoesNotExist:
+        return jsonify({"error": "client not found"}), 404
+    sale_type = (request.args.get('sale_type') or '').strip().lower()
+    code = (request.args.get('code') or '').strip()
+    try:
+        qty = float(request.args.get('qty') or 1)
+    except Exception:
+        qty = 1.0
+    d = _parse_date(request.args.get('date') or date.today().isoformat())
+    if not code:
+        return jsonify({"unit_price": None})
+    # Query candidate prices
+    qs = ClientPrice.objects(lab=lab, client=cli, code=code)
+    if sale_type:
+        qs = qs.filter(sale_type=sale_type)
+    cands = list(qs)
+    # Filter by qty and date window
+    def in_window(p: ClientPrice) -> bool:
+        if getattr(p, 'min_qty', None) and qty < float(getattr(p, 'min_qty') or 0):
+            return False
+        sd = getattr(p, 'start_date', None)
+        ed = getattr(p, 'end_date', None)
+        if sd and d and d < sd:
+            return False
+        if ed and d and d > ed:
+            return False
+        return True
+    cands = [p for p in cands if in_window(p)]
+    if not cands:
+        return jsonify({"unit_price": None})
+    # Sort by highest min_qty, then latest start_date
+    def sort_key(p: ClientPrice):
+        mq = int(getattr(p, 'min_qty', 0) or 0)
+        sd = getattr(p, 'start_date', None)
+        sdv = int(sd.toordinal()) if sd else 0
+        return (-mq, -sdv)
+    cands.sort(key=sort_key)
+    up = float(getattr(cands[0], 'unit_price', 0) or 0)
+    return jsonify({"unit_price": up})
+
 @bp.get("/shipping-addresses")
 @jwt_required()
 def shipaddrs_list():
     lab = _lab()
-    items = ShippingAddress.objects(lab=lab).order_by("code")
+    client_id = (request.args.get('client') or '').strip()
+    qs = ShippingAddress.objects(lab=lab)
+    if client_id:
+        try:
+            cli = Client.objects.get(id=client_id, lab=lab)
+            qs = qs.filter(client=cli)
+        except Exception:
+            qs = qs.filter(id=None)  # empty
+    items = qs.order_by("code")
     return jsonify({"items": [_shipaddr_to_dict(x) for x in items]})
 
 @bp.post("/shipping-addresses")
@@ -1243,8 +1701,16 @@ def shipaddrs_create():
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
     try:
+        # resolve client (required for new addresses)
+        cli = None
+        cli_id = (data.get('client') or '').strip()
+        if cli_id:
+            try:
+                cli = Client.objects.get(id=cli_id, lab=lab)
+            except Exception:
+                return jsonify({"error": "client not found", "field": "client"}), 400
         # unique code per lab
-        if ShippingAddress.objects(lab=lab, code=data.get('code')).first():
+        if ShippingAddress.objects(lab=lab, client=cli, code=data.get('code')).first():
             return jsonify({"error": "address exists", "field": "code"}), 409
         # validate country_code exists if provided
         cc = (data.get('country_code') or '').upper() or None
@@ -1253,6 +1719,7 @@ def shipaddrs_create():
                 return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
         a = ShippingAddress(
             lab=lab,
+            client=cli,
             code=data.get('code'),
             address1=data.get('address1'),
             address2=data.get('address2'),
@@ -1271,9 +1738,19 @@ def shipaddrs_update(aid):
     data = request.get_json(force=True, silent=True) or {}
     try:
         a = ShippingAddress.objects.get(id=aid, lab=lab)
+        # Optional client reassignment (rare): if client provided, revalidate uniqueness per (lab, client, code)
+        if 'client' in data:
+            cli = None
+            cli_id = (data.get('client') or '').strip()
+            if cli_id:
+                try:
+                    cli = Client.objects.get(id=cli_id, lab=lab)
+                except Exception:
+                    return jsonify({"error": "client not found", "field": "client"}), 400
+            a.client = cli
         if 'code' in data:
             new_code = data.get('code')
-            dup = ShippingAddress.objects(lab=lab, code=new_code, id__ne=a.id).first()
+            dup = ShippingAddress.objects(lab=lab, client=getattr(a,'client',None), code=new_code, id__ne=a.id).first()
             if dup:
                 return jsonify({"error": "address exists", "field": "code"}), 409
         # Normalize and validate country_code if present
@@ -1298,7 +1775,197 @@ def shipaddrs_delete(aid):
     lab = _lab()
     try:
         a = ShippingAddress.objects.get(id=aid, lab=lab)
+        # If any client has this code as default, clear it
+        try:
+            if getattr(a, 'client', None):
+                Client.objects(lab=lab, id=a.client.id, default_shipping_address=a.code).update(unset__default_shipping_address=1)
+            else:
+                # legacy: clear anyone using this code (rare)
+                Client.objects(lab=lab, default_shipping_address=a.code).update(unset__default_shipping_address=1)
+        except Exception:
+            pass
         a.delete()
+        return jsonify({"status": "deleted"})
+    except DoesNotExist:
+        return jsonify({"error": "not found"}), 404
+
+# Nested shipping addresses under a specific client
+@bp.get("/clients/<cid>/shipping-addresses")
+@jwt_required()
+def client_shipaddrs_list(cid):
+    lab = _lab()
+    try:
+        cli = Client.objects.get(id=cid, lab=lab)
+    except DoesNotExist:
+        return jsonify({"error": "client not found"}), 404
+    items = ShippingAddress.objects(lab=lab, client=cli).order_by("code")
+    return jsonify({"items": [_shipaddr_to_dict(x) for x in items]})
+
+@bp.post("/clients/<cid>/shipping-addresses")
+@jwt_required()
+def client_shipaddrs_create(cid):
+    lab = _lab()
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        cli = Client.objects.get(id=cid, lab=lab)
+    except DoesNotExist:
+        return jsonify({"error": "client not found"}), 404
+    try:
+        # unique code per client
+        if ShippingAddress.objects(lab=lab, client=cli, code=data.get('code')).first():
+            return jsonify({"error": "address exists", "field": "code"}), 409
+        cc = (data.get('country_code') or '').upper() or None
+        if cc and not Country.objects(code=cc).first():
+            return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+        a = ShippingAddress(
+            lab=lab,
+            client=cli,
+            code=data.get('code'),
+            address1=data.get('address1'),
+            address2=data.get('address2'),
+            postal_code=data.get('postal_code'),
+            city=data.get('city'),
+            country_code=cc,
+        ).save()
+        return jsonify({"shipping_address": _shipaddr_to_dict(a)}), 201
+    except (ValidationError, Exception) as e:
+        return jsonify({"error": str(e)}), 400
+
+@bp.put("/clients/<cid>/shipping-addresses/<aid>")
+@jwt_required()
+def client_shipaddrs_update(cid, aid):
+    lab = _lab()
+    try:
+        cli = Client.objects.get(id=cid, lab=lab)
+    except DoesNotExist:
+        return jsonify({"error": "client not found"}), 404
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        a = ShippingAddress.objects.get(id=aid, lab=lab, client=cli)
+        if 'code' in data:
+            new_code = data.get('code')
+            dup = ShippingAddress.objects(lab=lab, client=cli, code=new_code, id__ne=a.id).first()
+            if dup:
+                return jsonify({"error": "address exists", "field": "code"}), 409
+        if 'country_code' in data:
+            cc = (data.get('country_code') or '').upper() or None
+            if cc and not Country.objects(code=cc).first():
+                return jsonify({"error": "invalid country_code", "field": "country_code"}), 400
+            data['country_code'] = cc
+        for f in ['code','address1','address2','postal_code','city','country_code']:
+            if f in data:
+                setattr(a, f, data.get(f))
+        a.save()
+        return jsonify({"shipping_address": _shipaddr_to_dict(a)})
+    except DoesNotExist:
+        return jsonify({"error": "not found"}), 404
+    except (ValidationError, Exception) as e:
+        return jsonify({"error": str(e)}), 400
+
+@bp.delete("/clients/<cid>/shipping-addresses/<aid>")
+@jwt_required()
+def client_shipaddrs_delete(cid, aid):
+    lab = _lab()
+    try:
+        cli = Client.objects.get(id=cid, lab=lab)
+    except DoesNotExist:
+        return jsonify({"error": "client not found"}), 404
+    try:
+        a = ShippingAddress.objects.get(id=aid, lab=lab, client=cli)
+        # Clear client's default if this code was default
+        try:
+            Client.objects(id=cli.id, lab=lab, default_shipping_address=a.code).update(unset__default_shipping_address=1)
+        except Exception:
+            pass
+        a.delete()
+        return jsonify({"status": "deleted"})
+    except DoesNotExist:
+        return jsonify({"error": "not found"}), 404
+
+# --- Client Prices (nested under client) ---
+@bp.get("/clients/<cid>/prices")
+@jwt_required()
+def client_prices_list(cid):
+    lab = _lab()
+    try:
+        cli = Client.objects.get(id=cid, lab=lab)
+    except DoesNotExist:
+        return jsonify({"error": "client not found"}), 404
+    items = ClientPrice.objects(lab=lab, client=cli).order_by("code")
+    return jsonify({"items": [_clientprice_to_dict(x) for x in items]})
+
+@bp.post("/clients/<cid>/prices")
+@jwt_required()
+def client_prices_create(cid):
+    lab = _lab()
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        cli = Client.objects.get(id=cid, lab=lab)
+    except DoesNotExist:
+        return jsonify({"error": "client not found"}), 404
+    try:
+        cp = ClientPrice(
+            lab=lab,
+            client=cli,
+            sale_type=data.get('sale_type'),
+            sale_code=data.get('sale_code'),
+            code=data.get('code'),
+            uom=data.get('uom'),
+            min_qty=int(data.get('min_qty') or 1),
+            unit_price=float(data.get('unit_price') or 0),
+            start_date=_parse_date(data.get('start_date')),
+            end_date=_parse_date(data.get('end_date')),
+        ).save()
+        return jsonify({"price": _clientprice_to_dict(cp)}), 201
+    except (ValidationError, Exception) as e:
+        return jsonify({"error": str(e)}), 400
+
+@bp.put("/clients/<cid>/prices/<pid>")
+@jwt_required()
+def client_prices_update(cid, pid):
+    lab = _lab()
+    data = request.get_json(force=True, silent=True) or {}
+    try:
+        cli = Client.objects.get(id=cid, lab=lab)
+    except DoesNotExist:
+        return jsonify({"error": "client not found"}), 404
+    try:
+        cp = ClientPrice.objects.get(id=pid, lab=lab, client=cli)
+        for f in ['sale_type','sale_code','code','uom']:
+            if f in data:
+                setattr(cp, f, data.get(f))
+        if 'min_qty' in data:
+            try:
+                cp.min_qty = int(data.get('min_qty') or 1)
+            except Exception:
+                pass
+        if 'unit_price' in data:
+            try:
+                cp.unit_price = float(data.get('unit_price') or 0)
+            except Exception:
+                pass
+        if 'start_date' in data:
+            cp.start_date = _parse_date(data.get('start_date'))
+        if 'end_date' in data:
+            cp.end_date = _parse_date(data.get('end_date'))
+        cp.save()
+        return jsonify({"price": _clientprice_to_dict(cp)})
+    except DoesNotExist:
+        return jsonify({"error": "not found"}), 404
+    except (ValidationError, Exception) as e:
+        return jsonify({"error": str(e)}), 400
+
+@bp.delete("/clients/<cid>/prices/<pid>")
+@jwt_required()
+def client_prices_delete(cid, pid):
+    lab = _lab()
+    try:
+        cli = Client.objects.get(id=cid, lab=lab)
+    except DoesNotExist:
+        return jsonify({"error": "client not found"}), 404
+    try:
+        cp = ClientPrice.objects.get(id=pid, lab=lab, client=cli)
+        cp.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
         return jsonify({"error": "not found"}), 404

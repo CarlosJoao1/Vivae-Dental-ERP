@@ -11,6 +11,7 @@ import React, {
   useState,
 } from "react";
 import AuthAPI from "@/api/api"; // <-- default import para corrigir TS2614
+import { getPreferences as apiGetPrefs, updatePreferences as apiUpdatePrefs } from "@/api/preferences";
 
 
 // Tipos
@@ -37,6 +38,10 @@ type AuthContextType = {
   tenants: Tenant[];
   tenantId: string | null;
   setTenant: (tenantId: string) => void;
+
+  // User Preferences
+  preferences: Record<string, any>;
+  setPreference: (key: string, value: any) => Promise<void>;
 };
 
 // Contexto
@@ -81,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // --- Multi-tenant ---
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantId, setTenantId] = useState<string | null>(() => localStorage.getItem(LS_TENANT));
+  const [preferences, setPreferences] = useState<Record<string, any>>({});
 
   // timer para refresh automático
   const refreshTimer = useRef<number | null>(null);
@@ -193,6 +199,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem(LS_TENANT, chosen);
         }
 
+        // Load user preferences
+        try {
+          const prefs = await apiGetPrefs();
+          setPreferences(prefs || {});
+        } catch {}
+
         scheduleRefresh();
       } finally {
         setLoading(false);
@@ -234,7 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(me);
 
         // multi-tenant na inicialização
-        const ts: Tenant[] = (me?.tenants as Tenant[] | undefined) ?? [];
+  const ts: Tenant[] = (me?.tenants as Tenant[] | undefined) ?? [];
         setTenants(ts);
 
         const stored = localStorage.getItem(LS_TENANT);
@@ -249,6 +261,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setTenantId(null);
           localStorage.removeItem(LS_TENANT);
         }
+        // Load preferences after successful /me
+        try {
+          const prefs = await apiGetPrefs();
+          setPreferences(prefs || {});
+        } catch {}
       } catch {
         // access inválido → tenta refresh
         try {
@@ -273,6 +290,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setTenantId(null);
             localStorage.removeItem(LS_TENANT);
           }
+          try {
+            const prefs2 = await apiGetPrefs();
+            setPreferences(prefs2 || {});
+          } catch {}
         } catch {
           doLogout(false);
         }
@@ -288,7 +309,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setTenant = useCallback((id: string) => {
     setTenantId(id);
     localStorage.setItem(LS_TENANT, id);
+    // Notify app to refresh data for the new tenant
+    try {
+      const ev = new CustomEvent('tenant:changed', { detail: { tenantId: id } });
+      window.dispatchEvent(ev);
+    } catch {}
   }, []);
+
+  // Persist a single preference key
+  const setPreference = useCallback(async (key: string, value: any) => {
+    const next = { ...preferences, [key]: value };
+    setPreferences(next);
+    try {
+      await apiUpdatePrefs(next);
+    } catch {
+      // ignore persistence error for now
+    }
+  }, [preferences]);
 
   const value = useMemo<AuthContextType>(
     () => ({
@@ -301,8 +338,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenants,
       tenantId,
       setTenant,
+      preferences,
+      setPreference,
     }),
-    [loading, user, accessToken, login, doLogout, authRequest, tenants, tenantId, setTenant],
+    [loading, user, accessToken, login, doLogout, authRequest, tenants, tenantId, setTenant, preferences, setPreference],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

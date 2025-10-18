@@ -21,15 +21,21 @@ def run_seed():
     else:
         print("ℹ️ Seed: Laboratory exists")
 
-    # Admin user
+    # Admin user — ensure sysadmin with universal access
     admin = User.objects(username="admin").first()
     if not admin:
-        admin = User(username="admin", email="admin@local", role="admin", tenant_id=lab)
+        admin = User(username="admin", email="admin@local", role="sysadmin", tenant_id=lab)
         admin.set_password("admin123")
         admin.save()
-        print("✅ Seed: Admin user created (admin/admin123)")
+        print("✅ Seed: Admin user created as sysadmin (admin/admin123)")
     else:
-        print("ℹ️ Seed: Admin user exists")
+        # Upgrade existing admin to sysadmin if needed (idempotent)
+        if (admin.role or "").lower() != "sysadmin":
+            admin.role = "sysadmin"
+            admin.save()
+            print("✅ Seed: Admin user upgraded to sysadmin")
+        else:
+            print("ℹ️ Seed: Admin user exists and is sysadmin")
 
     # Technician
     tech = Technician.objects(lab=lab, name="Default Technician").first()

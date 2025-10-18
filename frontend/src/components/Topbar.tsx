@@ -49,6 +49,15 @@ export default function Topbar(){
       })
     return () => { mounted = false }
   }, [])
+  // When tenant changes, hint pages to reload by emitting the event; here we just re-run diagnostics optionally
+  useEffect(()=>{
+    const handler = () => {
+      // optional: ping something lightweight to keep status updated
+      api.get('/health').catch(()=>{})
+    }
+    window.addEventListener('tenant:changed', handler)
+    return () => window.removeEventListener('tenant:changed', handler)
+  }, [])
   const shortCommit = commit ? commit.substring(0, 7) : null
   let versionTooltip: string | undefined
   if (version) {

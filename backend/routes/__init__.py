@@ -50,6 +50,15 @@ def register_blueprints(app):
     except Exception as e:
         app.logger.warning("sales not registered: %s", e)
 
+    # 6) /api/roles  (role features and policies)
+    try:
+        from .roles import bp as roles_bp  # type: ignore
+        app.register_blueprint(roles_bp)
+        app.logger.info("✔ registered blueprint: roles -> %s",
+                        getattr(roles_bp, "url_prefix", "/api/roles"))
+    except Exception as e:
+        app.logger.warning("roles not registered: %s", e)
+
     # (exemplos para outros módulos)
     # try:
     #     from .patients import bp as patients_bp
