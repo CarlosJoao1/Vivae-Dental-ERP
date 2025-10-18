@@ -10,6 +10,10 @@ import json, base64
 from models.role_policy import RolePolicy
 from mongoengine.queryset.visitor import Q
 
+# Constants for error messages
+ERROR_NOT_ALLOWED = "not allowed"
+ERROR_NOT_FOUND = "not found"
+
 # Imports opcionais para montar a lista de tenants em /me
 try:
     from models.tenant import Tenant  # type: ignore
@@ -382,7 +386,7 @@ def _sysadmin_required() -> User:
     uid = get_jwt_identity()
     user = User.objects.get(id=uid)
     if not getattr(user, 'is_sysadmin', False):
-        raise PermissionError("not allowed")
+        raise PermissionError(ERROR_NOT_ALLOWED)
     return user
 
 
@@ -403,7 +407,7 @@ def list_users():
             }
         return jsonify({"items": [u_to_dict(u) for u in users]})
     except PermissionError:
-        return jsonify({"error": "not allowed"}), 403
+        return jsonify({"error": ERROR_NOT_ALLOWED}), 403
     except Exception as e:
         current_app.logger.exception("list_users error: %s", e)
         return jsonify({"error": "failed"}), 500
@@ -435,9 +439,9 @@ def update_user_allowed_labs(uid):
         u.save()
         return jsonify({"ok": True})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERROR_NOT_FOUND}), 404
     except PermissionError:
-        return jsonify({"error": "not allowed"}), 403
+        return jsonify({"error": ERROR_NOT_ALLOWED}), 403
     except Exception as e:
         current_app.logger.exception("update_user_allowed_labs error: %s", e)
         return jsonify({"error": "failed"}), 500
@@ -462,9 +466,9 @@ def update_user_role(uid):
         u.save()
         return jsonify({"ok": True})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERROR_NOT_FOUND}), 404
     except PermissionError:
-        return jsonify({"error": "not allowed"}), 403
+        return jsonify({"error": ERROR_NOT_ALLOWED}), 403
     except Exception as e:
         current_app.logger.exception("update_user_role error: %s", e)
         return jsonify({"error": "failed"}), 500
@@ -494,9 +498,9 @@ def update_user_tenant(uid):
         u.save()
         return jsonify({"ok": True})
     except DoesNotExist:
-        return jsonify({"error": "not found"}), 404
+        return jsonify({"error": ERROR_NOT_FOUND}), 404
     except PermissionError:
-        return jsonify({"error": "not allowed"}), 403
+        return jsonify({"error": ERROR_NOT_ALLOWED}), 403
     except Exception as e:
         current_app.logger.exception("update_user_tenant error: %s", e)
         return jsonify({"error": "failed"}), 500
