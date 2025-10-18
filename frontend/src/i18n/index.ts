@@ -6,14 +6,26 @@ import es from '@/i18n/locales/es/common.json';
 import fr from '@/i18n/locales/fr/common.json';
 import cn from '@/i18n/locales/cn/common.json';
 import de from '@/i18n/locales/de/common.json';
+import ar from '@/i18n/locales/ar/common.json';
+
 // Determine initial language from persisted preference or browser
-const persisted = (typeof window !== 'undefined' ? localStorage.getItem('lang') : null) || ''
+const persisted = (typeof globalThis.window !== 'undefined' ? localStorage.getItem('lang') : null) || ''
 const browserLang = (typeof navigator !== 'undefined' ? (navigator.language || (navigator as any).userLanguage || '') : '').split('-')[0]
 const initialLang = (persisted || '').trim() || (browserLang || '').trim() || 'pt'
 
 i18n.use(initReactI18next).init({
-  resources: { pt: { translation: pt }, en: { translation: en }, es: { translation: es }, fr: { translation: fr }, cn: { translation: cn }, de: { translation: de } },
-  lng: initialLang, fallbackLng: 'en', interpolation: { escapeValue: false },
+  resources: { 
+    pt: { translation: pt }, 
+    en: { translation: en }, 
+    es: { translation: es }, 
+    fr: { translation: fr }, 
+    cn: { translation: cn }, 
+    de: { translation: de },
+    ar: { translation: ar }
+  },
+  lng: initialLang, 
+  fallbackLng: 'en', 
+  interpolation: { escapeValue: false },
 });
 
 // Persist changes to language and expose helper

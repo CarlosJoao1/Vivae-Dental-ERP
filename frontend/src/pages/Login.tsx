@@ -11,6 +11,7 @@ const LANGUAGES = [
   { code: "fr", label: "FR", flag: "🇫🇷", name: "Français" },
   { code: "de", label: "DE", flag: "🇩🇪", name: "Deutsch" },
   { code: "cn", label: "CN", flag: "🇨🇳", name: "中文" },
+  { code: "ar", label: "AR", flag: "🇸🇦", name: "العربية" },
 ];
 
 export default function Login() {
