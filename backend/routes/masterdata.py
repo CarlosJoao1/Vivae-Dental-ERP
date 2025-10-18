@@ -35,6 +35,19 @@ ERR_INVALID_COUNTRY_CODE = "invalid country_code"
 ERROR_CLIENT_NOT_FOUND = "client not found"
 ERROR_ADDRESS_EXISTS = "address exists"
 
+# Helper functions for error responses
+def _error_response(message: str, status: int = 400):
+    """Return JSON error response with status code"""
+    return jsonify({"error": message}), status
+
+def _not_found():
+    """Return standard 404 not found response"""
+    return _error_response(ERR_NOT_FOUND, 404)
+
+def _validation_error(e: Exception):
+    """Return validation error response"""
+    return _error_response(str(e), 400)
+
 bp = Blueprint("masterdata", __name__, url_prefix="/api/masterdata")
 
 # --- Helpers ---
@@ -441,7 +454,7 @@ def labs_create():
         ).save()
         return jsonify({"laboratory": _lab_to_dict(lab)}), 201
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.put("/laboratories/<lab_id>")
 @jwt_required()
@@ -471,9 +484,9 @@ def labs_update(lab_id):
         lab.save()
         return jsonify({"laboratory": _lab_to_dict(lab)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 # --- Patients ---
 @bp.get("/patients")
@@ -527,7 +540,7 @@ def patients_create():
         ).save()
         return jsonify({"patient": _patient_to_dict(p)}), 201
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.put("/patients/<pid>")
 @jwt_required()
@@ -559,9 +572,9 @@ def patients_update(pid):
         p.save()
         return jsonify({"patient": _patient_to_dict(p)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.delete("/patients/<pid>")
 @jwt_required()
@@ -581,7 +594,7 @@ def patients_delete(pid):
         p.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
 
 # --- Technicians ---
 @bp.get("/technicians")
@@ -630,7 +643,7 @@ def techs_create():
         ).save()
         return jsonify({"technician": _technician_to_dict(t)}), 201
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.put("/technicians/<tid>")
 @jwt_required()
@@ -653,9 +666,9 @@ def techs_update(tid):
         t.save()
         return jsonify({"technician": _technician_to_dict(t)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.delete("/technicians/<tid>")
 @jwt_required()
@@ -675,7 +688,7 @@ def techs_delete(tid):
         t.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
 
 # --- Services ---
 @bp.get("/services")
@@ -724,7 +737,7 @@ def services_create():
         ).save()
         return jsonify({"service": _service_to_dict(s)}), 201
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.put("/services/<sid>")
 @jwt_required()
@@ -747,9 +760,9 @@ def services_update(sid):
         s.save()
         return jsonify({"service": _service_to_dict(s)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.delete("/services/<sid>")
 @jwt_required()
@@ -769,7 +782,7 @@ def services_delete(sid):
         s.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
 
 # --- Document Types ---
 @bp.get("/document-types")
@@ -816,7 +829,7 @@ def doctypes_create():
         ).save()
         return jsonify({"document_type": _doctype_to_dict(d)}), 201
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.put("/document-types/<did>")
 @jwt_required()
@@ -839,9 +852,9 @@ def doctypes_update(did):
         d.save()
         return jsonify({"document_type": _doctype_to_dict(d)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.delete("/document-types/<did>")
 @jwt_required()
@@ -861,7 +874,7 @@ def doctypes_delete(did):
         d.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
 
 # --- Clients ---
 @bp.get("/clients")
@@ -971,7 +984,7 @@ def clients_create():
                 pass
         return jsonify({"client": _client_to_dict(c)}), 201
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.put("/clients/<cid>")
 @jwt_required()
@@ -1051,9 +1064,9 @@ def clients_update(cid):
         c.save()
         return jsonify({"client": _client_to_dict(c)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.delete("/clients/<cid>")
 @jwt_required()
@@ -1064,7 +1077,7 @@ def clients_delete(cid):
         c.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
 
 # Single client
 @bp.get("/clients/<cid>")
@@ -1084,7 +1097,7 @@ def clients_get(cid):
         c = Client.objects.get(id=cid, lab=lab)
         return jsonify({"client": _client_to_dict(c)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
 
 # --- Financial: Currencies ---
 @bp.get("/financial/currencies")
@@ -1234,9 +1247,9 @@ def series_update(sid):
         s.save()
         return jsonify({"series": _series_to_dict(s)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 # --- Financial: SMTP Configuration ---
 @bp.get("/financial/smtp")
@@ -1551,7 +1564,7 @@ def countries_create():
         c.save()
         return jsonify({"country": _country_to_dict(c)}), 201
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.put("/countries/<cid>")
 @jwt_required()
@@ -1581,9 +1594,9 @@ def countries_update(cid):
         c.save()
         return jsonify({"country": _country_to_dict(c)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.delete("/countries/<cid>")
 @jwt_required()
@@ -1601,7 +1614,7 @@ def countries_delete(cid):
         c.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
 
 # --- Shipping Addresses ---
 def _shipaddr_to_dict(a: ShippingAddress):
@@ -1736,7 +1749,7 @@ def shipaddrs_create():
         ).save()
         return jsonify({"shipping_address": _shipaddr_to_dict(a)}), 201
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.put("/shipping-addresses/<aid>")
 @jwt_required()
@@ -1772,9 +1785,9 @@ def shipaddrs_update(aid):
         a.save()
         return jsonify({"shipping_address": _shipaddr_to_dict(a)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.delete("/shipping-addresses/<aid>")
 @jwt_required()
@@ -1794,7 +1807,7 @@ def shipaddrs_delete(aid):
         a.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
 
 # Nested shipping addresses under a specific client
 @bp.get("/clients/<cid>/shipping-addresses")
@@ -1836,7 +1849,7 @@ def client_shipaddrs_create(cid):
         ).save()
         return jsonify({"shipping_address": _shipaddr_to_dict(a)}), 201
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.put("/clients/<cid>/shipping-addresses/<aid>")
 @jwt_required()
@@ -1865,9 +1878,9 @@ def client_shipaddrs_update(cid, aid):
         a.save()
         return jsonify({"shipping_address": _shipaddr_to_dict(a)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.delete("/clients/<cid>/shipping-addresses/<aid>")
 @jwt_required()
@@ -1887,7 +1900,7 @@ def client_shipaddrs_delete(cid, aid):
         a.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
 
 # --- Client Prices (nested under client) ---
 @bp.get("/clients/<cid>/prices")
@@ -1925,7 +1938,7 @@ def client_prices_create(cid):
         ).save()
         return jsonify({"price": _clientprice_to_dict(cp)}), 201
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.put("/clients/<cid>/prices/<pid>")
 @jwt_required()
@@ -1958,9 +1971,9 @@ def client_prices_update(cid, pid):
         cp.save()
         return jsonify({"price": _clientprice_to_dict(cp)})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
     except (ValidationError, Exception) as e:
-        return jsonify({"error": str(e)}), 400
+        return _validation_error(e)
 
 @bp.delete("/clients/<cid>/prices/<pid>")
 @jwt_required()
@@ -1975,5 +1988,5 @@ def client_prices_delete(cid, pid):
         cp.delete()
         return jsonify({"status": "deleted"})
     except DoesNotExist:
-        return jsonify({"error": ERR_NOT_FOUND}), 404
+        return _not_found()
 
