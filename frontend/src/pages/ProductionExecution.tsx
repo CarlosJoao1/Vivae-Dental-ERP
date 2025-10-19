@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api'
+import JournalPostingModal from '../components/JournalPostingModal'
 
 interface Operation {
   order_no: string
@@ -18,6 +19,8 @@ export default function ProductionExecution() {
   const { t } = useTranslation()
   const [operations, setOperations] = useState<Operation[]>([])
   const [loading, setLoading] = useState(true)
+  const [showJournalModal, setShowJournalModal] = useState(false)
+  const [selectedOperation, setSelectedOperation] = useState<Operation | null>(null)
 
   useEffect(() => {
     // Placeholder - future: load from /api/production/operations
@@ -159,7 +162,10 @@ export default function ProductionExecution() {
                   <div className="flex flex-col gap-2 ml-4">
                     {op.status === 'Ready' && (
                       <button
-                        onClick={() => alert('Start operation - Coming in Phase B!')}
+                        onClick={() => {
+                          setSelectedOperation(op)
+                          setShowJournalModal(true)
+                        }}
                         className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
                       >
                         ▶️ {t('start') || 'Iniciar'}
@@ -174,7 +180,10 @@ export default function ProductionExecution() {
                           ⏸️ {t('pause') || 'Pausar'}
                         </button>
                         <button
-                          onClick={() => alert('Complete operation - Coming in Phase B!')}
+                          onClick={() => {
+                            setSelectedOperation(op)
+                            setShowJournalModal(true)
+                          }}
                           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
                         >
                           ✅ {t('complete') || 'Completar'}
@@ -195,20 +204,33 @@ export default function ProductionExecution() {
           <h2 className="text-lg font-semibold">📝 {t('journal_posting') || 'Lançamento de Journals'}</h2>
           <div className="flex gap-2">
             <button
-              onClick={() => alert('Post Consumption - Coming in Phase B!')}
-              className="px-3 py-1.5 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors text-sm"
+              onClick={() => {
+                // Use first operation as default if none selected
+                setSelectedOperation(operations[0] || null)
+                setShowJournalModal(true)
+              }}
+              disabled={operations.length === 0}
+              className="px-3 py-1.5 bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors text-sm disabled:opacity-50"
             >
               📉 {t('consumption') || 'Consumo'}
             </button>
             <button
-              onClick={() => alert('Post Output - Coming in Phase B!')}
-              className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+              onClick={() => {
+                setSelectedOperation(operations[0] || null)
+                setShowJournalModal(true)
+              }}
+              disabled={operations.length === 0}
+              className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm disabled:opacity-50"
             >
               📈 {t('output') || 'Output'}
             </button>
             <button
-              onClick={() => alert('Post Capacity - Coming in Phase B!')}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+              onClick={() => {
+                setSelectedOperation(operations[0] || null)
+                setShowJournalModal(true)
+              }}
+              disabled={operations.length === 0}
+              className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm disabled:opacity-50"
             >
               ⏱️ {t('capacity') || 'Capacidade'}
             </button>
@@ -217,12 +239,28 @@ export default function ProductionExecution() {
         <p className="text-sm text-gray-600">
           {t('journal_posting_desc') || 'Lançar movimentos de consumo de materiais, output de produtos finalizados e tempo de capacidade utilizado.'}
         </p>
-        <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-          <p className="text-sm text-orange-800">
-            🚧 <strong>{t('phase_b') || 'Fase B'}:</strong> Production Journals & Ledger Entries com posting idempotente
+        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            ✅ <strong>{t('phase_c') || 'Fase C'}:</strong> Production Journals completamente funcional com posting idempotente
           </p>
         </div>
       </div>
+
+      {/* Journal Posting Modal */}
+      {showJournalModal && selectedOperation && (
+        <JournalPostingModal
+          operation={selectedOperation}
+          onSuccess={() => {
+            setShowJournalModal(false)
+            setSelectedOperation(null)
+            // Reload operations (in real app)
+          }}
+          onCancel={() => {
+            setShowJournalModal(false)
+            setSelectedOperation(null)
+          }}
+        />
+      )}
     </div>
   )
 }
