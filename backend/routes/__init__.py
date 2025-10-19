@@ -86,6 +86,15 @@ def register_blueprints(app):
     except Exception as e:
         app.logger.warning("production_routing not registered: %s", e)
 
+    # 10) /api/production/work-centers & /machine-centers  (Production: Resources)
+    try:
+        from .production.work_centers import bp as production_work_centers_bp  # type: ignore
+        app.register_blueprint(production_work_centers_bp)
+        app.logger.info("✔ registered blueprint: production_work_centers -> %s",
+                        getattr(production_work_centers_bp, "url_prefix", "/api/production"))
+    except Exception as e:
+        app.logger.warning("production_work_centers not registered: %s", e)
+
     # (exemplos para outros módulos)
     # try:
     #     from .patients import bp as patients_bp
