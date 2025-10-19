@@ -70,8 +70,8 @@ export default function Production() {
                 <p className="text-xs text-gray-600 mt-0.5">{dept.description}</p>
               </div>
             </div>
-            <div className="text-xs text-gray-600 bg-white bg-opacity-60 px-2 py-1 rounded mt-2">
-              {t('status_dev_license')}
+            <div className="text-xs font-semibold text-blue-600 mt-2 flex items-center gap-1">
+              <span>→</span> {t('click_to_access') || 'Clique para aceder'}
             </div>
           </Link>
         ))}
