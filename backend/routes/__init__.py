@@ -59,6 +59,15 @@ def register_blueprints(app):
     except Exception as e:
         app.logger.warning("roles not registered: %s", e)
 
+    # 7) /api/production/masterdata  (Production: UOM, Items, Locations, Suppliers)
+    try:
+        from .production.masterdata import bp as production_masterdata_bp  # type: ignore
+        app.register_blueprint(production_masterdata_bp)
+        app.logger.info("✔ registered blueprint: production_masterdata -> %s",
+                        getattr(production_masterdata_bp, "url_prefix", "/api/production/masterdata"))
+    except Exception as e:
+        app.logger.warning("production_masterdata not registered: %s", e)
+
     # (exemplos para outros módulos)
     # try:
     #     from .patients import bp as patients_bp
