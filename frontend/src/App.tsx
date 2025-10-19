@@ -15,6 +15,7 @@ import ProductionPlanning from '@/pages/ProductionPlanning';
 import ProductionExecution from '@/pages/ProductionExecution';
 import ProductionCosting from '@/pages/ProductionCosting';
 import ProductionTasks from '@/pages/ProductionTasks';
+import ProductionMasterData from '@/pages/ProductionMasterData';
 import WorkCenters from '@/pages/WorkCenters';
 import MachineCenters from '@/pages/MachineCenters';
 import SalesOrders from '@/pages/SalesOrders';
@@ -63,6 +64,7 @@ export default function App() {
             <Route path="/production/execution" element={<ProductionExecution />} />
             <Route path="/production/costing" element={<ProductionCosting />} />
             <Route path="/production/tasks" element={<ProductionTasks />} />
+            <Route path="/production/masterdata" element={<ProductionMasterData />} />
             <Route path="/production/workcenters" element={<WorkCenters />} />
             <Route path="/production/machines" element={<MachineCenters />} />
             <Route path="/crm" element={<CRM />} />
