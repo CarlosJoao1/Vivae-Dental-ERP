@@ -3,12 +3,19 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
+import { v4 as uuidv4 } from 'uuid'
 
 interface ProductionOrderFormData {
+  order_no: string
   item_no: string
+  description: string
   quantity: number
   uom_code: string
+  start_date: string
   due_date: string
+  location_code: string
+  status: string
+  priority: number
   bom_version_code: string
   routing_version_code: string
 }
@@ -21,18 +28,34 @@ interface ProductionOrderFormProps {
 export default function ProductionOrderForm({ onSuccess, onCancel }: ProductionOrderFormProps) {
   const { t } = useTranslation()
   const [items, setItems] = useState<any[]>([])
+  const [locations, setLocations] = useState<any[]>([])
   const [boms, setBOMs] = useState<any[]>([])
   const [routings, setRoutings] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selectedItem, setSelectedItem] = useState<any>(null)
   
+  // Generate unique order number on mount
+  const generateOrderNo = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const uniqueId = uuidv4().split('-')[0].toUpperCase()
+    return `PO-${year}${month}-${uniqueId}`
+  }
+  
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<ProductionOrderFormData>({
     defaultValues: {
+      order_no: generateOrderNo(),
       item_no: '',
+      description: '',
       quantity: 1,
-      uom_code: 'UN',
-      due_date: new Date().toISOString().split('T')[0],
+      uom_code: 'PCS',
+      start_date: new Date().toISOString().split('T')[0],
+      due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // +7 days
+      location_code: 'MAIN',
+      status: 'Planned',
+      priority: 0,
       bom_version_code: '',
       routing_version_code: ''
     }
@@ -41,7 +64,7 @@ export default function ProductionOrderForm({ onSuccess, onCancel }: ProductionO
   const watchedItemNo = watch('item_no')
   
   useEffect(() => {
-    loadItems()
+    loadMasterData()
   }, [])
   
   useEffect(() => {
@@ -50,12 +73,24 @@ export default function ProductionOrderForm({ onSuccess, onCancel }: ProductionO
     }
   }, [watchedItemNo])
   
-  const loadItems = async () => {
+  const loadMasterData = async () => {
     try {
-      const itemsRes = await api<any[]>('/api/production/masterdata/items')
+      const [itemsRes, locationsRes] = await Promise.all([
+        api<any[]>('/api/production/masterdata/items'),
+        api<any[]>('/api/production/masterdata/locations')
+      ])
       setItems(itemsRes)
+      setLocations(locationsRes)
+      
+      // Set default location if available
+      const defaultLoc = locationsRes.find(l => l.is_default)
+      if (defaultLoc) {
+        setValue('location_code', defaultLoc.code)
+      } else if (locationsRes.length > 0) {
+        setValue('location_code', locationsRes[0].code)
+      }
     } catch (err: any) {
-      console.error('Failed to load items:', err)
+      console.error('Failed to load master data:', err)
     }
   }
   
@@ -64,9 +99,22 @@ export default function ProductionOrderForm({ onSuccess, onCancel }: ProductionO
       const item = items.find(i => i.item_no === itemNo)
       setSelectedItem(item)
       
-      // Auto-fill UOM
+      // Auto-fill UOM and description
       if (item?.base_uom) {
         setValue('uom_code', item.base_uom)
+      }
+      if (item?.description) {
+        setValue('description', `Production Order for ${item.description}`)
+      }
+      
+      // Calculate start date from due date and lead time
+      if (item?.lead_time_days) {
+        const dueDate = watch('due_date')
+        if (dueDate) {
+          const due = new Date(dueDate)
+          const start = new Date(due.getTime() - item.lead_time_days * 24 * 60 * 60 * 1000)
+          setValue('start_date', start.toISOString().split('T')[0])
+        }
       }
       
       // Load BOMs and Routings for this item
@@ -168,6 +216,22 @@ export default function ProductionOrderForm({ onSuccess, onCancel }: ProductionO
               </div>
             )}
             
+            {/* Order Number (Read-only) */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                {t('order_no') || 'Order No'} <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                {...register('order_no', { required: 'Order number is required' })}
+                className="w-full px-3 py-2 border rounded-lg bg-gray-50 font-mono"
+                readOnly
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                🔢 Auto-generated unique identifier
+              </p>
+            </div>
+            
             {/* Item Selection */}
             <div>
               <label className="block text-sm font-medium mb-1">
@@ -195,11 +259,24 @@ export default function ProductionOrderForm({ onSuccess, onCancel }: ProductionO
                   📦 <strong>{selectedItem.description}</strong>
                   <br />
                   <span className="text-xs">
-                    Type: {selectedItem.item_type} | Base UOM: {selectedItem.base_uom}
+                    Type: {selectedItem.item_type} | Base UOM: {selectedItem.base_uom} | Lead Time: {selectedItem.lead_time_days || 0} days
                   </span>
                 </p>
               </div>
             )}
+            
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                {t('description') || 'Description'}
+              </label>
+              <input
+                type="text"
+                {...register('description')}
+                className="w-full px-3 py-2 border rounded-lg"
+                placeholder="Optional order description"
+              />
+            </div>
             
             {/* Quantity and UOM */}
             <div className="grid grid-cols-2 gap-4">
@@ -231,19 +308,90 @@ export default function ProductionOrderForm({ onSuccess, onCancel }: ProductionO
               </div>
             </div>
             
-            {/* Due Date */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                {t('due_date') || 'Due Date'} <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="date"
-                {...register('due_date', { required: 'Due date is required' })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-              {errors.due_date && (
-                <p className="text-xs text-red-600 mt-1">{errors.due_date.message}</p>
-              )}
+            {/* Start and Due Dates */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {t('start_date') || 'Start Date'} <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="date"
+                  {...register('start_date', { required: 'Start date is required' })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+                {errors.start_date && (
+                  <p className="text-xs text-red-600 mt-1">{errors.start_date.message}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {t('due_date') || 'Due Date'} <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="date"
+                  {...register('due_date', { required: 'Due date is required' })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+                {errors.due_date && (
+                  <p className="text-xs text-red-600 mt-1">{errors.due_date.message}</p>
+                )}
+              </div>
+            </div>
+            
+            {/* Location, Status, Priority */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {t('location') || 'Location'} <span className="text-red-600">*</span>
+                </label>
+                <select
+                  {...register('location_code', { required: 'Location is required' })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                >
+                  <option value="">Select...</option>
+                  {locations.map(loc => (
+                    <option key={loc.code} value={loc.code}>
+                      {loc.code} - {loc.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.location_code && (
+                  <p className="text-xs text-red-600 mt-1">{errors.location_code.message}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {t('status') || 'Status'} <span className="text-red-600">*</span>
+                </label>
+                <select
+                  {...register('status', { required: 'Status is required' })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                >
+                  <option value="Simulated">🔮 Simulated</option>
+                  <option value="Planned">📋 Planned</option>
+                  <option value="Firm Planned">📌 Firm Planned</option>
+                  <option value="Released">🚀 Released</option>
+                </select>
+                {errors.status && (
+                  <p className="text-xs text-red-600 mt-1">{errors.status.message}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {t('priority') || 'Priority'}
+                </label>
+                <input
+                  type="number"
+                  {...register('priority', { min: 0, max: 10 })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  min="0"
+                  max="10"
+                />
+                <p className="text-xs text-gray-500 mt-1">0-10 (higher = urgent)</p>
+              </div>
             </div>
             
             {/* BOM Version */}
