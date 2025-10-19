@@ -12,6 +12,7 @@ from models.production import BOM, BOMLine, Item
 from models.laboratory import Laboratory
 from models.user import User
 from services.permissions import ensure
+from services.production.bom_explosion import explode_bom
 
 bp = Blueprint("production_bom", __name__, url_prefix="/api/production/boms")
 
@@ -446,7 +447,7 @@ def bom_by_item(item_no: str):
         "boms": [bom.to_dict() for bom in boms]
     }), 200
 
-@bp.get("/certified/<item_no>")
+@bp.route('/certified/<item_no>', methods=['GET'])
 @jwt_required()
 def bom_certified(item_no: str):
     """Get the certified (active) BOM for an item"""
@@ -460,3 +461,75 @@ def bom_certified(item_no: str):
         return _error_response(f"No certified BOM found for item {item_no}", 404)
     
     return jsonify(bom.to_dict()), 200
+
+
+@bp.route('/<bom_id>/explode', methods=['POST'])
+@jwt_required()
+def explode_bom_endpoint(bom_id: str):
+    """
+    Explode BOM to show all components (multi-level).
+    
+    Query Parameters:
+        - quantity (float): Production quantity (default: 1.0)
+        - check_availability (bool): Check inventory (default: false)
+    
+    Returns:
+        - 200: Explosion result with hierarchy + consolidated components
+        - 404: BOM not found
+    
+    Example:
+        POST /api/production/boms/675a3b8f9d2e3a1b4c5d6e7f/explode?quantity=10
+        {
+            "item_no": "FG-CHAIR-001",
+            "description": "Finished Chair",
+            "quantity": 10,
+            "status": "success",
+            "components": [...],
+            "consolidated_components": {...},
+            "max_level": 2,
+            "has_cycles": false
+        }
+    """
+    lab = _get_lab()
+    perm_err = _check_permission(lab, 'production', 'read')
+    if perm_err:
+        return perm_err
+    
+    # Get BOM
+    try:
+        bom = BOM.objects(id=bom_id, tenant_id=str(lab.id)).first()
+        if not bom:
+            return _not_found()
+    except (DoesNotExist, ValidationError) as e:
+        return _validation_error(e)
+    
+    # Validate status
+    if bom.status not in ["Certified", "Under Development"]:
+        return _error_response(
+            f"Cannot explode BOM with status '{bom.status}'. Only Certified or Under Development BOMs can be exploded.",
+            400
+        )
+    
+    # Parse parameters
+    try:
+        quantity = float(request.args.get('quantity', 1.0))
+        check_availability = request.args.get('check_availability', 'false').lower() == 'true'
+    except ValueError:
+        return _error_response("Invalid quantity parameter", 400)
+    
+    if quantity <= 0:
+        return _error_response("Quantity must be positive", 400)
+    
+    # Perform explosion
+    try:
+        result = explode_bom(
+            tenant_id=str(lab.id),
+            item_no=bom.item_no,
+            quantity=quantity,
+            check_availability=check_availability
+        )
+        
+        return jsonify(result.to_dict()), 200
+    
+    except Exception as e:
+        return _error_response(f"Explosion failed: {str(e)}", 500)
