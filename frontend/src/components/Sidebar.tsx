@@ -97,6 +97,18 @@ export default function Sidebar(){
               <span>🔨</span> {t('execution') || 'Execução'}
             </Link>
             <Link
+              to="/production/costing"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+            >
+              <span>💰</span> {t('costing') || 'Custeio'}
+            </Link>
+            <Link
+              to="/production/tasks"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
+            >
+              <span>✅</span> {t('tasks') || 'Tarefas'}
+            </Link>
+            <Link
               to="/production/admin"
               className="flex items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400"
             >
