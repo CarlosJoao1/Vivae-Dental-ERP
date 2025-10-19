@@ -57,6 +57,7 @@ export default function ProductionMasterData() {
   
   // UI states
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -67,27 +68,30 @@ export default function ProductionMasterData() {
   
   const loadData = async () => {
     setLoading(true)
+    setError('')
+    
+    const endpoints: Record<MasterDataTab, string> = {
+      items: '/api/production/masterdata/items',
+      uoms: '/api/production/masterdata/uom',
+      locations: '/api/production/masterdata/locations',
+      suppliers: '/api/production/masterdata/suppliers',
+    }
+    
+    const setters: Record<MasterDataTab, (data: any[]) => void> = {
+      items: setItems,
+      uoms: setUOMs,
+      locations: setLocations,
+      suppliers: setSuppliers,
+    }
+    
     try {
-      switch (activeTab) {
-        case 'items':
-          const itemsRes = await api<any>('/api/production/masterdata/items')
-          setItems(itemsRes.items || [])
-          break
-        case 'uoms':
-          const uomsRes = await api<any>('/api/production/masterdata/uom')
-          setUOMs(uomsRes.items || [])
-          break
-        case 'locations':
-          const locsRes = await api<any>('/api/production/masterdata/locations')
-          setLocations(locsRes.items || [])
-          break
-        case 'suppliers':
-          const suppRes = await api<any>('/api/production/masterdata/suppliers')
-          setSuppliers(suppRes.items || [])
-          break
-      }
-    } catch (err: any) {
-      toast.error(`Failed to load data: ${err.message}`)
+      const response = await api<any>(endpoints[activeTab])
+      const data = response.items || []
+      setters[activeTab](data)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
+      setError(errorMessage)
+      toast.error(`Failed to load data: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
@@ -104,21 +108,26 @@ export default function ProductionMasterData() {
   }
   
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete ${name}?`)) return
+    // Use native confirm for now, consider custom modal in future
+    // eslint-disable-next-line no-restricted-globals
+    if (!confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
+      return
+    }
+    
+    const endpoints: Record<MasterDataTab, string> = {
+      items: `/api/production/masterdata/items/${id}`,
+      uoms: `/api/production/masterdata/uom/${id}`,
+      locations: `/api/production/masterdata/locations/${id}`,
+      suppliers: `/api/production/masterdata/suppliers/${id}`,
+    }
     
     try {
-      const endpoint = {
-        items: `/api/production/masterdata/items/${id}`,
-        uoms: `/api/production/masterdata/uom/${id}`,
-        locations: `/api/production/masterdata/locations/${id}`,
-        suppliers: `/api/production/masterdata/suppliers/${id}`,
-      }[activeTab]
-      
-      await api(endpoint, { method: 'DELETE' })
+      await api(endpoints[activeTab], { method: 'DELETE' })
       toast.success(`✅ ${name} deleted successfully!`)
-      loadData()
-    } catch (err: any) {
-      toast.error(`❌ Failed to delete: ${err.message}`)
+      await loadData()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
+      toast.error(`❌ Failed to delete: ${errorMessage}`)
     }
   }
   
@@ -129,30 +138,29 @@ export default function ProductionMasterData() {
   }
   
   // Filter data by search
-  const getFilteredData = () => {
+  const getFilteredData = (): Item[] | UOM[] | Location[] | Supplier[] => {
     const query = searchQuery.toLowerCase()
-    switch (activeTab) {
-      case 'items':
-        return items.filter(i => 
-          i.item_no.toLowerCase().includes(query) || 
-          i.description.toLowerCase().includes(query)
-        )
-      case 'uoms':
-        return uoms.filter(u => 
-          u.code.toLowerCase().includes(query) || 
-          u.description.toLowerCase().includes(query)
-        )
-      case 'locations':
-        return locations.filter(l => 
-          l.code.toLowerCase().includes(query) || 
-          l.name.toLowerCase().includes(query)
-        )
-      case 'suppliers':
-        return suppliers.filter(s => 
-          s.supplier_id.toLowerCase().includes(query) || 
-          s.name.toLowerCase().includes(query)
-        )
+    
+    const filterFunctions: Record<MasterDataTab, () => any[]> = {
+      items: () => items.filter(i => 
+        i.item_no.toLowerCase().includes(query) || 
+        i.description.toLowerCase().includes(query)
+      ),
+      uoms: () => uoms.filter(u => 
+        u.code.toLowerCase().includes(query) || 
+        u.description.toLowerCase().includes(query)
+      ),
+      locations: () => locations.filter(l => 
+        l.code.toLowerCase().includes(query) || 
+        l.name.toLowerCase().includes(query)
+      ),
+      suppliers: () => suppliers.filter(s => 
+        s.supplier_id.toLowerCase().includes(query) || 
+        s.name.toLowerCase().includes(query)
+      ),
     }
+    
+    return filterFunctions[activeTab]()
   }
   
   const tabs = [
@@ -176,8 +184,10 @@ export default function ProductionMasterData() {
         </div>
         
         <button
+          type="button"
           onClick={handleCreate}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          aria-label={t('create_new_item') || `Create new ${activeTab}`}
         >
           ➕ {t('create_new') || 'Create New'}
         </button>
@@ -204,11 +214,13 @@ export default function ProductionMasterData() {
         {/* Search Bar */}
         <div className="p-4 border-b bg-gray-50">
           <input
-            type="text"
+            type="search"
             placeholder={`🔍 Search ${activeTab}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 border rounded-lg"
+            aria-label={`Search ${activeTab}`}
+            autoComplete="off"
           />
         </div>
         
@@ -314,10 +326,22 @@ function ItemsTable({ items, onEdit, onDelete }: { items: Item[], onEdit: (item:
                 </span>
               </td>
               <td className="px-4 py-3 text-right">
-                <button onClick={() => onEdit(item)} className="text-blue-600 hover:text-blue-800 mr-3">
+                <button 
+                  type="button"
+                  onClick={() => onEdit(item)} 
+                  className="text-blue-600 hover:text-blue-800 mr-3"
+                  aria-label={`Edit ${item.item_no}`}
+                  title="Edit item"
+                >
                   ✏️
                 </button>
-                <button onClick={() => onDelete(item.id, item.item_no)} className="text-red-600 hover:text-red-800">
+                <button 
+                  type="button"
+                  onClick={() => onDelete(item.id, item.item_no)} 
+                  className="text-red-600 hover:text-red-800"
+                  aria-label={`Delete ${item.item_no}`}
+                  title="Delete item"
+                >
                   🗑️
                 </button>
               </td>
@@ -352,10 +376,22 @@ function UOMsTable({ uoms, onEdit, onDelete }: { uoms: UOM[], onEdit: (uom: UOM)
               <td className="px-4 py-3 text-sm">{uom.description}</td>
               <td className="px-4 py-3 text-sm">{uom.decimals}</td>
               <td className="px-4 py-3 text-right">
-                <button onClick={() => onEdit(uom)} className="text-blue-600 hover:text-blue-800 mr-3">
+                <button 
+                  type="button"
+                  onClick={() => onEdit(uom)} 
+                  className="text-blue-600 hover:text-blue-800 mr-3"
+                  aria-label={`Edit ${uom.code}`}
+                  title="Edit UOM"
+                >
                   ✏️
                 </button>
-                <button onClick={() => onDelete(uom.id, uom.code)} className="text-red-600 hover:text-red-800">
+                <button 
+                  type="button"
+                  onClick={() => onDelete(uom.id, uom.code)} 
+                  className="text-red-600 hover:text-red-800"
+                  aria-label={`Delete ${uom.code}`}
+                  title="Delete UOM"
+                >
                   🗑️
                 </button>
               </td>
@@ -402,10 +438,22 @@ function LocationsTable({ locations, onEdit, onDelete }: { locations: Location[]
                 </span>
               </td>
               <td className="px-4 py-3 text-right">
-                <button onClick={() => onEdit(loc)} className="text-blue-600 hover:text-blue-800 mr-3">
+                <button 
+                  type="button"
+                  onClick={() => onEdit(loc)} 
+                  className="text-blue-600 hover:text-blue-800 mr-3"
+                  aria-label={`Edit ${loc.code}`}
+                  title="Edit location"
+                >
                   ✏️
                 </button>
-                <button onClick={() => onDelete(loc.id, loc.code)} className="text-red-600 hover:text-red-800">
+                <button 
+                  type="button"
+                  onClick={() => onDelete(loc.id, loc.code)} 
+                  className="text-red-600 hover:text-red-800"
+                  aria-label={`Delete ${loc.code}`}
+                  title="Delete location"
+                >
                   🗑️
                 </button>
               </td>
@@ -455,10 +503,22 @@ function SuppliersTable({ suppliers, onEdit, onDelete }: { suppliers: Supplier[]
                 </span>
               </td>
               <td className="px-4 py-3 text-right">
-                <button onClick={() => onEdit(sup)} className="text-blue-600 hover:text-blue-800 mr-3">
+                <button 
+                  type="button"
+                  onClick={() => onEdit(sup)} 
+                  className="text-blue-600 hover:text-blue-800 mr-3"
+                  aria-label={`Edit ${sup.supplier_id}`}
+                  title="Edit supplier"
+                >
                   ✏️
                 </button>
-                <button onClick={() => onDelete(sup.id, sup.supplier_id)} className="text-red-600 hover:text-red-800">
+                <button 
+                  type="button"
+                  onClick={() => onDelete(sup.id, sup.supplier_id)} 
+                  className="text-red-600 hover:text-red-800"
+                  aria-label={`Delete ${sup.supplier_id}`}
+                  title="Delete supplier"
+                >
                   🗑️
                 </button>
               </td>
