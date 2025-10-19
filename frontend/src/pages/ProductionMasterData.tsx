@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
+import ItemForm from '@/components/MasterData/ItemForm'
+import UOMForm from '@/components/MasterData/UOMForm'
+import LocationForm from '@/components/MasterData/LocationForm'
+import SupplierForm from '@/components/MasterData/SupplierForm'
 
 // Tab types
 type MasterDataTab = 'items' | 'uoms' | 'locations' | 'suppliers'
@@ -242,35 +246,37 @@ export default function ProductionMasterData() {
         </div>
       </div>
       
-      {/* Form Modal (placeholder) */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-            <div className="px-6 py-4 border-b flex items-center justify-between">
-              <h2 className="text-xl font-semibold">
-                {editingItem ? '✏️ Edit' : '➕ Create'} {activeTab.slice(0, -1)}
-              </h2>
-              <button onClick={handleFormClose} className="text-2xl hover:text-red-600">
-                ×
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600">
-                Form component coming soon! API is ready at:
-                <br />
-                <code className="bg-gray-100 px-2 py-1 rounded text-sm">
-                  /api/production/masterdata/{activeTab}
-                </code>
-              </p>
-              <button
-                onClick={handleFormClose}
-                className="mt-4 px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Form Modals */}
+      {showForm && activeTab === 'items' && (
+        <ItemForm 
+          item={editingItem} 
+          onSuccess={handleFormClose} 
+          onCancel={handleFormClose} 
+        />
+      )}
+      
+      {showForm && activeTab === 'uoms' && (
+        <UOMForm 
+          uom={editingItem} 
+          onSuccess={handleFormClose} 
+          onCancel={handleFormClose} 
+        />
+      )}
+      
+      {showForm && activeTab === 'locations' && (
+        <LocationForm 
+          location={editingItem} 
+          onSuccess={handleFormClose} 
+          onCancel={handleFormClose} 
+        />
+      )}
+      
+      {showForm && activeTab === 'suppliers' && (
+        <SupplierForm 
+          supplier={editingItem} 
+          onSuccess={handleFormClose} 
+          onCancel={handleFormClose} 
+        />
       )}
     </div>
   )

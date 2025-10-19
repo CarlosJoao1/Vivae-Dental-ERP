@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import ProductionOrderForm from '../components/ProductionOrderForm'
+import ProductionOrderDetailsModal from '../components/ProductionOrderDetailsModal'
 
 interface ProductionOrder {
   id: string
@@ -28,6 +29,7 @@ export default function ProductionPlanning() {
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [showOrderForm, setShowOrderForm] = useState(false)
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
 
   useEffect(() => {
     loadOrders()
@@ -279,7 +281,7 @@ export default function ProductionPlanning() {
                   )}
 
                   <button
-                    onClick={() => alert(`View ${order.order_no} - Coming soon!`)}
+                    onClick={() => setSelectedOrderId(order.id)}
                     className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
                   >
                     👁️ {t('view') || 'Ver'}
@@ -320,6 +322,14 @@ export default function ProductionPlanning() {
             loadOrders()
           }}
           onCancel={() => setShowOrderForm(false)}
+        />
+      )}
+      
+      {/* Details Modal */}
+      {selectedOrderId && (
+        <ProductionOrderDetailsModal
+          orderId={selectedOrderId}
+          onClose={() => setSelectedOrderId(null)}
         />
       )}
     </div>
