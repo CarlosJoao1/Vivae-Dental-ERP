@@ -12,6 +12,7 @@ from models.production import UnitOfMeasure, Item, Location, Supplier
 from models.laboratory import Laboratory
 from models.user import User
 from services.permissions import ensure
+from services.production import check_production_dependencies
 
 bp = Blueprint("production_masterdata", __name__, url_prefix="/api/production/masterdata")
 
@@ -90,6 +91,51 @@ def _pagination() -> Tuple[int, int]:
 def _query() -> str:
     """Get search query from request"""
     return (request.args.get("q", "") or "").strip()
+
+# ========================================
+# DEPENDENCY GATE
+# ========================================
+
+@bp.get("/dependency-check")
+@jwt_required()
+def dependency_check():
+    """
+    Check if all production dependencies are configured.
+    
+    Returns HTTP 200 with status details if all OK or warnings only.
+    Returns HTTP 409 if critical dependencies are missing.
+    
+    Response format:
+    {
+        "ok": true/false,
+        "checks": [
+            {
+                "resource": "Units of Measure",
+                "status": "ok" | "warning" | "error",
+                "message": "Human-readable message",
+                "count": 5
+            },
+            ...
+        ]
+    }
+    
+    Usage: Call this endpoint before:
+    - Creating a Production Order
+    - Releasing a Production Order
+    - Running MRP/MPS
+    - Exploding a BOM
+    """
+    lab = _get_lab()
+    perm_err = _check_permission(lab, 'production', 'read')
+    if perm_err:
+        return perm_err
+    
+    all_ok, checks = check_production_dependencies(lab)
+    
+    if not all_ok:
+        return jsonify({"ok": False, "checks": checks}), 409
+    
+    return jsonify({"ok": True, "checks": checks}), 200
 
 # ========================================
 # UNITS OF MEASURE (UOM)
