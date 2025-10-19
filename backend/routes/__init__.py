@@ -95,6 +95,15 @@ def register_blueprints(app):
     except Exception as e:
         app.logger.warning("production_work_centers not registered: %s", e)
 
+    # 11) /api/production/production-orders  (Production: Orders with BOM explosion)
+    try:
+        from .production.production_orders import bp as production_orders_bp  # type: ignore
+        app.register_blueprint(production_orders_bp)
+        app.logger.info("✔ registered blueprint: production_orders -> %s",
+                        getattr(production_orders_bp, "url_prefix", "/api/production/production-orders"))
+    except Exception as e:
+        app.logger.warning("production_orders not registered: %s", e)
+
     # (exemplos para outros módulos)
     # try:
     #     from .patients import bp as patients_bp
