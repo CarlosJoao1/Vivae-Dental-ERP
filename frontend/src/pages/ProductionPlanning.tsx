@@ -9,10 +9,14 @@ interface ProductionOrder {
   order_no: string
   item_no: string
   item_description: string
+  description?: string
   quantity: number
   uom_code: string
   status: string
+  start_date?: string
   due_date: string
+  location_code?: string
+  priority?: number
   bom_version_code?: string
   routing_version_code?: string
   created_at: string
@@ -203,7 +207,30 @@ export default function ProductionPlanning() {
                       <span className="ml-1 font-medium">{order.quantity} {order.uom_code}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">{t('due_date') || 'Data Limite'}:</span>
+                      <span className="text-gray-500">{t('location') || 'Local'}:</span>
+                      <span className="ml-1 font-medium">{order.location_code || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">{t('priority') || 'Prioridade'}:</span>
+                      <span className="ml-1 font-medium">
+                        {order.priority !== undefined ? (
+                          <span className={order.priority >= 7 ? 'text-red-600 font-bold' : ''}>
+                            {order.priority} {order.priority >= 7 ? '🔥' : ''}
+                          </span>
+                        ) : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500">{t('start_date') || 'Início'}:</span>
+                      <span className="ml-1 font-medium">
+                        {order.start_date ? new Date(order.start_date).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">{t('due_date') || 'Fim'}:</span>
                       <span className="ml-1 font-medium">
                         {new Date(order.due_date).toLocaleDateString()}
                       </span>
