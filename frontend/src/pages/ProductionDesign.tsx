@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
+import BOMForm from '../components/BOMForm'
+import RoutingForm from '../components/RoutingForm'
 
 interface BOM {
   id: string
@@ -28,6 +30,10 @@ export default function ProductionDesign() {
   const [routings, setRoutings] = useState<Routing[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'boms' | 'routings'>('boms')
+  const [showBOMForm, setShowBOMForm] = useState(false)
+  const [showRoutingForm, setShowRoutingForm] = useState(false)
+  const [selectedBOM, setSelectedBOM] = useState<BOM | undefined>(undefined)
+  const [selectedRouting, setSelectedRouting] = useState<Routing | undefined>(undefined)
 
   useEffect(() => {
     loadData()
@@ -37,11 +43,11 @@ export default function ProductionDesign() {
     try {
       setLoading(true)
       const [bomsRes, routingsRes] = await Promise.all([
-        api.get('/api/production/boms'),
-        api.get('/api/production/routings')
+        api<BOM[]>('/api/production/boms'),
+        api<Routing[]>('/api/production/routings')
       ])
-      setBOMs(bomsRes.data)
-      setRoutings(routingsRes.data)
+      setBOMs(bomsRes)
+      setRoutings(routingsRes)
     } catch (error) {
       console.error('Failed to load production design data:', error)
     } finally {
@@ -79,13 +85,19 @@ export default function ProductionDesign() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => alert('Create BOM - Coming soon!')}
+            onClick={() => {
+              setSelectedBOM(undefined)
+              setShowBOMForm(true)
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
           >
             + {t('new_bom') || 'Nova BOM'}
           </button>
           <button
-            onClick={() => alert('Create Routing - Coming soon!')}
+            onClick={() => {
+              setSelectedRouting(undefined)
+              setShowRoutingForm(true)
+            }}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
           >
             + {t('new_routing') || 'Novo Routing'}
@@ -154,10 +166,13 @@ export default function ProductionDesign() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => alert(`View BOM ${bom.item_no} - Coming soon!`)}
+                      onClick={() => {
+                        setSelectedBOM(bom)
+                        setShowBOMForm(true)
+                      }}
                       className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
                     >
-                      👁️ {t('view') || 'Ver'}
+                      ✏️ {t('edit') || 'Editar'}
                     </button>
                     {bom.status === 'Certified' && (
                       <button
@@ -165,9 +180,9 @@ export default function ProductionDesign() {
                           try {
                             const quantity = prompt('Quantity to explode:', '10')
                             if (!quantity) return
-                            const res = await api.post(`/api/production/boms/${bom.id}/explode?quantity=${quantity}`)
-                            console.log('Explosion result:', res.data)
-                            alert(`BOM Explosion successful!\n\nComponents: ${Object.keys(res.data.consolidated_components).length}\nMax Level: ${res.data.max_level}`)
+                            const res = await api<any>(`/api/production/boms/${bom.id}/explode?quantity=${quantity}`, { method: 'POST' })
+                            console.log('Explosion result:', res)
+                            alert(`BOM Explosion successful!\n\nComponents: ${Object.keys(res.consolidated_components).length}\nMax Level: ${res.max_level}`)
                           } catch (error) {
                             console.error('Explosion failed:', error)
                             alert('Failed to explode BOM')
@@ -220,10 +235,13 @@ export default function ProductionDesign() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => alert(`View Routing ${routing.item_no} - Coming soon!`)}
+                      onClick={() => {
+                        setSelectedRouting(routing)
+                        setShowRoutingForm(true)
+                      }}
                       className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
                     >
-                      👁️ {t('view') || 'Ver'}
+                      ✏️ {t('edit') || 'Editar'}
                     </button>
                     {routing.status === 'Certified' && (
                       <button
@@ -231,9 +249,9 @@ export default function ProductionDesign() {
                           try {
                             const quantity = prompt('Quantity to calculate time:', '10')
                             if (!quantity) return
-                            const res = await api.post(`/api/production/routings/${routing.id}/calculate-time?quantity=${quantity}`)
-                            console.log('Time calculation:', res.data)
-                            alert(`Time Calculation:\n\nSetup: ${res.data.total_setup_time} min\nRun: ${res.data.total_run_time} min\nTotal: ${res.data.total_time} min`)
+                            const res = await api<any>(`/api/production/routings/${routing.id}/calculate-time?quantity=${quantity}`, { method: 'POST' })
+                            console.log('Time calculation:', res)
+                            alert(`Time Calculation:\n\nSetup: ${res.total_setup_time} min\nRun: ${res.total_run_time} min\nTotal: ${res.total_time} min`)
                           } catch (error) {
                             console.error('Time calculation failed:', error)
                             alert('Failed to calculate time')
@@ -274,6 +292,37 @@ export default function ProductionDesign() {
           </div>
         </div>
       </div>
+
+      {/* Forms */}
+      {showBOMForm && (
+        <BOMForm
+          bom={selectedBOM}
+          onSuccess={() => {
+            setShowBOMForm(false)
+            setSelectedBOM(undefined)
+            loadData()
+          }}
+          onCancel={() => {
+            setShowBOMForm(false)
+            setSelectedBOM(undefined)
+          }}
+        />
+      )}
+
+      {showRoutingForm && (
+        <RoutingForm
+          routing={selectedRouting}
+          onSuccess={() => {
+            setShowRoutingForm(false)
+            setSelectedRouting(undefined)
+            loadData()
+          }}
+          onCancel={() => {
+            setShowRoutingForm(false)
+            setSelectedRouting(undefined)
+          }}
+        />
+      )}
     </div>
   )
 }

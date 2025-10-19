@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api'
+import ProductionOrderForm from '../components/ProductionOrderForm'
 
 interface ProductionOrder {
   id: string
@@ -21,6 +22,7 @@ export default function ProductionPlanning() {
   const [orders, setOrders] = useState<ProductionOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [showOrderForm, setShowOrderForm] = useState(false)
 
   useEffect(() => {
     loadOrders()
@@ -109,7 +111,7 @@ export default function ProductionPlanning() {
           </p>
         </div>
         <button
-          onClick={() => alert('Create Production Order - Coming soon!')}
+          onClick={() => setShowOrderForm(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
         >
           + {t('new_production_order') || 'Nova Ordem de Produção'}
@@ -278,6 +280,17 @@ export default function ProductionPlanning() {
           </p>
         </div>
       </div>
+
+      {/* Form */}
+      {showOrderForm && (
+        <ProductionOrderForm
+          onSuccess={() => {
+            setShowOrderForm(false)
+            loadOrders()
+          }}
+          onCancel={() => setShowOrderForm(false)}
+        />
+      )}
     </div>
   )
 }
