@@ -104,6 +104,14 @@ def register_blueprints(app):
     except Exception as e:
         app.logger.warning("production_orders not registered: %s", e)
 
+    # 12) /api/production/journals  (Production: Consumption/Output/Capacity posting)
+    try:
+        from .production.journals import journals_bp  # type: ignore
+        app.register_blueprint(journals_bp, url_prefix='/api/production/journals')
+        app.logger.info("✔ registered blueprint: journals -> /api/production/journals")
+    except Exception as e:
+        app.logger.warning("journals not registered: %s", e)
+
     # (exemplos para outros módulos)
     # try:
     #     from .patients import bp as patients_bp
