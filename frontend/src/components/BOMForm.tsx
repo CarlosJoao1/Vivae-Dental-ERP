@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
 
 interface BOMLine {
@@ -107,16 +108,19 @@ export default function BOMForm({ bom, onSuccess, onCancel }: BOMFormProps) {
           method: 'PATCH',
           body: JSON.stringify(data)
         })
+        toast.success(`✅ BOM ${data.item_no} ${data.version_code} updated successfully!`)
       } else {
         // Create new BOM
         await api('/api/production/boms', {
           method: 'POST',
           body: JSON.stringify(data)
         })
+        toast.success(`✅ BOM ${data.item_no} ${data.version_code} created successfully!`)
       }
       
       onSuccess()
     } catch (err: any) {
+      toast.error(`❌ Failed to save BOM: ${err.message}`)
       setError(err.message || 'Failed to save BOM')
       setLoading(false)
     }

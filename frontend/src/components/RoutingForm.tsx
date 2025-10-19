@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
 
 interface RoutingOperation {
@@ -111,16 +112,19 @@ export default function RoutingForm({ routing, onSuccess, onCancel }: RoutingFor
           method: 'PATCH',
           body: JSON.stringify(data)
         })
+        toast.success(`✅ Routing ${data.item_no} ${data.version_code} updated successfully!`)
       } else {
         // Create new routing
         await api('/api/production/routings', {
           method: 'POST',
           body: JSON.stringify(data)
         })
+        toast.success(`✅ Routing ${data.item_no} ${data.version_code} created successfully!`)
       }
       
       onSuccess()
     } catch (err: any) {
+      toast.error(`❌ Failed to save routing: ${err.message}`)
       setError(err.message || 'Failed to save routing')
       setLoading(false)
     }

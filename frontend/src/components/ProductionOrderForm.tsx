@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
 
 interface ProductionOrderFormData {
@@ -127,13 +128,15 @@ export default function ProductionOrderForm({ onSuccess, onCancel }: ProductionO
       }
       
       // Create production order
-      await api('/api/production/production-orders', {
+      const result = await api<any>('/api/production/production-orders', {
         method: 'POST',
         body: JSON.stringify(data)
       })
       
+      toast.success(`✅ Production Order ${result.order_no} created successfully!`)
       onSuccess()
     } catch (err: any) {
+      toast.error(`❌ Failed to create production order: ${err.message}`)
       setError(err.message || 'Failed to create production order')
       setLoading(false)
     }

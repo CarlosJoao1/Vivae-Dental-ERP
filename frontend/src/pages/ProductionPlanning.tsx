@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import ProductionOrderForm from '../components/ProductionOrderForm'
 
@@ -53,34 +54,37 @@ export default function ProductionPlanning() {
 
   const releaseOrder = async (orderId: string) => {
     if (!confirm('Release this production order?')) return
+    const loadingToast = toast.loading('🚀 Releasing production order...')
     try {
       await api(`/api/production/production-orders/${orderId}/release`, { method: 'POST' })
-      alert('Production order released!')
+      toast.success('✅ Production order released successfully!', { id: loadingToast })
       loadOrders()
     } catch (error: any) {
-      alert(`Failed to release: ${error.message}`)
+      toast.error(`❌ Failed to release: ${error.message}`, { id: loadingToast })
     }
   }
 
   const finishOrder = async (orderId: string) => {
     if (!confirm('Finish this production order?')) return
+    const loadingToast = toast.loading('🏁 Finishing production order...')
     try {
       await api(`/api/production/production-orders/${orderId}/finish`, { method: 'POST' })
-      alert('Production order finished!')
+      toast.success('✅ Production order finished successfully!', { id: loadingToast })
       loadOrders()
     } catch (error: any) {
-      alert(`Failed to finish: ${error.message}`)
+      toast.error(`❌ Failed to finish: ${error.message}`, { id: loadingToast })
     }
   }
 
   const cancelOrder = async (orderId: string) => {
     if (!confirm('Cancel this production order? This action cannot be undone!')) return
+    const loadingToast = toast.loading('❌ Cancelling production order...')
     try {
       await api(`/api/production/production-orders/${orderId}/cancel`, { method: 'POST' })
-      alert('Production order cancelled!')
+      toast.success('✅ Production order cancelled', { id: loadingToast })
       loadOrders()
     } catch (error: any) {
-      alert(`Failed to cancel: ${error.message}`)
+      toast.error(`❌ Failed to cancel: ${error.message}`, { id: loadingToast })
     }
   }
 
