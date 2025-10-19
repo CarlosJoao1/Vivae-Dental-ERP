@@ -70,17 +70,20 @@ export default function Production() {
                 <p className="text-xs text-gray-600 mt-0.5">{dept.description}</p>
               </div>
             </div>
-            <div className="text-xs text-gray-600 bg-white bg-opacity-60 px-2 py-1 rounded mt-2">
-              {t('status_dev_license')}
+            <div className="text-xs font-semibold text-blue-600 mt-2 flex items-center gap-1">
+              <span>→</span> {t('click_to_access') || 'Clique para aceder'}
             </div>
           </Link>
         ))}
       </div>
 
-      {/* Link para páginas antigas (Admin, Work Centers, Machines) */}
+      {/* Administration & Master Data */}
       <div className="card p-4">
-        <h2 className="text-base font-semibold mb-3">{t('production_admin')}</h2>
+        <h2 className="text-base font-semibold mb-3">⚙️ {t('administration') || 'Administration'}</h2>
         <div className="flex flex-wrap gap-2">
+          <Link to="/production/masterdata" className="px-4 py-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg transition-colors font-medium">
+            🗃️ {t('master_data') || 'Master Data'}
+          </Link>
           <Link to="/production/admin" className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
             📋 {t('production_admin')}
           </Link>

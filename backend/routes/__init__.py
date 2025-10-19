@@ -59,6 +59,59 @@ def register_blueprints(app):
     except Exception as e:
         app.logger.warning("roles not registered: %s", e)
 
+    # 7) /api/production/masterdata  (Production: UOM, Items, Locations, Suppliers)
+    try:
+        from .production.masterdata import bp as production_masterdata_bp  # type: ignore
+        app.register_blueprint(production_masterdata_bp)
+        app.logger.info("✔ registered blueprint: production_masterdata -> %s",
+                        getattr(production_masterdata_bp, "url_prefix", "/api/production/masterdata"))
+    except Exception as e:
+        app.logger.warning("production_masterdata not registered: %s", e)
+
+    # 8) /api/production/boms  (Production: Bills of Materials)
+    try:
+        from .production.bom import bp as production_bom_bp  # type: ignore
+        app.register_blueprint(production_bom_bp)
+        app.logger.info("✔ registered blueprint: production_bom -> %s",
+                        getattr(production_bom_bp, "url_prefix", "/api/production/boms"))
+    except Exception as e:
+        app.logger.warning("production_bom not registered: %s", e)
+
+    # 9) /api/production/routings  (Production: Routings)
+    try:
+        from .production.routing import bp as production_routing_bp  # type: ignore
+        app.register_blueprint(production_routing_bp)
+        app.logger.info("✔ registered blueprint: production_routing -> %s",
+                        getattr(production_routing_bp, "url_prefix", "/api/production/routings"))
+    except Exception as e:
+        app.logger.warning("production_routing not registered: %s", e)
+
+    # 10) /api/production/work-centers & /machine-centers  (Production: Resources)
+    try:
+        from .production.work_centers import bp as production_work_centers_bp  # type: ignore
+        app.register_blueprint(production_work_centers_bp)
+        app.logger.info("✔ registered blueprint: production_work_centers -> %s",
+                        getattr(production_work_centers_bp, "url_prefix", "/api/production"))
+    except Exception as e:
+        app.logger.warning("production_work_centers not registered: %s", e)
+
+    # 11) /api/production/production-orders  (Production: Orders with BOM explosion)
+    try:
+        from .production.production_orders import bp as production_orders_bp  # type: ignore
+        app.register_blueprint(production_orders_bp)
+        app.logger.info("✔ registered blueprint: production_orders -> %s",
+                        getattr(production_orders_bp, "url_prefix", "/api/production/production-orders"))
+    except Exception as e:
+        app.logger.warning("production_orders not registered: %s", e)
+
+    # 12) /api/production/journals  (Production: Consumption/Output/Capacity posting)
+    try:
+        from .production.journals import journals_bp  # type: ignore
+        app.register_blueprint(journals_bp, url_prefix='/api/production/journals')
+        app.logger.info("✔ registered blueprint: journals -> /api/production/journals")
+    except Exception as e:
+        app.logger.warning("journals not registered: %s", e)
+
     # (exemplos para outros módulos)
     # try:
     #     from .patients import bp as patients_bp
