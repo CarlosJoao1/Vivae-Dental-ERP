@@ -34,6 +34,7 @@ ERR_CLIENT_EXISTS = "client exists"
 ERR_INVALID_COUNTRY_CODE = "invalid country_code"
 ERROR_CLIENT_NOT_FOUND = "client not found"
 ERROR_ADDRESS_EXISTS = "address exists"
+STATUS_DELETED = "deleted"
 
 # Helper functions for error responses
 def _error_response(message: str, status: int = 400):
@@ -47,6 +48,43 @@ def _not_found():
 def _validation_error(e: Exception):
     """Return validation error response"""
     return _error_response(str(e), 400)
+
+def _deleted():
+    """Return standard deleted response"""
+    return jsonify({"status": STATUS_DELETED})
+
+def _check_permission(lab, resource: str, action: str):
+    """Check user permission for resource action. Returns error response or None."""
+    try:
+        uid = get_jwt_identity()
+        user = User.objects.get(id=uid)
+        err = ensure(user, lab, resource, action)
+        if err:
+            return jsonify(err), 403
+    except Exception:
+        pass
+    return None
+
+def _get_or_404(model_class, lab, obj_id):
+    """Get object by ID and lab or return 404 error."""
+    try:
+        return model_class.objects.get(id=obj_id, lab=lab), None
+    except DoesNotExist:
+        return None, _not_found()
+
+def _update_fields(obj, data, fields):
+    """Update object fields from data dictionary."""
+    for f in fields:
+        if f in data:
+            setattr(obj, f, data[f])
+    return obj
+
+def _get_client_or_404(lab, client_id):
+    """Get client by ID and lab or return 404 error with specific message."""
+    try:
+        return Client.objects.get(id=client_id, lab=lab), None
+    except DoesNotExist:
+        return None, (jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404)
 
 bp = Blueprint("masterdata", __name__, url_prefix="/api/masterdata")
 
@@ -494,14 +532,9 @@ def labs_update(lab_id):
 def patients_list():
     lab = _lab()
     # Permission: patients.read
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'patients', 'read')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'patients', 'read')
+    if perm_err:
+        return perm_err
     page, size = _pagination()
     q = _q()
     qs = Patient.objects(lab=lab)
@@ -516,14 +549,9 @@ def patients_list():
 def patients_create():
     lab = _lab()
     # Permission: patients.create
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'patients', 'create')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'patients', 'create')
+    if perm_err:
+        return perm_err
     data = request.get_json(force=True, silent=True) or {}
     try:
         p = Patient(
@@ -548,14 +576,9 @@ def patients_update(pid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
     # Permission: patients.update
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'patients', 'update')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'patients', 'update')
+    if perm_err:
+        return perm_err
     try:
         p = Patient.objects.get(id=pid, lab=lab)
         # Normalize birthdate if present
@@ -581,18 +604,13 @@ def patients_update(pid):
 def patients_delete(pid):
     lab = _lab()
     # Permission: patients.delete
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'patients', 'delete')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'patients', 'delete')
+    if perm_err:
+        return perm_err
     try:
         p = Patient.objects.get(id=pid, lab=lab)
         p.delete()
-        return jsonify({"status": "deleted"})
+        return _deleted()
     except DoesNotExist:
         return _not_found()
 
@@ -602,14 +620,9 @@ def patients_delete(pid):
 def techs_list():
     lab = _lab()
     # Permission: technicians.read
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'technicians', 'read')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'technicians', 'read')
+    if perm_err:
+        return perm_err
     page, size = _pagination()
     q = _q()
     qs = Technician.objects(lab=lab)
@@ -624,14 +637,9 @@ def techs_list():
 def techs_create():
     lab = _lab()
     # Permission: technicians.create
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'technicians', 'create')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'technicians', 'create')
+    if perm_err:
+        return perm_err
     data = request.get_json(force=True, silent=True) or {}
     try:
         t = Technician(
@@ -651,14 +659,9 @@ def techs_update(tid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
     # Permission: technicians.update
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'technicians', 'update')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'technicians', 'update')
+    if perm_err:
+        return perm_err
     try:
         t = Technician.objects.get(id=tid, lab=lab)
         for f in ["name","email","phone","workcenter"]:
@@ -675,18 +678,13 @@ def techs_update(tid):
 def techs_delete(tid):
     lab = _lab()
     # Permission: technicians.delete
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'technicians', 'delete')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'technicians', 'delete')
+    if perm_err:
+        return perm_err
     try:
         t = Technician.objects.get(id=tid, lab=lab)
         t.delete()
-        return jsonify({"status": "deleted"})
+        return _deleted()
     except DoesNotExist:
         return _not_found()
 
@@ -696,14 +694,9 @@ def techs_delete(tid):
 def services_list():
     lab = _lab()
     # Permission: services.read
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'services', 'read')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'services', 'read')
+    if perm_err:
+        return perm_err
     page, size = _pagination()
     q = _q()
     qs = Service.objects(lab=lab)
@@ -718,14 +711,9 @@ def services_list():
 def services_create():
     lab = _lab()
     # Permission: services.create
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'services', 'create')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'services', 'create')
+    if perm_err:
+        return perm_err
     data = request.get_json(force=True, silent=True) or {}
     try:
         s = Service(
@@ -745,14 +733,9 @@ def services_update(sid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
     # Permission: services.update
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'services', 'update')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'services', 'update')
+    if perm_err:
+        return perm_err
     try:
         s = Service.objects.get(id=sid, lab=lab)
         for f in ["name","code","price","description"]:
@@ -769,18 +752,13 @@ def services_update(sid):
 def services_delete(sid):
     lab = _lab()
     # Permission: services.delete
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'services', 'delete')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'services', 'delete')
+    if perm_err:
+        return perm_err
     try:
         s = Service.objects.get(id=sid, lab=lab)
         s.delete()
-        return jsonify({"status": "deleted"})
+        return _deleted()
     except DoesNotExist:
         return _not_found()
 
@@ -790,14 +768,9 @@ def services_delete(sid):
 def doctypes_list():
     lab = _lab()
     # Permission: document_types.read
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'document_types', 'read')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'document_types', 'read')
+    if perm_err:
+        return perm_err
     page, size = _pagination()
     q = _q()
     qs = DocumentType.objects(lab=lab)
@@ -812,14 +785,9 @@ def doctypes_list():
 def doctypes_create():
     lab = _lab()
     # Permission: document_types.create
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'document_types', 'create')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'document_types', 'create')
+    if perm_err:
+        return perm_err
     data = request.get_json(force=True, silent=True) or {}
     try:
         d = DocumentType(
@@ -837,14 +805,9 @@ def doctypes_update(did):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
     # Permission: document_types.update
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'document_types', 'update')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'document_types', 'update')
+    if perm_err:
+        return perm_err
     try:
         d = DocumentType.objects.get(id=did, lab=lab)
         for f in ["name","extension"]:
@@ -861,18 +824,13 @@ def doctypes_update(did):
 def doctypes_delete(did):
     lab = _lab()
     # Permission: document_types.delete
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'document_types', 'delete')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'document_types', 'delete')
+    if perm_err:
+        return perm_err
     try:
         d = DocumentType.objects.get(id=did, lab=lab)
         d.delete()
-        return jsonify({"status": "deleted"})
+        return _deleted()
     except DoesNotExist:
         return _not_found()
 
@@ -1075,7 +1033,7 @@ def clients_delete(cid):
     try:
         c = Client.objects.get(id=cid, lab=lab)
         c.delete()
-        return jsonify({"status": "deleted"})
+        return _deleted()
     except DoesNotExist:
         return _not_found()
 
@@ -1183,14 +1141,9 @@ def paymethods_create():
 def series_list():
     lab = _lab()
     # Permission: series.read
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'series', 'read')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'series', 'read')
+    if perm_err:
+        return perm_err
     items = Series.objects(lab=lab).order_by("doc_type")
     return jsonify({"items": [_series_to_dict(x) for x in items]})
 
@@ -1199,14 +1152,9 @@ def series_list():
 def series_create():
     lab = _lab()
     # Permission: series.create
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'series', 'create')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'series', 'create')
+    if perm_err:
+        return perm_err
     data = request.get_json(force=True, silent=True) or {}
     s = Series(lab=lab,
                doc_type=data.get('doc_type'),
@@ -1222,14 +1170,9 @@ def series_update(sid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
     # Permission: series.update
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'series', 'update')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'series', 'update')
+    if perm_err:
+        return perm_err
     try:
         s = Series.objects.get(id=sid, lab=lab)
         # Prevent changing doc_type if series has been used (next_number > 1)
@@ -1257,14 +1200,9 @@ def series_update(sid):
 def smtp_get():
     lab = _lab()
     # Permission: smtp.read
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'smtp', 'read')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'smtp', 'read')
+    if perm_err:
+        return perm_err
     # Cleanup deprecated fields if present in the collection (one-time best-effort)
     try:
         col = SmtpConfig._get_collection()
@@ -1279,14 +1217,9 @@ def smtp_get():
 def smtp_update():
     lab = _lab()
     # Permission: smtp.update
-    try:
-        uid = get_jwt_identity()
-        user = User.objects.get(id=uid)
-        err = ensure(user, lab, 'smtp', 'update')
-        if err:
-            return jsonify(err), 403
-    except Exception:
-        pass
+    perm_err = _check_permission(lab, 'smtp', 'update')
+    if perm_err:
+        return perm_err
     data = request.get_json(force=True, silent=True) or {}
     cfg = SmtpConfig.objects(lab=lab).first()
     if not cfg:
@@ -1612,7 +1545,7 @@ def countries_delete(cid):
                 "references": {"shipping_addresses": int(ref_sa), "clients": int(ref_cli)}
             }), 400
         c.delete()
-        return jsonify({"status": "deleted"})
+        return _deleted()
     except DoesNotExist:
         return _not_found()
 
@@ -1658,10 +1591,9 @@ def client_resolve_price(cid):
     Returns: { unit_price: number | null }
     """
     lab = _lab()
-    try:
-        cli = Client.objects.get(id=cid, lab=lab)
-    except DoesNotExist:
-        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
+    cli, err = _get_client_or_404(lab, cid)
+    if err:
+        return err
     sale_type = (request.args.get('sale_type') or '').strip().lower()
     code = (request.args.get('code') or '').strip()
     try:
@@ -1805,7 +1737,7 @@ def shipaddrs_delete(aid):
         except Exception:
             pass
         a.delete()
-        return jsonify({"status": "deleted"})
+        return _deleted()
     except DoesNotExist:
         return _not_found()
 
@@ -1814,10 +1746,9 @@ def shipaddrs_delete(aid):
 @jwt_required()
 def client_shipaddrs_list(cid):
     lab = _lab()
-    try:
-        cli = Client.objects.get(id=cid, lab=lab)
-    except DoesNotExist:
-        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
+    cli, err = _get_client_or_404(lab, cid)
+    if err:
+        return err
     items = ShippingAddress.objects(lab=lab, client=cli).order_by("code")
     return jsonify({"items": [_shipaddr_to_dict(x) for x in items]})
 
@@ -1826,10 +1757,9 @@ def client_shipaddrs_list(cid):
 def client_shipaddrs_create(cid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
-    try:
-        cli = Client.objects.get(id=cid, lab=lab)
-    except DoesNotExist:
-        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
+    cli, err = _get_client_or_404(lab, cid)
+    if err:
+        return err
     try:
         # unique code per client
         if ShippingAddress.objects(lab=lab, client=cli, code=data.get('code')).first():
@@ -1855,10 +1785,9 @@ def client_shipaddrs_create(cid):
 @jwt_required()
 def client_shipaddrs_update(cid, aid):
     lab = _lab()
-    try:
-        cli = Client.objects.get(id=cid, lab=lab)
-    except DoesNotExist:
-        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
+    cli, err = _get_client_or_404(lab, cid)
+    if err:
+        return err
     data = request.get_json(force=True, silent=True) or {}
     try:
         a = ShippingAddress.objects.get(id=aid, lab=lab, client=cli)
@@ -1886,10 +1815,9 @@ def client_shipaddrs_update(cid, aid):
 @jwt_required()
 def client_shipaddrs_delete(cid, aid):
     lab = _lab()
-    try:
-        cli = Client.objects.get(id=cid, lab=lab)
-    except DoesNotExist:
-        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
+    cli, err = _get_client_or_404(lab, cid)
+    if err:
+        return err
     try:
         a = ShippingAddress.objects.get(id=aid, lab=lab, client=cli)
         # Clear client's default if this code was default
@@ -1898,7 +1826,7 @@ def client_shipaddrs_delete(cid, aid):
         except Exception:
             pass
         a.delete()
-        return jsonify({"status": "deleted"})
+        return _deleted()
     except DoesNotExist:
         return _not_found()
 
@@ -1907,10 +1835,9 @@ def client_shipaddrs_delete(cid, aid):
 @jwt_required()
 def client_prices_list(cid):
     lab = _lab()
-    try:
-        cli = Client.objects.get(id=cid, lab=lab)
-    except DoesNotExist:
-        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
+    cli, err = _get_client_or_404(lab, cid)
+    if err:
+        return err
     items = ClientPrice.objects(lab=lab, client=cli).order_by("code")
     return jsonify({"items": [_clientprice_to_dict(x) for x in items]})
 
@@ -1919,10 +1846,9 @@ def client_prices_list(cid):
 def client_prices_create(cid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
-    try:
-        cli = Client.objects.get(id=cid, lab=lab)
-    except DoesNotExist:
-        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
+    cli, err = _get_client_or_404(lab, cid)
+    if err:
+        return err
     try:
         cp = ClientPrice(
             lab=lab,
@@ -1945,10 +1871,9 @@ def client_prices_create(cid):
 def client_prices_update(cid, pid):
     lab = _lab()
     data = request.get_json(force=True, silent=True) or {}
-    try:
-        cli = Client.objects.get(id=cid, lab=lab)
-    except DoesNotExist:
-        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
+    cli, err = _get_client_or_404(lab, cid)
+    if err:
+        return err
     try:
         cp = ClientPrice.objects.get(id=pid, lab=lab, client=cli)
         for f in ['sale_type','sale_code','code','uom']:
@@ -1979,14 +1904,13 @@ def client_prices_update(cid, pid):
 @jwt_required()
 def client_prices_delete(cid, pid):
     lab = _lab()
-    try:
-        cli = Client.objects.get(id=cid, lab=lab)
-    except DoesNotExist:
-        return jsonify({"error": ERROR_CLIENT_NOT_FOUND}), 404
+    cli, err = _get_client_or_404(lab, cid)
+    if err:
+        return err
     try:
         cp = ClientPrice.objects.get(id=pid, lab=lab, client=cli)
         cp.delete()
-        return jsonify({"status": "deleted"})
+        return _deleted()
     except DoesNotExist:
         return _not_found()
 
