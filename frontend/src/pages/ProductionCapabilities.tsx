@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../lib/api'
+import WorkCenterForm from '@/components/production/WorkCenterForm'
+import MachineCenterForm from '@/components/production/MachineCenterForm'
 
 interface WorkCenter {
   id: string
@@ -31,6 +33,8 @@ export default function ProductionCapabilities() {
   const [machineCenters, setMachineCenters] = useState<MachineCenter[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedWC, setSelectedWC] = useState<string | null>(null)
+  const [showWCForm, setShowWCForm] = useState(false)
+  const [showMCForm, setShowMCForm] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -92,13 +96,13 @@ export default function ProductionCapabilities() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => alert('Create Work Center - Coming soon!')}
+            onClick={() => setShowWCForm(true)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
           >
             + {t('new_work_center') || 'Novo Work Center'}
           </button>
           <button
-            onClick={() => alert('Create Machine Center - Coming soon!')}
+            onClick={() => setShowMCForm(true)}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
           >
             + {t('new_machine_center') || 'Nova Máquina'}
@@ -144,7 +148,7 @@ export default function ProductionCapabilities() {
           <div className="text-center py-8">
             <p className="text-gray-500 mb-4">{t('no_work_centers') || 'Nenhum Work Center encontrado'}</p>
             <button
-              onClick={() => alert('Create Work Center - Coming soon!')}
+              onClick={() => setShowWCForm(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               + {t('create_first_wc') || 'Criar primeiro Work Center'}
@@ -247,7 +251,7 @@ export default function ProductionCapabilities() {
                                 </div>
                               </div>
                               <button
-                                onClick={() => alert(`Edit ${mc.code} - Coming soon!`)}
+                                onClick={() => setShowMCForm(true)}
                                 className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded transition-colors"
                               >
                                 ✏️
@@ -306,6 +310,19 @@ export default function ProductionCapabilities() {
           * {t('utilization_calculated') || 'Utilização calculada com base em Production Orders (placeholder)'}
         </p>
       </div>
+
+      {showWCForm && (
+        <WorkCenterForm
+          onSuccess={() => { setShowWCForm(false); loadData() }}
+          onCancel={() => setShowWCForm(false)}
+        />
+      )}
+      {showMCForm && (
+        <MachineCenterForm
+          onSuccess={() => { setShowMCForm(false); loadData() }}
+          onCancel={() => setShowMCForm(false)}
+        />
+      )}
     </div>
   )
 }

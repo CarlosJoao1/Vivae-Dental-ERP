@@ -218,7 +218,7 @@ export default function ProductionPlanning() {
               }
             </p>
             <button
-              onClick={() => alert('Create Production Order - Coming soon!')}
+              onClick={() => setShowOrderForm(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               + {t('create_first_order') || 'Criar primeira ordem'}
