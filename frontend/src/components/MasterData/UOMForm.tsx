@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
+import FormModal from '@/components/common/FormModal'
 
 interface UOMFormData {
   code: string
@@ -59,23 +60,15 @@ export default function UOMForm({ uom, onSuccess, onCancel }: UOMFormProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800">
-            {isEdit ? '✏️ Edit UOM' : '➕ Create UOM'}
-          </h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-gray-500 hover:text-gray-700"
-            aria-label="Close form"
-          >
-            ✕
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+    <FormModal
+      isOpen={true}
+      title="Unit of Measure"
+      onClose={onCancel}
+      onSubmit={handleSubmit(onSubmit)}
+      loading={loading}
+      isEdit={isEdit}
+    >
+      <div className="space-y-4">
           {/* Code */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -155,27 +148,7 @@ export default function UOMForm({ uom, onSuccess, onCancel }: UOMFormProps) {
               💡 Controls quantity precision for this unit
             </p>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              disabled={loading}
-            >
-              {t('cancel', 'Cancel')}
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-              disabled={loading}
-            >
-              {loading ? '⏳ Saving...' : (isEdit ? '💾 Update' : '➕ Create')}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        </div>
+      </FormModal>
   )
 }

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import ProductionOrderForm from '../components/ProductionOrderForm'
 import ProductionOrderDetailsModal from '../components/ProductionOrderDetailsModal'
+import ConfirmDialog from '../components/common/ConfirmDialog'
 
 interface ProductionOrder {
   id: string
@@ -30,6 +31,18 @@ export default function ProductionPlanning() {
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [showOrderForm, setShowOrderForm] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant?: 'danger' | 'warning' | 'info'
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  })
 
   useEffect(() => {
     loadOrders()
@@ -59,39 +72,63 @@ export default function ProductionPlanning() {
   }
 
   const releaseOrder = async (orderId: string) => {
-    if (!confirm('Release this production order?')) return
-    const loadingToast = toast.loading('🚀 Releasing production order...')
-    try {
-      await api(`/api/production/production-orders/${orderId}/release`, { method: 'POST' })
-      toast.success('✅ Production order released successfully!', { id: loadingToast })
-      loadOrders()
-    } catch (error: any) {
-      toast.error(`❌ Failed to release: ${error.message}`, { id: loadingToast })
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Release Production Order',
+      message: 'Are you sure you want to release this production order?',
+      variant: 'info',
+      onConfirm: async () => {
+        const loadingToast = toast.loading('🚀 Releasing production order...')
+        try {
+          await api(`/api/production/production-orders/${orderId}/release`, { method: 'POST' })
+          toast.success('✅ Production order released successfully!', { id: loadingToast })
+          loadOrders()
+        } catch (error: any) {
+          toast.error(`❌ Failed to release: ${error.message}`, { id: loadingToast })
+        }
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+      }
+    })
   }
 
   const finishOrder = async (orderId: string) => {
-    if (!confirm('Finish this production order?')) return
-    const loadingToast = toast.loading('🏁 Finishing production order...')
-    try {
-      await api(`/api/production/production-orders/${orderId}/finish`, { method: 'POST' })
-      toast.success('✅ Production order finished successfully!', { id: loadingToast })
-      loadOrders()
-    } catch (error: any) {
-      toast.error(`❌ Failed to finish: ${error.message}`, { id: loadingToast })
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Finish Production Order',
+      message: 'Are you sure you want to finish this production order?',
+      variant: 'info',
+      onConfirm: async () => {
+        const loadingToast = toast.loading('🏁 Finishing production order...')
+        try {
+          await api(`/api/production/production-orders/${orderId}/finish`, { method: 'POST' })
+          toast.success('✅ Production order finished successfully!', { id: loadingToast })
+          loadOrders()
+        } catch (error: any) {
+          toast.error(`❌ Failed to finish: ${error.message}`, { id: loadingToast })
+        }
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+      }
+    })
   }
 
   const cancelOrder = async (orderId: string) => {
-    if (!confirm('Cancel this production order? This action cannot be undone!')) return
-    const loadingToast = toast.loading('❌ Cancelling production order...')
-    try {
-      await api(`/api/production/production-orders/${orderId}/cancel`, { method: 'POST' })
-      toast.success('✅ Production order cancelled', { id: loadingToast })
-      loadOrders()
-    } catch (error: any) {
-      toast.error(`❌ Failed to cancel: ${error.message}`, { id: loadingToast })
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Cancel Production Order',
+      message: 'Cancel this production order? This action cannot be undone!',
+      variant: 'danger',
+      onConfirm: async () => {
+        const loadingToast = toast.loading('❌ Cancelling production order...')
+        try {
+          await api(`/api/production/production-orders/${orderId}/cancel`, { method: 'POST' })
+          toast.success('✅ Production order cancelled', { id: loadingToast })
+          loadOrders()
+        } catch (error: any) {
+          toast.error(`❌ Failed to cancel: ${error.message}`, { id: loadingToast })
+        }
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+      }
+    })
   }
 
   const filteredOrders = filterStatus === 'all' 
@@ -332,6 +369,16 @@ export default function ProductionPlanning() {
           onClose={() => setSelectedOrderId(null)}
         />
       )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

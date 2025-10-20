@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
+import FormModal from '@/components/common/FormModal'
 
 interface LocationFormData {
   code: string
@@ -69,178 +70,150 @@ export default function LocationForm({ location, onSuccess, onCancel }: Location
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800">
-            {isEdit ? '✏️ Edit Location' : '➕ Create Location'}
-          </h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="text-gray-500 hover:text-gray-700"
-            aria-label="Close form"
-          >
-            ✕
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
-          {/* Code and Name (2 columns) */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('code', 'Code')} <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                {...register('code', { 
-                  required: 'Code is required',
-                  pattern: {
-                    value: /^[A-Z0-9_-]+$/,
-                    message: 'Use uppercase letters, numbers, hyphens and underscores only'
-                  },
-                  maxLength: {
-                    value: 20,
-                    message: 'Maximum 20 characters'
-                  }
-                })}
-                disabled={isEdit}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                  errors.code ? 'border-red-500' : 'border-gray-300'
-                } ${isEdit ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                placeholder="MAIN"
-              />
-              {errors.code && (
-                <p className="text-red-500 text-sm mt-1">{errors.code.message}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('name', 'Name')} <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                {...register('name', { required: 'Name is required' })}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                  errors.name ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Main Warehouse"
-              />
-              {errors.name && (
-                <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Address */}
+    <FormModal
+      isOpen={true}
+      title="Location"
+      onClose={onCancel}
+      onSubmit={handleSubmit(onSubmit)}
+      loading={loading}
+      isEdit={isEdit}
+    >
+      <div className="space-y-4">
+        {/* Code and Name (2 columns) */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('address', 'Address')}
+              {t('code', 'Code')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              {...register('address')}
+              {...register('code', { 
+                required: 'Code is required',
+                pattern: {
+                  value: /^[A-Z0-9_-]+$/,
+                  message: 'Use uppercase letters, numbers, hyphens and underscores only'
+                },
+                maxLength: {
+                  value: 20,
+                  message: 'Maximum 20 characters'
+                }
+              })}
+              disabled={isEdit}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                errors.code ? 'border-red-500' : 'border-gray-300'
+              } ${isEdit ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+              placeholder="MAIN"
+            />
+            {errors.code && (
+              <p className="text-red-500 text-sm mt-1">{errors.code.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('name', 'Name')} <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              {...register('name', { required: 'Name is required' })}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                errors.name ? 'border-red-500' : 'border-gray-300'
+              }`}
+              placeholder="Main Warehouse"
+            />
+            {errors.name && (
+              <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Address */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t('address', 'Address')}
+          </label>
+          <input
+            type="text"
+            {...register('address')}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            placeholder="123 Main Street"
+          />
+        </div>
+
+        {/* City, Postal Code, Country (3 columns) */}
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('city', 'City')}
+            </label>
+            <input
+              type="text"
+              {...register('city')}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              placeholder="123 Main Street"
+              placeholder="Lisbon"
             />
           </div>
 
-          {/* City, Postal Code, Country (3 columns) */}
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('city', 'City')}
-              </label>
-              <input
-                type="text"
-                {...register('city')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="Lisbon"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('postal_code', 'Postal Code')}
-              </label>
-              <input
-                type="text"
-                {...register('postal_code')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="1000-001"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t('country', 'Country')}
-              </label>
-              <input
-                type="text"
-                {...register('country')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="Portugal"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('postal_code', 'Postal Code')}
+            </label>
+            <input
+              type="text"
+              {...register('postal_code')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="1000-001"
+            />
           </div>
 
-          {/* Checkboxes */}
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="is_default"
-                {...register('is_default')}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <label htmlFor="is_default" className="ml-2 text-sm text-gray-700">
-                ⭐ {t('is_default', 'Set as default location')}
-              </label>
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('country', 'Country')}
+            </label>
+            <input
+              type="text"
+              {...register('country')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="Portugal"
+            />
+          </div>
+        </div>
 
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="blocked"
-                {...register('blocked')}
-                className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
-              />
-              <label htmlFor="blocked" className="ml-2 text-sm text-gray-700">
-                🚫 {t('blocked', 'Block this location (prevent new transactions)')}
-              </label>
-            </div>
+        {/* Checkboxes */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="is_default"
+              {...register('is_default')}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="is_default" className="ml-2 text-sm text-gray-700">
+              ⭐ {t('is_default', 'Set as default location')}
+            </label>
           </div>
 
-          {/* Info Box */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-blue-800">
-              💡 <strong>Tip:</strong> Default locations are automatically selected when creating new production orders. 
-              Blocked locations cannot be used for new transactions but existing data remains accessible.
-            </p>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="blocked"
+              {...register('blocked')}
+              className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+            />
+            <label htmlFor="blocked" className="ml-2 text-sm text-gray-700">
+              🚫 {t('blocked', 'Block this location (prevent new transactions)')}
+            </label>
           </div>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              disabled={loading}
-            >
-              {t('cancel', 'Cancel')}
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-              disabled={loading}
-            >
-              {loading ? '⏳ Saving...' : (isEdit ? '💾 Update' : '➕ Create')}
-            </button>
-          </div>
-        </form>
+        {/* Info Box */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p className="text-sm text-blue-800">
+            💡 <strong>Tip:</strong> Default locations are automatically selected when creating new production orders. 
+            Blocked locations cannot be used for new transactions but existing data remains accessible.
+          </p>
+        </div>
       </div>
-    </div>
+    </FormModal>
   )
 }
