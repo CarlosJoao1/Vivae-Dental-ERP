@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
 import FormModal from '@/components/common/FormModal'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
 
 interface LocationFormData {
   code: string
@@ -70,6 +71,7 @@ export default function LocationForm({ location, onSuccess, onCancel }: Location
   }
 
   return (
+    <ErrorBoundary context="LocationForm">
     <FormModal
       isOpen={true}
       title="Location"
@@ -215,5 +217,6 @@ export default function LocationForm({ location, onSuccess, onCancel }: Location
         </div>
       </div>
     </FormModal>
+    </ErrorBoundary>
   )
 }

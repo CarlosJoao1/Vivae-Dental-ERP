@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
 import FormModal from '@/components/common/FormModal'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
 
 interface SupplierFormData {
   code: string
@@ -78,6 +79,7 @@ export default function SupplierForm({ supplier, onSuccess, onCancel }: Supplier
   }
 
   return (
+    <ErrorBoundary context="SupplierForm">
     <FormModal
       isOpen={true}
       title="Supplier"
@@ -305,5 +307,6 @@ export default function SupplierForm({ supplier, onSuccess, onCancel }: Supplier
         </div>
       </div>
     </FormModal>
+    </ErrorBoundary>
   )
 }

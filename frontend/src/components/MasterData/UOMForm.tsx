@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
 import FormModal from '@/components/common/FormModal'
 
 interface UOMFormData {
@@ -60,6 +61,7 @@ export default function UOMForm({ uom, onSuccess, onCancel }: UOMFormProps) {
   }
 
   return (
+    <ErrorBoundary context="UOMForm">
     <FormModal
       isOpen={true}
       title="Unit of Measure"
@@ -150,5 +152,6 @@ export default function UOMForm({ uom, onSuccess, onCancel }: UOMFormProps) {
           </div>
         </div>
       </FormModal>
+    </ErrorBoundary>
   )
 }

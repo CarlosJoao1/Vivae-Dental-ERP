@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import { api } from '@/lib/api'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
 import FormModal from '@/components/common/FormModal'
 
 interface ItemFormData {
@@ -84,6 +85,7 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
   }
 
   return (
+    <ErrorBoundary context="ItemForm">
     <FormModal
       isOpen={true}
       title="Item"
@@ -259,5 +261,6 @@ export default function ItemForm({ item, onSuccess, onCancel }: ItemFormProps) {
           </div>
         </div>
       </FormModal>
+    </ErrorBoundary>
   )
 }
