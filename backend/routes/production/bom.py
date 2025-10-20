@@ -39,7 +39,7 @@ def _check_permission(lab, resource: str, action: str):
     try:
         user = User.objects.get(id=uid)
     except Exception:
-        user = None
+        user = User.objects(email=uid).first()
     if not user:
         return _error_response("User not found", 401)
     
