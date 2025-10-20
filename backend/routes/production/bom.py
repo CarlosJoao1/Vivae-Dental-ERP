@@ -4,7 +4,7 @@ BOM (Bill of Materials) Routes - NAV/BC-style
 Endpoints for managing BOMs with versioning and certification workflow
 """
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from mongoengine.errors import ValidationError, DoesNotExist, NotUniqueError
 from typing import Tuple
 
@@ -34,6 +34,12 @@ def _validation_error(e: Exception):
 
 def _check_permission(lab, resource: str, action: str):
     """Check permission and return error response if denied"""
+    try:
+        claims = get_jwt() or {}
+        if (claims.get('role') or '').lower() == 'sysadmin':
+            return None
+    except Exception:
+        pass
     uid = get_jwt_identity()
     user = None
     try:
