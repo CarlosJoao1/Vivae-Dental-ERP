@@ -48,6 +48,14 @@ export default function ProductionPlanning() {
     loadOrders()
   }, [])
 
+  const generateOrderNo = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const rnd = Math.random().toString(36).slice(2, 6).toUpperCase()
+    return `PO-${year}${month}-${rnd}`
+  }
+
   const loadOrders = async () => {
     try {
       setLoading(true)
@@ -57,6 +65,34 @@ export default function ProductionPlanning() {
       console.error('Failed to load production orders:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const createQuickDemoOrder = async () => {
+    const loadingToast = toast.loading('⚙️ Creating demo production order...')
+    try {
+      // Optional: verify certified BOM exists for FG-DEMO-001
+      try {
+        await api(`/api/production/boms/certified/FG-DEMO-001`)
+      } catch (e) {
+        toast.error('No certified BOM for FG-DEMO-001. Use Production → Design → Quick Demo Seed first.', { id: loadingToast })
+        return
+      }
+
+      const due = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      const body = {
+        order_no: generateOrderNo(),
+        item_no: 'FG-DEMO-001',
+        quantity: 10,
+        due_date: due,
+        status: 'Planned',
+        priority: 1
+      }
+      const res = await api<any>('/api/production/production-orders', { method: 'POST', body: JSON.stringify(body) })
+      toast.success(`✅ Demo order ${res.order_no} created`, { id: loadingToast })
+      loadOrders()
+    } catch (error: any) {
+      toast.error(`❌ Failed to create demo order: ${error?.message || 'error'}`, { id: loadingToast })
     }
   }
 
@@ -157,12 +193,21 @@ export default function ProductionPlanning() {
             {t('planning_desc') || 'Gestão de Production Orders e MPS/MRP'}
           </p>
         </div>
-        <button
-          onClick={() => setShowOrderForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-        >
-          + {t('new_production_order') || 'Nova Ordem de Produção'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowOrderForm(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          >
+            + {t('new_production_order') || 'Nova Ordem de Produção'}
+          </button>
+          <button
+            onClick={createQuickDemoOrder}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+            title="Creates a demo order for FG-DEMO-001 (requires Quick Demo Seed in Design)"
+          >
+            ⚙️ Quick Demo Order
+          </button>
+        </div>
       </div>
 
       {/* Quick Stats */}
