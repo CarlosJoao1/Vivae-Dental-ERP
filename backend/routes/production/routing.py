@@ -11,7 +11,7 @@ from typing import Tuple
 from models.production import Routing, RoutingOperation, Item, WorkCenter
 from models.laboratory import Laboratory
 from models.user import User
-from services.permissions import ensure
+from .._authz import check_permission
 
 bp = Blueprint("production_routing", __name__, url_prefix="/api/production/routings")
 
@@ -31,25 +31,7 @@ def _validation_error(e: Exception):
     """Standard validation error response"""
     return jsonify({"error": f"Validation error: {str(e)}"}), 400
 
-def _check_permission(lab, resource: str, action: str):
-    """Check permission and return error response if denied"""
-    try:
-        claims = get_jwt() or {}
-        if (claims.get('role') or '').lower() == 'sysadmin':
-            return None
-    except Exception:
-        pass
-    uid = get_jwt_identity()
-    user = None
-    try:
-        user = User.objects.get(id=uid)
-    except Exception:
-        user = User.objects(email=uid).first()
-    if not user:
-        return _error_response("User not found", 401)
-    
-    ensure(user, lab, resource, action)
-    return None
+## permission checks centralized in routes/_authz.py
 
 def _get_lab() -> Laboratory:
     """Get laboratory from X-Tenant-Id header or JWT"""
@@ -98,7 +80,7 @@ def _query() -> str:
 def routing_list():
     """List all Routings with filters and pagination"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -138,7 +120,7 @@ def routing_list():
 def routing_create():
     """Create a new Routing"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'create')
+    perm_err = check_permission(lab, 'production', 'create')
     if perm_err:
         return perm_err
     
@@ -216,7 +198,7 @@ def routing_create():
 def routing_get(routing_id: str):
     """Get a single Routing by ID"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -231,7 +213,7 @@ def routing_get(routing_id: str):
 def routing_update(routing_id: str):
     """Update a Routing (only if New or Under Development)"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -299,7 +281,7 @@ def routing_update(routing_id: str):
 def routing_delete(routing_id: str):
     """Delete a Routing (only if New)"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'delete')
+    perm_err = check_permission(lab, 'production', 'delete')
     if perm_err:
         return perm_err
     
@@ -320,7 +302,7 @@ def routing_delete(routing_id: str):
 def routing_certify(routing_id: str):
     """Certify a Routing (make it active)"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -347,7 +329,7 @@ def routing_certify(routing_id: str):
 def routing_close(routing_id: str):
     """Close a Routing (archive)"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -383,7 +365,7 @@ def routing_calculate_time(routing_id: str):
     }
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -411,7 +393,7 @@ def routing_calculate_time(routing_id: str):
 def routing_by_item(item_no: str):
     """Get all Routing versions for a specific item"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -429,7 +411,7 @@ def routing_by_item(item_no: str):
 def routing_certified(item_no: str):
     """Get the certified (active) Routing for an item"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     

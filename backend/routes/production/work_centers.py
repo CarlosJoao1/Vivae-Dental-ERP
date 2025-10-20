@@ -11,7 +11,7 @@ from typing import Tuple
 from models.production import WorkCenter, MachineCenter, Location
 from models.laboratory import Laboratory
 from models.user import User
-from services.permissions import ensure
+from .._authz import check_permission
 
 bp = Blueprint("production_work_centers", __name__, url_prefix="/api/production")
 
@@ -31,25 +31,7 @@ def _validation_error(e: Exception):
     """Standard validation error response"""
     return jsonify({"error": f"Validation error: {str(e)}"}), 400
 
-def _check_permission(lab, resource: str, action: str):
-    """Check permission and return error response if denied"""
-    try:
-        claims = get_jwt() or {}
-        if (claims.get('role') or '').lower() == 'sysadmin':
-            return None
-    except Exception:
-        pass
-    uid = get_jwt_identity()
-    user = None
-    try:
-        user = User.objects.get(id=uid)
-    except Exception:
-        user = User.objects(email=uid).first()
-    if not user:
-        return _error_response("User not found", 401)
-    
-    ensure(user, lab, resource, action)
-    return None
+## permission checks are centralized in routes/_authz.py
 
 def _get_lab() -> Laboratory:
     """Get laboratory from X-Tenant-Id header or JWT"""
@@ -107,7 +89,7 @@ def work_center_list():
     - location_code: Filter by location
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -159,7 +141,7 @@ def work_center_create():
     }
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'create')
+    perm_err = check_permission(lab, 'production', 'create')
     if perm_err:
         return perm_err
     
@@ -216,7 +198,7 @@ def work_center_create():
 def work_center_get(wc_id: str):
     """Get a single Work Center by ID"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -231,7 +213,7 @@ def work_center_get(wc_id: str):
 def work_center_update(wc_id: str):
     """Update a Work Center"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -297,7 +279,7 @@ def work_center_delete(wc_id: str):
     - Cannot delete if has Machine Centers
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'delete')
+    perm_err = check_permission(lab, 'production', 'delete')
     if perm_err:
         return perm_err
     
@@ -334,7 +316,7 @@ def machine_center_list():
     - blocked: Filter by blocked status (true/false)
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -387,7 +369,7 @@ def machine_center_create():
     }
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'create')
+    perm_err = check_permission(lab, 'production', 'create')
     if perm_err:
         return perm_err
     
@@ -449,7 +431,7 @@ def machine_center_create():
 def machine_center_get(mc_id: str):
     """Get a single Machine Center by ID"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -561,7 +543,7 @@ def machine_center_delete(mc_id: str):
 def work_center_by_code(code: str):
     """Get a Work Center by code"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     

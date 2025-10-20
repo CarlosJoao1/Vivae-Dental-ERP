@@ -11,7 +11,7 @@ from typing import Tuple
 from models.production import BOM, BOMLine, Item
 from models.laboratory import Laboratory
 from models.user import User
-from services.permissions import ensure
+from .._authz import check_permission
 from services.production.bom_explosion import explode_bom
 
 bp = Blueprint("production_bom", __name__, url_prefix="/api/production/boms")
@@ -32,25 +32,7 @@ def _validation_error(e: Exception):
     """Standard validation error response"""
     return jsonify({"error": f"Validation error: {str(e)}"}), 400
 
-def _check_permission(lab, resource: str, action: str):
-    """Check permission and return error response if denied"""
-    try:
-        claims = get_jwt() or {}
-        if (claims.get('role') or '').lower() == 'sysadmin':
-            return None
-    except Exception:
-        pass
-    uid = get_jwt_identity()
-    user = None
-    try:
-        user = User.objects.get(id=uid)
-    except Exception:
-        user = User.objects(email=uid).first()
-    if not user:
-        return _error_response("User not found", 401)
-    
-    ensure(user, lab, resource, action)
-    return None
+## permission checks centralized in routes/_authz.py
 
 def _get_lab() -> Laboratory:
     """Get laboratory from X-Tenant-Id header or JWT"""
@@ -109,7 +91,7 @@ def bom_list():
     - version_code: Filter by version
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -173,7 +155,7 @@ def bom_create():
     }
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'create')
+    perm_err = check_permission(lab, 'production', 'create')
     if perm_err:
         return perm_err
     
@@ -253,7 +235,7 @@ def bom_create():
 def bom_get(bom_id: str):
     """Get a single BOM by ID"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -275,7 +257,7 @@ def bom_update(bom_id: str):
     - Cannot change item_no or version_code (immutable)
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -355,7 +337,7 @@ def bom_delete(bom_id: str):
     - Cannot delete Under Development, Certified, or Closed BOMs
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'delete')
+    perm_err = check_permission(lab, 'production', 'delete')
     if perm_err:
         return perm_err
     
@@ -385,7 +367,7 @@ def bom_certify(bom_id: str):
     - Only one version can be Certified at a time
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -418,7 +400,7 @@ def bom_close(bom_id: str):
     - Typically used when a new version is certified
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -444,7 +426,7 @@ def bom_by_item(item_no: str):
     Returns BOMs ordered by version_code, with Certified first.
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -462,7 +444,7 @@ def bom_by_item(item_no: str):
 def bom_certified(item_no: str):
     """Get the certified (active) BOM for an item"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -501,7 +483,7 @@ def explode_bom_endpoint(bom_id: str):
         }
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
