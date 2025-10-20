@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
+import toast from 'react-hot-toast'
 import BOMForm from '../components/BOMForm'
 import RoutingForm from '../components/RoutingForm'
 
@@ -55,6 +56,88 @@ export default function ProductionDesign() {
     }
   }
 
+  const seedDemo = async () => {
+    const loading = toast.loading('Seeding demo BOM & Routing...')
+    try {
+      // Ensure UOM PCS
+      try {
+        await api('/api/production/masterdata/uom', {
+          method: 'POST',
+          body: JSON.stringify({ code: 'PCS', description: 'Pieces', decimals: 0 })
+        })
+      } catch {}
+
+      // Ensure Location MAIN
+      try {
+        await api('/api/production/masterdata/locations', {
+          method: 'POST',
+          body: JSON.stringify({ code: 'MAIN', name: 'Main Warehouse', is_default: true })
+        })
+      } catch {}
+
+      // Ensure Work Center ASSEMBLY
+      try {
+        await api('/api/production/work-centers', {
+          method: 'POST',
+          body: JSON.stringify({ code: 'ASSEMBLY', name: 'Assembly', location_code: 'MAIN', capacity: 480, efficiency_pct: 100 })
+        })
+      } catch {}
+
+      // Create component item (purchased)
+      try {
+        await api('/api/production/masterdata/items', {
+          method: 'POST',
+          body: JSON.stringify({ item_no: 'RM-DEMO-PLY', description: 'Demo Plywood', item_type: 'purchased', base_uom: 'PCS', status: 'Active' })
+        })
+      } catch {}
+
+      // Create finished item (manufactured)
+      try {
+        await api('/api/production/masterdata/items', {
+          method: 'POST',
+          body: JSON.stringify({ item_no: 'FG-DEMO-001', description: 'Demo Finished Good', item_type: 'manufactured', base_uom: 'PCS', lead_time_days: 2, status: 'Active' })
+        })
+      } catch {}
+
+      // Create BOM and certify
+      const bom = await api<any>('/api/production/boms', {
+        method: 'POST',
+        body: JSON.stringify({
+          item_no: 'FG-DEMO-001',
+          version_code: 'V1',
+          description: 'Demo BOM',
+          status: 'Under Development',
+          base_quantity: 1,
+          base_uom: 'PCS',
+          lines: [
+            { line_no: 10, component_item_no: 'RM-DEMO-PLY', description: 'Plywood', quantity_per: 2, uom_code: 'PCS', scrap_pct: 0 }
+          ]
+        })
+      })
+      await api(`/api/production/boms/${bom.id}/certify`, { method: 'POST' })
+
+      // Create Routing and certify
+      const routing = await api<any>('/api/production/routings', {
+        method: 'POST',
+        body: JSON.stringify({
+          item_no: 'FG-DEMO-001',
+          version_code: 'V1',
+          description: 'Demo Routing',
+          status: 'Under Development',
+          operations: [
+            { operation_no: 10, work_center_code: 'ASSEMBLY', description: 'Assemble', setup_time: 10, run_time: 5, concurrent_capacities: 1 }
+          ]
+        })
+      })
+      await api(`/api/production/routings/${routing.id}/certify`, { method: 'POST' })
+
+      toast.success('Demo BOM and Routing created and certified', { id: loading })
+      loadData()
+    } catch (e:any) {
+      toast.error(e?.message || 'Failed to seed demo', { id: loading })
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const colors = {
       'New': 'bg-gray-100 text-gray-800',
@@ -101,6 +184,13 @@ export default function ProductionDesign() {
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
           >
             + {t('new_routing') || 'Novo Routing'}
+          </button>
+          <button
+            onClick={seedDemo}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+            title="Creates demo FG item, BOM and Routing, and certifies them"
+          >
+            ⚙️ Quick Demo Seed
           </button>
         </div>
       </div>
