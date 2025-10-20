@@ -98,11 +98,12 @@ export default function ProductionPlanning() {
 
   const getStatusBadge = (status: string) => {
     const colors = {
+      'Simulated': 'bg-violet-100 text-violet-800',
       'Planned': 'bg-gray-100 text-gray-800',
+      'Firm Planned': 'bg-indigo-100 text-indigo-800',
       'Released': 'bg-blue-100 text-blue-800',
-      'In Progress': 'bg-yellow-100 text-yellow-800',
       'Finished': 'bg-green-100 text-green-800',
-      'Closed': 'bg-gray-300 text-gray-700'
+      'Cancelled': 'bg-red-100 text-red-800'
     }
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
@@ -211,32 +212,32 @@ export default function ProductionPlanning() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <div className="card p-3">
           <div className="text-xs text-gray-600">{t('planned') || 'Planeadas'}</div>
           <div className="text-2xl font-bold text-gray-600 mt-1">{getOrdersByStatus('Planned')}</div>
+        </div>
+        <div className="card p-3">
+          <div className="text-xs text-gray-600">{t('firm_planned') || 'Firm Planned'}</div>
+          <div className="text-2xl font-bold text-indigo-600 mt-1">{getOrdersByStatus('Firm Planned')}</div>
         </div>
         <div className="card p-3">
           <div className="text-xs text-gray-600">{t('released') || 'Lançadas'}</div>
           <div className="text-2xl font-bold text-blue-600 mt-1">{getOrdersByStatus('Released')}</div>
         </div>
         <div className="card p-3">
-          <div className="text-xs text-gray-600">{t('in_progress') || 'Em Curso'}</div>
-          <div className="text-2xl font-bold text-yellow-600 mt-1">{getOrdersByStatus('In Progress')}</div>
-        </div>
-        <div className="card p-3">
           <div className="text-xs text-gray-600">{t('finished') || 'Finalizadas'}</div>
           <div className="text-2xl font-bold text-green-600 mt-1">{getOrdersByStatus('Finished')}</div>
         </div>
         <div className="card p-3">
-          <div className="text-xs text-gray-600">{t('closed') || 'Fechadas'}</div>
-          <div className="text-2xl font-bold text-gray-400 mt-1">{getOrdersByStatus('Closed')}</div>
+          <div className="text-xs text-gray-600">{t('cancelled') || 'Canceladas'}</div>
+          <div className="text-2xl font-bold text-red-600 mt-1">{getOrdersByStatus('Cancelled')}</div>
         </div>
       </div>
 
       {/* Filter Tabs */}
       <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-2 overflow-x-auto">
-        {['all', 'Planned', 'Released', 'In Progress', 'Finished'].map((status) => (
+        {['all', 'Planned', 'Firm Planned', 'Released', 'Finished', 'Cancelled'].map((status) => (
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
@@ -246,7 +247,7 @@ export default function ProductionPlanning() {
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            {status === 'all' ? t('all') || 'Todas' : status}
+            {status === 'all' ? (t('all') || 'Todas') : (status === 'Firm Planned' ? (t('firm_planned') || 'Firm Planned') : status)}
             {status !== 'all' && <span className="ml-1">({getOrdersByStatus(status)})</span>}
           </button>
         ))}
