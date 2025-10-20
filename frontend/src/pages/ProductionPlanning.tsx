@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { api } from '../lib/api'
 import ProductionOrderForm from '../components/ProductionOrderForm'
 import ProductionOrderDetailsModal from '../components/ProductionOrderDetailsModal'
+import ConfirmDialog from '../components/common/ConfirmDialog'
 
 interface ProductionOrder {
   id: string
@@ -30,10 +31,30 @@ export default function ProductionPlanning() {
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [showOrderForm, setShowOrderForm] = useState(false)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    variant?: 'danger' | 'warning' | 'info'
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  })
 
   useEffect(() => {
     loadOrders()
   }, [])
+
+  const generateOrderNo = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const rnd = Math.random().toString(36).slice(2, 6).toUpperCase()
+    return `PO-${year}${month}-${rnd}`
+  }
 
   const loadOrders = async () => {
     try {
@@ -47,51 +68,104 @@ export default function ProductionPlanning() {
     }
   }
 
+  const createQuickDemoOrder = async () => {
+    const loadingToast = toast.loading(String(t('creating_demo_order') || 'Creating demo production order...'))
+    try {
+      // Optional: verify certified BOM exists for FG-DEMO-001
+      try {
+        await api(`/api/production/boms/certified/FG-DEMO-001`)
+      } catch (e) {
+        toast.error(String(t('no_certified_bom') || 'No certified BOM for FG-DEMO-001. Use Production → Design → Quick Demo Seed first.'), { id: loadingToast })
+        return
+      }
+
+      const due = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      const body = {
+        order_no: generateOrderNo(),
+        item_no: 'FG-DEMO-001',
+        quantity: 10,
+        due_date: due,
+        status: 'Planned',
+        priority: 1
+      }
+      const res = await api<any>('/api/production/production-orders', { method: 'POST', body: JSON.stringify(body) })
+      toast.success(`${t('demo_order_created') || 'Demo order created'}: ${res.order_no}`, { id: loadingToast })
+      loadOrders()
+    } catch (error: any) {
+      toast.error(`${t('demo_order_failed') || 'Failed to create demo order'}: ${error?.message || 'error'}`, { id: loadingToast })
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const colors = {
+      'Simulated': 'bg-violet-100 text-violet-800',
       'Planned': 'bg-gray-100 text-gray-800',
+      'Firm Planned': 'bg-indigo-100 text-indigo-800',
       'Released': 'bg-blue-100 text-blue-800',
-      'In Progress': 'bg-yellow-100 text-yellow-800',
       'Finished': 'bg-green-100 text-green-800',
-      'Closed': 'bg-gray-300 text-gray-700'
+      'Cancelled': 'bg-red-100 text-red-800'
     }
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
 
   const releaseOrder = async (orderId: string) => {
-    if (!confirm('Release this production order?')) return
-    const loadingToast = toast.loading('🚀 Releasing production order...')
-    try {
-      await api(`/api/production/production-orders/${orderId}/release`, { method: 'POST' })
-      toast.success('✅ Production order released successfully!', { id: loadingToast })
-      loadOrders()
-    } catch (error: any) {
-      toast.error(`❌ Failed to release: ${error.message}`, { id: loadingToast })
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: String(t('release_order_title') || 'Release Production Order'),
+      message: String(t('release_order_message') || 'Are you sure you want to release this production order?'),
+      variant: 'info',
+      onConfirm: async () => {
+        const loadingToast = toast.loading(String(t('releasing_order') || 'Releasing production order...'))
+        try {
+          await api(`/api/production/production-orders/${orderId}/release`, { method: 'POST' })
+          toast.success(String(t('order_released') || 'Production order released successfully!'), { id: loadingToast })
+          loadOrders()
+        } catch (error: any) {
+          toast.error(`${t('failed_to_release') || 'Failed to release'}: ${error.message}`, { id: loadingToast })
+        }
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+      }
+    })
   }
 
   const finishOrder = async (orderId: string) => {
-    if (!confirm('Finish this production order?')) return
-    const loadingToast = toast.loading('🏁 Finishing production order...')
-    try {
-      await api(`/api/production/production-orders/${orderId}/finish`, { method: 'POST' })
-      toast.success('✅ Production order finished successfully!', { id: loadingToast })
-      loadOrders()
-    } catch (error: any) {
-      toast.error(`❌ Failed to finish: ${error.message}`, { id: loadingToast })
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: String(t('finish_order_title') || 'Finish Production Order'),
+      message: String(t('finish_order_message') || 'Are you sure you want to finish this production order?'),
+      variant: 'info',
+      onConfirm: async () => {
+        const loadingToast = toast.loading(String(t('finishing_order') || 'Finishing production order...'))
+        try {
+          await api(`/api/production/production-orders/${orderId}/finish`, { method: 'POST' })
+          toast.success(String(t('order_finished') || 'Production order finished successfully!'), { id: loadingToast })
+          loadOrders()
+        } catch (error: any) {
+          toast.error(`${t('failed_to_finish') || 'Failed to finish'}: ${error.message}`, { id: loadingToast })
+        }
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+      }
+    })
   }
 
   const cancelOrder = async (orderId: string) => {
-    if (!confirm('Cancel this production order? This action cannot be undone!')) return
-    const loadingToast = toast.loading('❌ Cancelling production order...')
-    try {
-      await api(`/api/production/production-orders/${orderId}/cancel`, { method: 'POST' })
-      toast.success('✅ Production order cancelled', { id: loadingToast })
-      loadOrders()
-    } catch (error: any) {
-      toast.error(`❌ Failed to cancel: ${error.message}`, { id: loadingToast })
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: String(t('cancel_order_title') || 'Cancel Production Order'),
+      message: String(t('cancel_order_message') || 'Cancel this production order? This action cannot be undone!'),
+      variant: 'danger',
+      onConfirm: async () => {
+        const loadingToast = toast.loading(String(t('cancelling_order') || 'Cancelling production order...'))
+        try {
+          await api(`/api/production/production-orders/${orderId}/cancel`, { method: 'POST' })
+          toast.success(String(t('order_cancelled') || 'Production order cancelled'), { id: loadingToast })
+          loadOrders()
+        } catch (error: any) {
+          toast.error(`${t('failed_to_cancel') || 'Failed to cancel'}: ${error.message}`, { id: loadingToast })
+        }
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+      }
+    })
   }
 
   const filteredOrders = filterStatus === 'all' 
@@ -120,41 +194,50 @@ export default function ProductionPlanning() {
             {t('planning_desc') || 'Gestão de Production Orders e MPS/MRP'}
           </p>
         </div>
-        <button
-          onClick={() => setShowOrderForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-        >
-          + {t('new_production_order') || 'Nova Ordem de Produção'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowOrderForm(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          >
+            + {t('new_production_order') || 'Nova Ordem de Produção'}
+          </button>
+          <button
+            onClick={createQuickDemoOrder}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+            title={String(t('quick_demo_order_hint') || 'Creates a demo order for FG-DEMO-001 (requires Quick Demo Seed in Design)')}
+          >
+            ⚙️ {t('quick_demo_order') || 'Quick Demo Order'}
+          </button>
+        </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <div className="card p-3">
           <div className="text-xs text-gray-600">{t('planned') || 'Planeadas'}</div>
           <div className="text-2xl font-bold text-gray-600 mt-1">{getOrdersByStatus('Planned')}</div>
+        </div>
+        <div className="card p-3">
+          <div className="text-xs text-gray-600">{t('firm_planned') || 'Firm Planned'}</div>
+          <div className="text-2xl font-bold text-indigo-600 mt-1">{getOrdersByStatus('Firm Planned')}</div>
         </div>
         <div className="card p-3">
           <div className="text-xs text-gray-600">{t('released') || 'Lançadas'}</div>
           <div className="text-2xl font-bold text-blue-600 mt-1">{getOrdersByStatus('Released')}</div>
         </div>
         <div className="card p-3">
-          <div className="text-xs text-gray-600">{t('in_progress') || 'Em Curso'}</div>
-          <div className="text-2xl font-bold text-yellow-600 mt-1">{getOrdersByStatus('In Progress')}</div>
-        </div>
-        <div className="card p-3">
           <div className="text-xs text-gray-600">{t('finished') || 'Finalizadas'}</div>
           <div className="text-2xl font-bold text-green-600 mt-1">{getOrdersByStatus('Finished')}</div>
         </div>
         <div className="card p-3">
-          <div className="text-xs text-gray-600">{t('closed') || 'Fechadas'}</div>
-          <div className="text-2xl font-bold text-gray-400 mt-1">{getOrdersByStatus('Closed')}</div>
+          <div className="text-xs text-gray-600">{t('cancelled') || 'Canceladas'}</div>
+          <div className="text-2xl font-bold text-red-600 mt-1">{getOrdersByStatus('Cancelled')}</div>
         </div>
       </div>
 
       {/* Filter Tabs */}
       <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 pb-2 overflow-x-auto">
-        {['all', 'Planned', 'Released', 'In Progress', 'Finished'].map((status) => (
+        {['all', 'Planned', 'Firm Planned', 'Released', 'Finished', 'Cancelled'].map((status) => (
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
@@ -164,7 +247,7 @@ export default function ProductionPlanning() {
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            {status === 'all' ? t('all') || 'Todas' : status}
+            {status === 'all' ? (t('all') || 'Todas') : (status === 'Firm Planned' ? (t('firm_planned') || 'Firm Planned') : status)}
             {status !== 'all' && <span className="ml-1">({getOrdersByStatus(status)})</span>}
           </button>
         ))}
@@ -181,7 +264,7 @@ export default function ProductionPlanning() {
               }
             </p>
             <button
-              onClick={() => alert('Create Production Order - Coming soon!')}
+              onClick={() => setShowOrderForm(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               + {t('create_first_order') || 'Criar primeira ordem'}
@@ -332,6 +415,16 @@ export default function ProductionPlanning() {
           onClose={() => setSelectedOrderId(null)}
         />
       )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

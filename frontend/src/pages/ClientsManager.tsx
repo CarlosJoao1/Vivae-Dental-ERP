@@ -9,6 +9,7 @@ import {
   type ClientPrice, listClientPrices, createClientPrice, updateClientPrice, deleteClientPrice
 } from '@/api/masterdata'
 import { listServices, type Service } from '@/api/masterdata'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 
 function SectionHeader({ title, onReload }: { title: string, onReload: ()=>void }){
   const { t } = useTranslation()
@@ -43,6 +44,7 @@ export default function ClientsManager(){
   const [items, setItems] = React.useState<Client[]>([])
   const [page, setPage] = React.useState(1)
   const [total, setTotal] = React.useState(0)
+  const [confirmDialog, setConfirmDialog] = React.useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: '' })
 
   const reload = async ()=>{
     setLoading(true)
@@ -79,8 +81,7 @@ export default function ClientsManager(){
     } catch(e:any){ setEditErr(e?.response?.data?.error || e?.message || 'Error') }
   }
   const remove = async (id: string)=>{
-    if (!confirm(t('remove') as string)) return
-    await deleteClient(id); reload()
+    setConfirmDialog({ isOpen: true, id })
   }
 
   // Financial lists
@@ -466,6 +467,14 @@ export default function ClientsManager(){
           </div>
         )}
       </Modal>
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={String(t('remove') || 'Remove')}
+        message={String(t('are_you_sure') || 'Are you sure you want to remove this client? This action cannot be undone.')}
+        variant="danger"
+        onConfirm={async ()=>{ try { await deleteClient(confirmDialog.id); } finally { setConfirmDialog({ isOpen:false, id:''}); reload(); } }}
+        onCancel={()=> setConfirmDialog({ isOpen:false, id:'' })}
+      />
 
       {/* Create modal with Envio subtabs (pending items saved right after client creation) */}
       <Modal open={creating} title={t('create') as string} onClose={closeCreate}>

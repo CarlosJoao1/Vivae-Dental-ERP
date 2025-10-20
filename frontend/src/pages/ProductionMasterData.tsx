@@ -6,6 +6,7 @@ import ItemForm from '@/components/MasterData/ItemForm'
 import UOMForm from '@/components/MasterData/UOMForm'
 import LocationForm from '@/components/MasterData/LocationForm'
 import SupplierForm from '@/components/MasterData/SupplierForm'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 
 // Tab types
 type MasterDataTab = 'items' | 'uoms' | 'locations' | 'suppliers'
@@ -65,6 +66,15 @@ export default function ProductionMasterData() {
   const [showForm, setShowForm] = useState(false)
   const [editingItem, setEditingItem] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    name: string
+    id: string
+  }>({
+    isOpen: false,
+    name: '',
+    id: ''
+  })
   
   useEffect(() => {
     loadData()
@@ -112,11 +122,15 @@ export default function ProductionMasterData() {
   }
   
   const handleDelete = async (id: string, name: string) => {
-    // Use native confirm for now, consider custom modal in future
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
-      return
-    }
+    setConfirmDialog({
+      isOpen: true,
+      name,
+      id
+    })
+  }
+  
+  const confirmDelete = async () => {
+    const { id, name } = confirmDialog
     
     const endpoints: Record<MasterDataTab, string> = {
       items: `/api/production/masterdata/items/${id}`,
@@ -132,6 +146,8 @@ export default function ProductionMasterData() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
       toast.error(`❌ Failed to delete: ${errorMessage}`)
+    } finally {
+      setConfirmDialog({ isOpen: false, name: '', id: '' })
     }
   }
   
@@ -278,6 +294,16 @@ export default function ProductionMasterData() {
           onCancel={handleFormClose} 
         />
       )}
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Delete Record"
+        message={`Are you sure you want to delete ${confirmDialog.name}? This action cannot be undone.`}
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmDialog({ isOpen: false, name: '', id: '' })}
+      />
     </div>
   )
 }

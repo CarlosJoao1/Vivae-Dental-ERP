@@ -28,9 +28,27 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
+// Apply HTML direction (RTL/LTR) and lang attribute
+function applyDocumentDirection(lang: string){
+  try{
+    const code = (lang || '').split('-')[0]
+    const isRtl = ['ar','he','fa','ur'].includes(code)
+    if (typeof document !== 'undefined'){
+      document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr')
+      document.documentElement.setAttribute('lang', code || 'en')
+      // Optional body class for theme/css targeting
+      document.body.classList.toggle('rtl', !!isRtl)
+    }
+  }catch{}
+}
+
+// Set initial direction
+applyDocumentDirection(initialLang)
+
 // Persist changes to language and expose helper
 export function setAppLanguage(lang: string){
   try{ if (typeof window !== 'undefined') localStorage.setItem('lang', lang) }catch{}
   i18n.changeLanguage(lang)
+  applyDocumentDirection(lang)
 }
 export default i18n;
