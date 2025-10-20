@@ -43,7 +43,7 @@ def _check_permission(lab, resource: str, action: str):
     if not user:
         return _error_response("User not found", 401)
     
-    ensure(lab, user, resource, action)
+    ensure(user, lab, resource, action)
     return None
 
 def _get_lab() -> Laboratory:
