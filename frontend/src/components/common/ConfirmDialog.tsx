@@ -1,4 +1,5 @@
 // No React import needed for TSX in modern setups
+import { useTranslation } from 'react-i18next'
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -15,13 +16,16 @@ export default function ConfirmDialog({
   isOpen,
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   onConfirm,
   onCancel,
   variant = 'warning'
 }: ConfirmDialogProps) {
   if (!isOpen) return null
+  const { t } = useTranslation()
+  const _cancel = cancelLabel ?? String(t('cancel') || 'Cancel')
+  const _confirm = confirmLabel ?? String(t('confirm') || 'Confirm')
 
   const variantStyles = {
     danger: 'bg-red-600 hover:bg-red-700',
@@ -64,14 +68,14 @@ export default function ConfirmDialog({
             className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             autoFocus
           >
-            {cancelLabel}
+            {_cancel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
             className={`px-4 py-2 text-white rounded-lg transition-colors ${variantStyles[variant]}`}
           >
-            {confirmLabel}
+            {_confirm}
           </button>
         </div>
       </div>

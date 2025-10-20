@@ -1,4 +1,5 @@
 import { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface FormModalHeaderProps {
   title: string
@@ -7,10 +8,11 @@ interface FormModalHeaderProps {
 }
 
 export function FormModalHeader({ title, onClose, isEdit }: FormModalHeaderProps) {
+  const { t } = useTranslation()
   return (
     <div className="flex justify-between items-center mb-4">
       <h3 className="text-lg font-semibold">
-        {isEdit ? `Edit ${title}` : `New ${title}`}
+        {isEdit ? `${t('edit') || 'Edit'} ${title}` : `${t('new') || 'New'} ${title}`}
       </h3>
       <button
         type="button"
@@ -39,7 +41,9 @@ export function FormModalFooter({
   submitLabel,
   isEdit
 }: FormModalFooterProps) {
-  const defaultSubmitLabel = isEdit ? 'Update' : 'Create'
+  const { t } = useTranslation()
+  const defaultSubmitLabel = isEdit ? String(t('update') || 'Update') : String(t('create') || 'Create')
+  const _cancel = cancelLabel || String(t('cancel') || 'Cancel')
   
   return (
     <div className="flex justify-end space-x-2 pt-4 border-t">
@@ -49,7 +53,7 @@ export function FormModalFooter({
         disabled={loading}
         className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
       >
-        {cancelLabel}
+        {_cancel}
       </button>
       <button
         type="submit"

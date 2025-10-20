@@ -69,13 +69,13 @@ export default function ProductionPlanning() {
   }
 
   const createQuickDemoOrder = async () => {
-    const loadingToast = toast.loading('⚙️ Creating demo production order...')
+    const loadingToast = toast.loading(String(t('creating_demo_order') || 'Creating demo production order...'))
     try {
       // Optional: verify certified BOM exists for FG-DEMO-001
       try {
         await api(`/api/production/boms/certified/FG-DEMO-001`)
       } catch (e) {
-        toast.error('No certified BOM for FG-DEMO-001. Use Production → Design → Quick Demo Seed first.', { id: loadingToast })
+        toast.error(String(t('no_certified_bom') || 'No certified BOM for FG-DEMO-001. Use Production → Design → Quick Demo Seed first.'), { id: loadingToast })
         return
       }
 
@@ -89,10 +89,10 @@ export default function ProductionPlanning() {
         priority: 1
       }
       const res = await api<any>('/api/production/production-orders', { method: 'POST', body: JSON.stringify(body) })
-      toast.success(`✅ Demo order ${res.order_no} created`, { id: loadingToast })
+      toast.success(`${t('demo_order_created') || 'Demo order created'}: ${res.order_no}`, { id: loadingToast })
       loadOrders()
     } catch (error: any) {
-      toast.error(`❌ Failed to create demo order: ${error?.message || 'error'}`, { id: loadingToast })
+      toast.error(`${t('demo_order_failed') || 'Failed to create demo order'}: ${error?.message || 'error'}`, { id: loadingToast })
     }
   }
 
@@ -111,17 +111,17 @@ export default function ProductionPlanning() {
   const releaseOrder = async (orderId: string) => {
     setConfirmDialog({
       isOpen: true,
-      title: 'Release Production Order',
-      message: 'Are you sure you want to release this production order?',
+      title: String(t('release_order_title') || 'Release Production Order'),
+      message: String(t('release_order_message') || 'Are you sure you want to release this production order?'),
       variant: 'info',
       onConfirm: async () => {
-        const loadingToast = toast.loading('🚀 Releasing production order...')
+        const loadingToast = toast.loading(String(t('releasing_order') || 'Releasing production order...'))
         try {
           await api(`/api/production/production-orders/${orderId}/release`, { method: 'POST' })
-          toast.success('✅ Production order released successfully!', { id: loadingToast })
+          toast.success(String(t('order_released') || 'Production order released successfully!'), { id: loadingToast })
           loadOrders()
         } catch (error: any) {
-          toast.error(`❌ Failed to release: ${error.message}`, { id: loadingToast })
+          toast.error(`${t('failed_to_release') || 'Failed to release'}: ${error.message}`, { id: loadingToast })
         }
         setConfirmDialog(prev => ({ ...prev, isOpen: false }))
       }
@@ -131,17 +131,17 @@ export default function ProductionPlanning() {
   const finishOrder = async (orderId: string) => {
     setConfirmDialog({
       isOpen: true,
-      title: 'Finish Production Order',
-      message: 'Are you sure you want to finish this production order?',
+      title: String(t('finish_order_title') || 'Finish Production Order'),
+      message: String(t('finish_order_message') || 'Are you sure you want to finish this production order?'),
       variant: 'info',
       onConfirm: async () => {
-        const loadingToast = toast.loading('🏁 Finishing production order...')
+        const loadingToast = toast.loading(String(t('finishing_order') || 'Finishing production order...'))
         try {
           await api(`/api/production/production-orders/${orderId}/finish`, { method: 'POST' })
-          toast.success('✅ Production order finished successfully!', { id: loadingToast })
+          toast.success(String(t('order_finished') || 'Production order finished successfully!'), { id: loadingToast })
           loadOrders()
         } catch (error: any) {
-          toast.error(`❌ Failed to finish: ${error.message}`, { id: loadingToast })
+          toast.error(`${t('failed_to_finish') || 'Failed to finish'}: ${error.message}`, { id: loadingToast })
         }
         setConfirmDialog(prev => ({ ...prev, isOpen: false }))
       }
@@ -151,17 +151,17 @@ export default function ProductionPlanning() {
   const cancelOrder = async (orderId: string) => {
     setConfirmDialog({
       isOpen: true,
-      title: 'Cancel Production Order',
-      message: 'Cancel this production order? This action cannot be undone!',
+      title: String(t('cancel_order_title') || 'Cancel Production Order'),
+      message: String(t('cancel_order_message') || 'Cancel this production order? This action cannot be undone!'),
       variant: 'danger',
       onConfirm: async () => {
-        const loadingToast = toast.loading('❌ Cancelling production order...')
+        const loadingToast = toast.loading(String(t('cancelling_order') || 'Cancelling production order...'))
         try {
           await api(`/api/production/production-orders/${orderId}/cancel`, { method: 'POST' })
-          toast.success('✅ Production order cancelled', { id: loadingToast })
+          toast.success(String(t('order_cancelled') || 'Production order cancelled'), { id: loadingToast })
           loadOrders()
         } catch (error: any) {
-          toast.error(`❌ Failed to cancel: ${error.message}`, { id: loadingToast })
+          toast.error(`${t('failed_to_cancel') || 'Failed to cancel'}: ${error.message}`, { id: loadingToast })
         }
         setConfirmDialog(prev => ({ ...prev, isOpen: false }))
       }
@@ -204,9 +204,9 @@ export default function ProductionPlanning() {
           <button
             onClick={createQuickDemoOrder}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
-            title="Creates a demo order for FG-DEMO-001 (requires Quick Demo Seed in Design)"
+            title={String(t('quick_demo_order_hint') || 'Creates a demo order for FG-DEMO-001 (requires Quick Demo Seed in Design)')}
           >
-            ⚙️ Quick Demo Order
+            ⚙️ {t('quick_demo_order') || 'Quick Demo Order'}
           </button>
         </div>
       </div>

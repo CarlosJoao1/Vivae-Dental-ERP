@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
 import FormModal from '@/components/common/FormModal'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
+import ResourceFields from '@/components/production/ResourceFields'
 
 interface WorkCenterFormData {
   code: string
@@ -32,7 +33,9 @@ export default function WorkCenterForm({ onSuccess, onCancel }: WorkCenterFormPr
   const [locations, setLocations] = useState<any[]>([])
 
   useEffect(() => { (async () => {
-    try { const locs = await api<any[]>('/api/production/masterdata/locations'); setLocations(locs) } catch {}
+    try {
+      const locs = await api<any[]>('/api/production/masterdata/locations'); setLocations(locs)
+    } catch(e){ console.warn('Failed to load locations', e); setLocations([]) }
   })() }, [])
 
   const { register, handleSubmit, formState: { errors } } = useForm<WorkCenterFormData>({
@@ -66,74 +69,44 @@ export default function WorkCenterForm({ onSuccess, onCancel }: WorkCenterFormPr
     <ErrorBoundary context="WorkCenterForm">
       <FormModal
         isOpen={true}
-        title="Work Center"
+        title={t('work_center') || 'Work Center'}
         onClose={onCancel}
         onSubmit={handleSubmit(onSubmit)}
         loading={loading}
+        cancelLabel={t('cancel') as string}
+        submitLabel={t('create') as string}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Code *</label>
-              <input className="input" {...register('code', { required: 'Required', pattern: { value: /^[A-Z0-9_-]+$/, message: 'Use A-Z, 0-9, -, _' } })} />
+              <label className="block text-sm font-medium mb-1">{t('code') as string} *</label>
+              <input className="input" {...register('code', { required: String(t('required')||'Required'), pattern: { value: /^[A-Z0-9_-]+$/, message: String(t('code_pattern_hint')||'Use A-Z, 0-9, -, _') } })} />
               {errors.code && <p className="text-xs text-red-600 mt-1">{errors.code.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Name *</label>
-              <input className="input" {...register('name', { required: 'Required' })} />
+              <label className="block text-sm font-medium mb-1">{t('name') as string} *</label>
+              <input className="input" {...register('name', { required: String(t('required')||'Required') })} />
               {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name.message}</p>}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
+            <label className="block text-sm font-medium mb-1">{t('description') as string}</label>
             <input className="input" {...register('description')} />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
+              <label className="block text-sm font-medium mb-1">{t('type') as string}</label>
               <select className="input" {...register('work_center_type')}>
-                <option value="Work Center">Work Center</option>
-                <option value="Machine Center">Machine Center</option>
-                <option value="Person">Person</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Capacity (min/day)</label>
-              <input type="number" className="input" step="1" {...register('capacity', { min: 0 })} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Efficiency %</label>
-              <input type="number" className="input" step="0.1" {...register('efficiency_pct', { min: 0, max: 200 })} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Unit Cost (€/min)</label>
-              <input type="number" className="input" step="0.01" {...register('unit_cost', { min: 0 })} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Overhead %</label>
-              <input type="number" className="input" step="0.1" {...register('overhead_rate', { min: 0 })} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Location</label>
-              <select className="input" {...register('location_code')}>
-                <option value="">—</option>
-                {locations.map((l:any)=> (<option key={l.code} value={l.code}>{l.code} - {l.name}</option>))}
+                <option value="Work Center">{t('work_center') || 'Work Center'}</option>
+                <option value="Machine Center">{t('machine_center') || 'Machine Center'}</option>
+                <option value="Person">{t('person') || 'Person'}</option>
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...register('blocked')} /> Blocked</label>
-            <div>
-              <label className="block text-sm font-medium mb-1">Queue Time (min)</label>
-              <input type="number" className="input" step="1" {...register('queue_time', { min: 0 })} />
-            </div>
-          </div>
+          <ResourceFields register={register} errors={errors} locations={locations} />
         </div>
       </FormModal>
     </ErrorBoundary>

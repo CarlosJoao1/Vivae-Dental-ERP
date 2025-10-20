@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+// useTranslation already imported above
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useTranslation } from 'react-i18next'
 import toast from 'react-hot-toast'
 import BOMForm from '../components/BOMForm'
 import RoutingForm from '../components/RoutingForm'
+import NumberInputDialog from '@/components/common/NumberInputDialog'
 
 interface BOM {
   id: string
@@ -35,6 +37,9 @@ export default function ProductionDesign() {
   const [showRoutingForm, setShowRoutingForm] = useState(false)
   const [selectedBOM, setSelectedBOM] = useState<BOM | undefined>(undefined)
   const [selectedRouting, setSelectedRouting] = useState<Routing | undefined>(undefined)
+  const [quantityDialog, setQuantityDialog] = useState<{ open: boolean; mode: 'explode'|'time'; id: string; title: string }>(
+    { open:false, mode:'explode', id:'', title:'' }
+  )
 
   useEffect(() => {
     loadData()
@@ -57,7 +62,7 @@ export default function ProductionDesign() {
   }
 
   const seedDemo = async () => {
-    const loading = toast.loading('Seeding demo BOM & Routing...')
+    const loading = toast.loading(String(t('seeding_demo') || 'Seeding demo BOM & Routing...'))
     try {
       // Ensure UOM PCS
       try {
@@ -131,10 +136,10 @@ export default function ProductionDesign() {
       })
       await api(`/api/production/routings/${routing.id}/certify`, { method: 'POST' })
 
-      toast.success('Demo BOM and Routing created and certified', { id: loading })
+      toast.success(String(t('demo_seed_done') || 'Demo BOM and Routing created and certified'), { id: loading })
       loadData()
     } catch (e:any) {
-      toast.error(e?.message || 'Failed to seed demo', { id: loading })
+      toast.error(e?.message || String(t('demo_seed_failed') || 'Failed to seed demo'), { id: loading })
     }
   }
 
@@ -168,19 +173,13 @@ export default function ProductionDesign() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => {
-              setSelectedBOM(undefined)
-              setShowBOMForm(true)
-            }}
+            onClick={() => { setSelectedBOM(undefined); setShowBOMForm(true) }}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
           >
             + {t('new_bom') || 'Nova BOM'}
           </button>
           <button
-            onClick={() => {
-              setSelectedRouting(undefined)
-              setShowRoutingForm(true)
-            }}
+            onClick={() => { setSelectedRouting(undefined); setShowRoutingForm(true) }}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
           >
             + {t('new_routing') || 'Novo Routing'}
@@ -188,9 +187,9 @@ export default function ProductionDesign() {
           <button
             onClick={seedDemo}
             className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
-            title="Creates demo FG item, BOM and Routing, and certifies them"
+            title={String(t('quick_demo_seed_hint') || 'Creates demo FG item, BOM and Routing, and certifies them')}
           >
-            ⚙️ Quick Demo Seed
+            ⚙️ {t('quick_demo_seed') || 'Quick Demo Seed'}
           </button>
         </div>
       </div>
@@ -266,18 +265,7 @@ export default function ProductionDesign() {
                     </button>
                     {bom.status === 'Certified' && (
                       <button
-                        onClick={async () => {
-                          try {
-                            const quantity = prompt('Quantity to explode:', '10')
-                            if (!quantity) return
-                            const res = await api<any>(`/api/production/boms/${bom.id}/explode?quantity=${quantity}`, { method: 'POST' })
-                            console.log('Explosion result:', res)
-                            alert(`BOM Explosion successful!\n\nComponents: ${Object.keys(res.consolidated_components).length}\nMax Level: ${res.max_level}`)
-                          } catch (error) {
-                            console.error('Explosion failed:', error)
-                            alert('Failed to explode BOM')
-                          }
-                        }}
+                        onClick={() => setQuantityDialog({ open:true, mode:'explode', id:bom.id, title:String(t('explode')||'Explodir') })}
                         className="px-3 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded transition-colors"
                       >
                         💥 {t('explode') || 'Explodir'}
@@ -335,18 +323,7 @@ export default function ProductionDesign() {
                     </button>
                     {routing.status === 'Certified' && (
                       <button
-                        onClick={async () => {
-                          try {
-                            const quantity = prompt('Quantity to calculate time:', '10')
-                            if (!quantity) return
-                            const res = await api<any>(`/api/production/routings/${routing.id}/calculate-time?quantity=${quantity}`, { method: 'POST' })
-                            console.log('Time calculation:', res)
-                            alert(`Time Calculation:\n\nSetup: ${res.total_setup_time} min\nRun: ${res.total_run_time} min\nTotal: ${res.total_time} min`)
-                          } catch (error) {
-                            console.error('Time calculation failed:', error)
-                            alert('Failed to calculate time')
-                          }
-                        }}
+                        onClick={() => setQuantityDialog({ open:true, mode:'time', id:routing.id, title:String(t('calc_time')||'Calcular Tempo') })}
                         className="px-3 py-1.5 text-sm bg-green-600 text-white hover:bg-green-700 rounded transition-colors"
                       >
                         ⏱️ {t('calc_time') || 'Calcular Tempo'}
@@ -357,6 +334,30 @@ export default function ProductionDesign() {
               </div>
             ))
           )}
+            <NumberInputDialog
+              isOpen={quantityDialog.open}
+              title={quantityDialog.title}
+              initialValue={10}
+              min={0.001}
+              step={1}
+              onCancel={() => setQuantityDialog(prev=>({ ...prev, open:false }))}
+              onConfirm={async (qty)=>{
+                try{
+                  if (quantityDialog.mode === 'explode'){
+                    const res = await api<any>(`/api/production/boms/${quantityDialog.id}/explode?quantity=${qty}`, { method: 'POST' })
+                    toast.success(`✅ ${t('explode')||'Explodir'} OK (${Object.keys(res.consolidated_components||{}).length} comps)`)
+                  } else {
+                    const res = await api<any>(`/api/production/routings/${quantityDialog.id}/calculate-time?quantity=${qty}`, { method: 'POST' })
+                    toast.success(`✅ ${t('calc_time')||'Calcular Tempo'} OK (${Math.round((res.total_time||0))} min)`) 
+                  }
+                } catch (e:any){
+                  toast.error(e?.message || 'Operation failed')
+                } finally {
+                  setQuantityDialog(prev=>({ ...prev, open:false }))
+                }
+              }}
+            />
+
         </div>
       )}
 
