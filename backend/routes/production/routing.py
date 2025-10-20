@@ -4,7 +4,7 @@ Routing Routes - NAV/BC-style
 Endpoints for managing Routings with versioning and certification workflow
 """
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from mongoengine.errors import ValidationError, DoesNotExist, NotUniqueError
 from typing import Tuple
 
@@ -33,12 +33,22 @@ def _validation_error(e: Exception):
 
 def _check_permission(lab, resource: str, action: str):
     """Check permission and return error response if denied"""
-    user_email = get_jwt_identity()
-    user = User.objects(email=user_email).first()
+    try:
+        claims = get_jwt() or {}
+        if (claims.get('role') or '').lower() == 'sysadmin':
+            return None
+    except Exception:
+        pass
+    uid = get_jwt_identity()
+    user = None
+    try:
+        user = User.objects.get(id=uid)
+    except Exception:
+        user = User.objects(email=uid).first()
     if not user:
         return _error_response("User not found", 401)
     
-    ensure(lab, user, resource, action)
+    ensure(user, lab, resource, action)
     return None
 
 def _get_lab() -> Laboratory:
