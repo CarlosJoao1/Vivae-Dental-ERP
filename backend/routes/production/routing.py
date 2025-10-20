@@ -33,8 +33,12 @@ def _validation_error(e: Exception):
 
 def _check_permission(lab, resource: str, action: str):
     """Check permission and return error response if denied"""
-    user_email = get_jwt_identity()
-    user = User.objects(email=user_email).first()
+    uid = get_jwt_identity()
+    user = None
+    try:
+        user = User.objects.get(id=uid)
+    except Exception:
+        user = None
     if not user:
         return _error_response("User not found", 401)
     
