@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from models.production import ProductionOrder, ProductionOrderLine, ProductionOrderRouting, BOM, Routing, Item, Location
 from models.laboratory import Laboratory
 from models.user import User
-from services.permissions import ensure
+from .._authz import check_permission
 
 bp = Blueprint("production_orders", __name__, url_prefix="/api/production/production-orders")
 
@@ -32,25 +32,7 @@ def _validation_error(e: Exception):
     """Standard validation error response"""
     return jsonify({"error": f"Validation error: {str(e)}"}), 400
 
-def _check_permission(lab, resource: str, action: str):
-    """Check permission and return error response if denied"""
-    try:
-        claims = get_jwt() or {}
-        if (claims.get('role') or '').lower() == 'sysadmin':
-            return None
-    except Exception:
-        pass
-    uid = get_jwt_identity()
-    user = None
-    try:
-        user = User.objects.get(id=uid)
-    except Exception:
-        user = User.objects(email=uid).first()
-    if not user:
-        return _error_response("User not found", 401)
-    
-    ensure(user, lab, resource, action)
-    return None
+## permission checks centralized in routes/_authz.py
 
 def _get_lab() -> Laboratory:
     """Get laboratory from X-Tenant-Id header or JWT"""
@@ -184,7 +166,7 @@ def production_order_list():
     - due_date_to: Filter by due date range (ISO format)
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -250,7 +232,7 @@ def production_order_create():
     Auto-explodes certified BOM and Routing if available.
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'create')
+    perm_err = check_permission(lab, 'production', 'create')
     if perm_err:
         return perm_err
     
@@ -360,7 +342,7 @@ def production_order_create():
 def production_order_get(po_id: str):
     """Get a single Production Order by ID"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -381,7 +363,7 @@ def production_order_update(po_id: str):
     - Cannot update Released, Finished, or Cancelled orders
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -440,7 +422,7 @@ def production_order_delete(po_id: str):
     - Cannot delete Firm Planned, Released, Finished, or Cancelled orders
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'delete')
+    perm_err = check_permission(lab, 'production', 'delete')
     if perm_err:
         return perm_err
     
@@ -468,7 +450,7 @@ def production_order_release(po_id: str):
     - Changes status to Released
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -500,7 +482,7 @@ def production_order_finish(po_id: str):
     - Changes status to Finished
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -531,7 +513,7 @@ def production_order_reopen(po_id: str):
     - Used for posting corrections
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -562,7 +544,7 @@ def production_order_cancel(po_id: str):
     - Releases all reservations
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
+    perm_err = check_permission(lab, 'production', 'update')
     if perm_err:
         return perm_err
     
@@ -587,7 +569,7 @@ def production_order_cancel(po_id: str):
 def production_orders_by_item(item_no: str):
     """Get all Production Orders for a specific item"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
@@ -604,7 +586,7 @@ def production_orders_by_item(item_no: str):
 def production_orders_by_status(status: str):
     """Get all Production Orders with specific status"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
+    perm_err = check_permission(lab, 'production', 'read')
     if perm_err:
         return perm_err
     
