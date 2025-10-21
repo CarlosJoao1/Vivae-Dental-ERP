@@ -37,10 +37,12 @@ export default function MachineCenterForm({ onSuccess, onCancel }: MachineCenter
 
   useEffect(() => { (async () => {
     try {
-      const wcs = await api<any>('/api/production/work-centers'); setWorkCenters(wcs.items||[])
+      const wcs = await api<any>('/api/production/work-centers')
+      setWorkCenters(Array.isArray(wcs) ? wcs : (wcs?.items || []))
     } catch(e){ console.warn('Failed to load work centers', e); setWorkCenters([]) }
     try {
-      const locs = await api<any[]>('/api/production/masterdata/locations'); setLocations(locs)
+      const locs = await api<any>('/api/production/masterdata/locations')
+      setLocations(Array.isArray(locs) ? locs : (locs?.items || []))
     } catch(e){ console.warn('Failed to load locations', e); setLocations([]) }
   })() }, [])
 

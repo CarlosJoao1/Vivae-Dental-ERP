@@ -66,11 +66,11 @@ export default function BOMForm({ bom, onSuccess, onCancel }: BOMFormProps) {
   const loadData = async () => {
     try {
       const [itemsRes, uomsRes] = await Promise.all([
-        api<any[]>('/api/production/masterdata/items'),
-        api<any[]>('/api/production/masterdata/uoms')
+        api<any>('/api/production/masterdata/items'),
+        api<any>('/api/production/masterdata/uoms')
       ])
-      setItems(itemsRes)
-      setUOMs(uomsRes)
+      setItems(Array.isArray(itemsRes) ? itemsRes : (itemsRes?.items || []))
+      setUOMs(Array.isArray(uomsRes) ? uomsRes : (uomsRes?.items || []))
     } catch (err: any) {
       console.error('Failed to load form data:', err)
     }
