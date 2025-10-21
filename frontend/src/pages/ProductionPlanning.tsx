@@ -59,8 +59,9 @@ export default function ProductionPlanning() {
   const loadOrders = async () => {
     try {
       setLoading(true)
-      const data = await api<ProductionOrder[]>('/api/production/production-orders')
-      setOrders(data)
+  const data = await api<any>('/api/production/production-orders')
+  const items = Array.isArray(data) ? data : (data?.items || [])
+  setOrders(items)
     } catch (error) {
       console.error('Failed to load production orders:', error)
     } finally {
