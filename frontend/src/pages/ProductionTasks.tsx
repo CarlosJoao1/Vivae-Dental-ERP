@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import toast from 'react-hot-toast'
 
 interface Task {
   id: string
@@ -78,7 +79,7 @@ export default function ProductionTasks() {
           </p>
         </div>
         <button
-          onClick={() => alert('Coming in Phase C!')}
+          onClick={() => toast('🔮 This feature will be available in Phase C', { icon: 'ℹ️' })}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           ➕ {t('assign_task') || 'Atribuir Tarefa'}
@@ -174,7 +175,7 @@ export default function ProductionTasks() {
               <div className="flex gap-2">
                 {task.status === 'Ready' && (
                   <button
-                    onClick={() => alert('Coming in Phase C!')}
+                    onClick={() => toast('🔮 Task assignment will be available in Phase C', { icon: 'ℹ️' })}
                     className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
                   >
                     👤 Assign
@@ -182,7 +183,7 @@ export default function ProductionTasks() {
                 )}
                 {task.status === 'Assigned' && (
                   <button
-                    onClick={() => alert('Coming in Phase C!')}
+                    onClick={() => toast('🔮 Task execution tracking will be available in Phase C', { icon: 'ℹ️' })}
                     className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
                   >
                     ▶️ Start
@@ -190,7 +191,7 @@ export default function ProductionTasks() {
                 )}
                 {task.status === 'In Progress' && (
                   <button
-                    onClick={() => alert('Coming in Phase C!')}
+                    onClick={() => toast('🔮 Task pause/resume will be available in Phase C', { icon: 'ℹ️' })}
                     className="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm"
                   >
                     ⏸️ Pause
