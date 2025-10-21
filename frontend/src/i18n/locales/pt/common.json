@@ -4,7 +4,7 @@
   "Entrar": "Entrar",
   "search": "Pesquisar",
   "logout": "Sair",
-  "masterdata": "Master Data",
+  "masterdata": "Dados Mestres",
   "clients": "Clientes",
   "patients": "Pacientes",
   "technicians": "Técnicos",
@@ -52,8 +52,8 @@
   ,"list": "Lista"
   ,"date": "Data"
   ,"status": "Estado"
-  ,"dashboard": "Dashboard"
-  ,"master_data": "Master Data"
+  ,"dashboard": "Painel"
+  ,"master_data": "Dados Mestres"
   ,"production": "Produção"
   ,"crm": "CRM"
   ,"crm_unlicensed": "Sem licenciamento para o utilizador. Enquanto não a começamos a desenvolver."
@@ -172,4 +172,28 @@
   ,"login_loading": "A entrar…"
   ,"login_error": "Falha no login"
   ,"login_footer": "© 2025 VIVAE ERP. Todos os direitos reservados."
+  ,"item": "Artigo"
+  ,"item_no": "Nº Artigo"
+  ,"item_type": "Tipo de Artigo"
+  ,"operations": "Operações"
+  ,"bom_lines": "Linhas BOM"
+  ,"certified": "Certificado"
+  ,"draft": "Rascunho"
+  ,"assign_task": "Atribuir Tarefa"
+  ,"ready": "Pronta"
+  ,"assigned": "Atribuída"
+  ,"completed": "Concluída"
+  ,"coming_soon": "Em Breve"
+  ,"bom_form_desc": "Bill of Materials - Definir componentes para artigos fabricados"
+  ,"routing_form_desc": "Definir sequência de operações para fabricação"
+  ,"production_order_form_desc": "Criar nova ordem de produção para um artigo fabricado"
+  ,"bom_version": "Versão BOM"
+  ,"routing_version": "Versão Routing"
+  ,"certified_boms": "BOMs Certificadas"
+  ,"certified_routings": "Routings Certificados"
+  ,"ready_to_start": "Prontas para Iniciar"
+  ,"operations_queue": "Fila de Operações"
+  ,"setup_time": "Tempo de Setup (min)"
+  ,"run_time": "Tempo de Execução (min)"
+  ,"quantity_produced": "Quantidade Produzida"
 }

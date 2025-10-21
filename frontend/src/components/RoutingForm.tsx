@@ -63,13 +63,13 @@ export default function RoutingForm({ routing, onSuccess, onCancel }: RoutingFor
   const loadData = async () => {
     try {
       const [itemsRes, wcRes, mcRes] = await Promise.all([
-        api<any[]>('/api/production/masterdata/items'),
-        api<any[]>('/api/production/work-centers'),
-        api<any[]>('/api/production/machine-centers')
+        api<any>('/api/production/masterdata/items'),
+        api<any>('/api/production/work-centers'),
+        api<any>('/api/production/machine-centers')
       ])
-      setItems(itemsRes)
-      setWorkCenters(wcRes)
-      setMachineCenters(mcRes)
+      setItems(Array.isArray(itemsRes) ? itemsRes : (itemsRes?.items || []))
+      setWorkCenters(Array.isArray(wcRes) ? wcRes : (wcRes?.items || []))
+      setMachineCenters(Array.isArray(mcRes) ? mcRes : (mcRes?.items || []))
     } catch (err: any) {
       console.error('Failed to load form data:', err)
     }

@@ -76,18 +76,19 @@ export default function ProductionOrderForm({ onSuccess, onCancel }: ProductionO
   const loadMasterData = async () => {
     try {
       const [itemsRes, locationsRes] = await Promise.all([
-        api<any[]>('/api/production/masterdata/items'),
-        api<any[]>('/api/production/masterdata/locations')
+        api<any>('/api/production/masterdata/items'),
+        api<any>('/api/production/masterdata/locations')
       ])
-      setItems(itemsRes)
-      setLocations(locationsRes)
+      setItems(Array.isArray(itemsRes) ? itemsRes : (itemsRes?.items || []))
+      setLocations(Array.isArray(locationsRes) ? locationsRes : (locationsRes?.items || []))
       
       // Set default location if available
-      const defaultLoc = locationsRes.find(l => l.is_default)
+      const locs = Array.isArray(locationsRes) ? locationsRes : (locationsRes?.items || [])
+      const defaultLoc = locs.find((l: any) => l.is_default)
       if (defaultLoc) {
         setValue('location_code', defaultLoc.code)
-      } else if (locationsRes.length > 0) {
-        setValue('location_code', locationsRes[0].code)
+      } else if (locs.length > 0) {
+        setValue('location_code', locs[0].code)
       }
     } catch (err: any) {
       console.error('Failed to load master data:', err)
@@ -119,19 +120,21 @@ export default function ProductionOrderForm({ onSuccess, onCancel }: ProductionO
       
       // Load BOMs and Routings for this item
       const [bomsRes, routingsRes] = await Promise.all([
-        api<any[]>('/api/production/boms'),
-        api<any[]>('/api/production/routings')
+        api<any>('/api/production/boms'),
+        api<any>('/api/production/routings')
       ])
       
-      const itemBOMs = bomsRes.filter(b => b.item_no === itemNo)
-      const itemRoutings = routingsRes.filter(r => r.item_no === itemNo)
+      const allBOMs = Array.isArray(bomsRes) ? bomsRes : (bomsRes?.items || [])
+      const allRoutings = Array.isArray(routingsRes) ? routingsRes : (routingsRes?.items || [])
+      const itemBOMs = allBOMs.filter((b: any) => b.item_no === itemNo)
+      const itemRoutings = allRoutings.filter((r: any) => r.item_no === itemNo)
       
       setBOMs(itemBOMs)
       setRoutings(itemRoutings)
       
       // Auto-select certified versions
-      const certifiedBOM = itemBOMs.find(b => b.status === 'Certified')
-      const certifiedRouting = itemRoutings.find(r => r.status === 'Certified')
+      const certifiedBOM = itemBOMs.find((b: any) => b.status === 'Certified')
+      const certifiedRouting = itemRoutings.find((r: any) => r.status === 'Certified')
       
       if (certifiedBOM) {
         setValue('bom_version_code', certifiedBOM.version_code)

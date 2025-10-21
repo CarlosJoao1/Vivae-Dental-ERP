@@ -44,11 +44,11 @@ export default function ProductionCapabilities() {
     try {
       setLoading(true)
       const [wcRes, mcRes] = await Promise.all([
-        api<WorkCenter[]>('/api/production/work-centers'),
-        api<MachineCenter[]>('/api/production/machine-centers')
+        api<any>('/api/production/work-centers'),
+        api<any>('/api/production/machine-centers')
       ])
-      setWorkCenters(wcRes)
-      setMachineCenters(mcRes)
+      setWorkCenters(Array.isArray(wcRes) ? wcRes : (wcRes?.items || []))
+      setMachineCenters(Array.isArray(mcRes) ? mcRes : (mcRes?.items || []))
     } catch (error) {
       console.error('Failed to load capabilities:', error)
     } finally {

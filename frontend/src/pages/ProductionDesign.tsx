@@ -49,11 +49,11 @@ export default function ProductionDesign() {
     try {
       setLoading(true)
       const [bomsRes, routingsRes] = await Promise.all([
-        api<BOM[]>('/api/production/boms'),
-        api<Routing[]>('/api/production/routings')
+        api<any>('/api/production/boms'),
+        api<any>('/api/production/routings')
       ])
-      setBOMs(bomsRes)
-      setRoutings(routingsRes)
+      setBOMs(Array.isArray(bomsRes) ? bomsRes : (bomsRes?.items || []))
+      setRoutings(Array.isArray(routingsRes) ? routingsRes : (routingsRes?.items || []))
     } catch (error) {
       console.error('Failed to load production design data:', error)
     } finally {

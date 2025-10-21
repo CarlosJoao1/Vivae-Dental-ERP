@@ -34,7 +34,8 @@ export default function WorkCenterForm({ onSuccess, onCancel }: WorkCenterFormPr
 
   useEffect(() => { (async () => {
     try {
-      const locs = await api<any[]>('/api/production/masterdata/locations'); setLocations(locs)
+      const locs = await api<any>('/api/production/masterdata/locations')
+      setLocations(Array.isArray(locs) ? locs : (locs?.items || []))
     } catch(e){ console.warn('Failed to load locations', e); setLocations([]) }
   })() }, [])
 
