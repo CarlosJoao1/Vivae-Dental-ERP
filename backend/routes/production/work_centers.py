@@ -11,7 +11,7 @@ from typing import Tuple
 from models.production import WorkCenter, MachineCenter, Location
 from models.laboratory import Laboratory
 from models.user import User
-from .._authz import check_permission
+from .._authz import check_permission, require
 
 bp = Blueprint("production_work_centers", __name__, url_prefix="/api/production")
 
@@ -77,6 +77,7 @@ def _query() -> str:
 
 @bp.get("/work-centers")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def work_center_list():
     """
     List all Work Centers with filters and pagination.
@@ -89,9 +90,7 @@ def work_center_list():
     - location_code: Filter by location
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     page, size = _pagination()
     q = _query()
@@ -124,6 +123,7 @@ def work_center_list():
 
 @bp.post("/work-centers")
 @jwt_required()
+@require('create', get_lab=_get_lab)
 def work_center_create():
     """
     Create a new Work Center.
@@ -141,9 +141,7 @@ def work_center_create():
     }
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'create')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     data = request.get_json()
     if not data:
@@ -195,12 +193,11 @@ def work_center_create():
 
 @bp.get("/work-centers/<wc_id>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def work_center_get(wc_id: str):
     """Get a single Work Center by ID"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         wc = WorkCenter.objects.get(id=wc_id, tenant_id=str(lab.id))
@@ -210,12 +207,11 @@ def work_center_get(wc_id: str):
 
 @bp.patch("/work-centers/<wc_id>")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def work_center_update(wc_id: str):
     """Update a Work Center"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         wc = WorkCenter.objects.get(id=wc_id, tenant_id=str(lab.id))
@@ -270,6 +266,7 @@ def work_center_update(wc_id: str):
 
 @bp.delete("/work-centers/<wc_id>")
 @jwt_required()
+@require('delete', get_lab=_get_lab)
 def work_center_delete(wc_id: str):
     """
     Delete a Work Center.
@@ -279,9 +276,7 @@ def work_center_delete(wc_id: str):
     - Cannot delete if has Machine Centers
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'delete')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         wc = WorkCenter.objects.get(id=wc_id, tenant_id=str(lab.id))
@@ -304,6 +299,7 @@ def work_center_delete(wc_id: str):
 
 @bp.get("/machine-centers")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def machine_center_list():
     """
     List all Machine Centers with filters and pagination.
@@ -316,9 +312,7 @@ def machine_center_list():
     - blocked: Filter by blocked status (true/false)
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     page, size = _pagination()
     q = _query()
@@ -351,6 +345,7 @@ def machine_center_list():
 
 @bp.post("/machine-centers")
 @jwt_required()
+@require('create', get_lab=_get_lab)
 def machine_center_create():
     """
     Create a new Machine Center.
@@ -369,9 +364,7 @@ def machine_center_create():
     }
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'create')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     data = request.get_json()
     if not data:
@@ -428,12 +421,11 @@ def machine_center_create():
 
 @bp.get("/machine-centers/<mc_id>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def machine_center_get(mc_id: str):
     """Get a single Machine Center by ID"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         mc = MachineCenter.objects.get(id=mc_id, tenant_id=str(lab.id))
@@ -443,12 +435,11 @@ def machine_center_get(mc_id: str):
 
 @bp.patch("/machine-centers/<mc_id>")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def machine_center_update(mc_id: str):
     """Update a Machine Center"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         mc = MachineCenter.objects.get(id=mc_id, tenant_id=str(lab.id))
@@ -516,6 +507,7 @@ def machine_center_update(mc_id: str):
 
 @bp.delete("/machine-centers/<mc_id>")
 @jwt_required()
+@require('delete', get_lab=_get_lab)
 def machine_center_delete(mc_id: str):
     """
     Delete a Machine Center.
@@ -524,9 +516,7 @@ def machine_center_delete(mc_id: str):
     - Cannot delete if used in Routing Operations
     """
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'delete')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         mc = MachineCenter.objects.get(id=mc_id, tenant_id=str(lab.id))
@@ -540,12 +530,11 @@ def machine_center_delete(mc_id: str):
 
 @bp.get("/work-centers/by-code/<code>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def work_center_by_code(code: str):
     """Get a Work Center by code"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     wc = WorkCenter.objects(tenant_id=str(lab.id), code=code).first()
     if not wc:
@@ -555,12 +544,11 @@ def work_center_by_code(code: str):
 
 @bp.get("/machine-centers/by-work-center/<work_center_code>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def machine_centers_by_work_center(work_center_code: str):
     """Get all Machine Centers for a Work Center"""
     lab = _get_lab()
-    perm_err = _check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     machines = MachineCenter.objects(tenant_id=str(lab.id), work_center_code=work_center_code).order_by("code")
     

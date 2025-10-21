@@ -1,4 +1,5 @@
 from flask import jsonify
+from functools import wraps
 from flask_jwt_extended import get_jwt_identity, get_jwt
 
 from models.user import User
@@ -38,3 +39,24 @@ def check_permission(lab, resource: str, action: str):
     if err:
         return jsonify(err), 403
     return None
+
+
+def require(action: str, feature: str = 'production', get_lab=None):
+    """Decorator to enforce permission check before handler execution.
+
+    Usage:
+      @bp.get('/...')
+      @jwt_required()
+      @require('read', get_lab=_get_lab)
+      def handler(): ...
+    """
+    def _decorator(fn):
+        @wraps(fn)
+        def _wrapped(*args, **kwargs):
+            lab = get_lab() if callable(get_lab) else None
+            resp = check_permission(lab, feature, action)
+            if resp is not None:
+                return resp
+            return fn(*args, **kwargs)
+        return _wrapped
+    return _decorator
