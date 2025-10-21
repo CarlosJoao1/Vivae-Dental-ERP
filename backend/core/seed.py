@@ -11,6 +11,15 @@ from models.payment_type import PaymentType
 from models.payment_form import PaymentForm
 from models.payment_method import PaymentMethod
 from models.series import Series
+# Production models
+from models.production.uom import UOM
+from models.production.location import Location
+from models.production.supplier import Supplier
+from models.production.item import Item
+from models.production.work_center import WorkCenter, MachineCenter
+from models.production.bom import BOM, BOMLine
+from models.production.routing import Routing, RoutingOperation
+from models.production.production_order import ProductionOrder, ProductionOrderOperation
 
 def run_seed():
     # Lab
@@ -150,3 +159,242 @@ def run_seed():
                     pass
     except Exception:
         pass
+
+    # ========================================
+    # PRODUCTION MODULE SEED DATA
+    # ========================================
+    print("\n🏭 Seeding Production Module Data...")
+    
+    try:
+        # 1. Units of Measure (UOMs)
+        uom_unit = UOM.objects(lab=lab, code="UNIT").first()
+        if not uom_unit:
+            uom_unit = UOM(lab=lab, code="UNIT", name="Unit", description="Single unit").save()
+            print("✅ Production Seed: UOM Unit")
+        
+        uom_kg = UOM.objects(lab=lab, code="KG").first()
+        if not uom_kg:
+            uom_kg = UOM(lab=lab, code="KG", name="Kilogram", description="Weight in kg").save()
+            print("✅ Production Seed: UOM Kilogram")
+        
+        uom_m = UOM.objects(lab=lab, code="M").first()
+        if not uom_m:
+            uom_m = UOM(lab=lab, code="M", name="Meter", description="Length in meters").save()
+            print("✅ Production Seed: UOM Meter")
+
+        # 2. Locations
+        loc_main = Location.objects(lab=lab, code="MAIN-WH").first()
+        if not loc_main:
+            loc_main = Location(lab=lab, code="MAIN-WH", name="Main Warehouse", location_type="warehouse").save()
+            print("✅ Production Seed: Location Main Warehouse")
+        
+        loc_prod = Location.objects(lab=lab, code="PROD-FLOOR").first()
+        if not loc_prod:
+            loc_prod = Location(lab=lab, code="PROD-FLOOR", name="Production Floor", location_type="production").save()
+            print("✅ Production Seed: Location Production Floor")
+
+        # 3. Supplier
+        supplier = Supplier.objects(lab=lab, code="SUP-001").first()
+        if not supplier:
+            supplier = Supplier(
+                lab=lab,
+                code="SUP-001",
+                name="Dental Materials Ltd",
+                contact_person="John Smith",
+                email="contact@dentalmaterials.com",
+                phone="+351 234 567 890"
+            ).save()
+            print("✅ Production Seed: Supplier Dental Materials Ltd")
+
+        # 4. Items (Products & Raw Materials)
+        item_crown = Item.objects(lab=lab, item_no="CROWN-001").first()
+        if not item_crown:
+            item_crown = Item(
+                lab=lab,
+                item_no="CROWN-001",
+                description="Ceramic Crown",
+                item_type="finished_good",
+                base_uom=uom_unit,
+                standard_cost=50.0,
+                list_price=150.0
+            ).save()
+            print("✅ Production Seed: Item Ceramic Crown")
+
+        item_ceramic = Item.objects(lab=lab, item_no="MAT-CER-001").first()
+        if not item_ceramic:
+            item_ceramic = Item(
+                lab=lab,
+                item_no="MAT-CER-001",
+                description="Ceramic Powder 1kg",
+                item_type="raw_material",
+                base_uom=uom_kg,
+                standard_cost=25.0,
+                list_price=35.0,
+                supplier=supplier
+            ).save()
+            print("✅ Production Seed: Item Ceramic Powder")
+
+        item_resin = Item.objects(lab=lab, item_no="MAT-RES-001").first()
+        if not item_resin:
+            item_resin = Item(
+                lab=lab,
+                item_no="MAT-RES-001",
+                description="Dental Resin 500g",
+                item_type="raw_material",
+                base_uom=uom_kg,
+                standard_cost=15.0,
+                list_price=22.0,
+                supplier=supplier
+            ).save()
+            print("✅ Production Seed: Item Dental Resin")
+
+        # 5. Work Centers
+        wc_molding = WorkCenter.objects(lab=lab, code="WC-MOLD").first()
+        if not wc_molding:
+            wc_molding = WorkCenter(
+                lab=lab,
+                code="WC-MOLD",
+                name="Molding Station",
+                work_center_type="manual",
+                capacity=8.0,
+                efficiency=95.0,
+                location=loc_prod
+            ).save()
+            print("✅ Production Seed: Work Center Molding")
+
+        wc_finishing = WorkCenter.objects(lab=lab, code="WC-FINISH").first()
+        if not wc_finishing:
+            wc_finishing = WorkCenter(
+                lab=lab,
+                code="WC-FINISH",
+                name="Finishing Station",
+                work_center_type="manual",
+                capacity=8.0,
+                efficiency=90.0,
+                location=loc_prod
+            ).save()
+            print("✅ Production Seed: Work Center Finishing")
+
+        # 6. Machine Center
+        mc_kiln = MachineCenter.objects(lab=lab, code="MC-KILN-01").first()
+        if not mc_kiln:
+            mc_kiln = MachineCenter(
+                lab=lab,
+                code="MC-KILN-01",
+                name="Ceramic Kiln #1",
+                machine_type="kiln",
+                capacity=4.0,
+                work_center=wc_molding
+            ).save()
+            print("✅ Production Seed: Machine Center Kiln")
+
+        # 7. Bill of Materials (BOM)
+        bom = BOM.objects(lab=lab, item=item_crown, version="1.0").first()
+        if not bom:
+            bom = BOM(
+                lab=lab,
+                item=item_crown,
+                version="1.0",
+                status="certified",
+                base_quantity=1.0,
+                base_uom=uom_unit
+            ).save()
+            
+            # BOM Lines
+            BOMLine(
+                bom=bom,
+                line_no=10,
+                component=item_ceramic,
+                quantity=0.05,
+                uom=uom_kg,
+                scrap_percentage=5.0
+            ).save()
+            
+            BOMLine(
+                bom=bom,
+                line_no=20,
+                component=item_resin,
+                quantity=0.02,
+                uom=uom_kg,
+                scrap_percentage=3.0
+            ).save()
+            
+            print("✅ Production Seed: BOM for Ceramic Crown with 2 lines")
+
+        # 8. Routing
+        routing = Routing.objects(lab=lab, item=item_crown, version="1.0").first()
+        if not routing:
+            routing = Routing(
+                lab=lab,
+                item=item_crown,
+                version="1.0",
+                status="certified"
+            ).save()
+            
+            # Routing Operations
+            RoutingOperation(
+                routing=routing,
+                operation_no=10,
+                work_center=wc_molding,
+                description="Mold ceramic base",
+                setup_time=30.0,
+                run_time=60.0,
+                machine_center=mc_kiln
+            ).save()
+            
+            RoutingOperation(
+                routing=routing,
+                operation_no=20,
+                work_center=wc_finishing,
+                description="Polish and finish crown",
+                setup_time=15.0,
+                run_time=45.0
+            ).save()
+            
+            print("✅ Production Seed: Routing for Ceramic Crown with 2 operations")
+
+        # 9. Production Order (Demo)
+        po = ProductionOrder.objects(lab=lab, order_no="PO-DEMO-001").first()
+        if not po:
+            po = ProductionOrder(
+                lab=lab,
+                order_no="PO-DEMO-001",
+                item=item_crown,
+                quantity=10.0,
+                uom=uom_unit,
+                status="released",
+                bom=bom,
+                routing=routing,
+                location=loc_prod
+            ).save()
+            
+            # Production Order Operations
+            ProductionOrderOperation(
+                production_order=po,
+                operation_no=10,
+                work_center=wc_molding,
+                description="Mold ceramic base",
+                setup_time=30.0,
+                run_time=60.0,
+                status="ready",
+                machine_center=mc_kiln
+            ).save()
+            
+            ProductionOrderOperation(
+                production_order=po,
+                operation_no=20,
+                work_center=wc_finishing,
+                description="Polish and finish crown",
+                setup_time=15.0,
+                run_time=45.0,
+                status="ready"
+            ).save()
+            
+            print("✅ Production Seed: Production Order PO-DEMO-001 with 2 operations")
+
+        print("✅ Production Module seed completed successfully!\n")
+
+    except Exception as e:
+        print(f"⚠️ Production Seed error: {e}")
+        import traceback
+        traceback.print_exc()
