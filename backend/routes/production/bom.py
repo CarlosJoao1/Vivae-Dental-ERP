@@ -3,7 +3,7 @@
 BOM (Bill of Materials) Routes - NAV/BC-style
 Endpoints for managing BOMs with versioning and certification workflow
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from mongoengine.errors import ValidationError, DoesNotExist, NotUniqueError
 from typing import Tuple
@@ -91,7 +91,7 @@ def bom_list():
     - status: Filter by status (New, Under Development, Certified, Closed)
     - version_code: Filter by version
     """
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     page, size = _pagination()
@@ -154,7 +154,7 @@ def bom_create():
         ]
     }
     """
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     data = request.get_json()
@@ -233,7 +233,7 @@ def bom_create():
 @require('read', get_lab=_get_lab)
 def bom_get(bom_id: str):
     """Get a single BOM by ID"""
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -254,7 +254,7 @@ def bom_update(bom_id: str):
     - Cannot update Certified or Closed BOMs (must create new version)
     - Cannot change item_no or version_code (immutable)
     """
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -333,7 +333,7 @@ def bom_delete(bom_id: str):
     - Can only delete if status is New
     - Cannot delete Under Development, Certified, or Closed BOMs
     """
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -362,7 +362,7 @@ def bom_certify(bom_id: str):
     - Automatically uncertifies other versions of same item
     - Only one version can be Certified at a time
     """
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -394,7 +394,7 @@ def bom_close(bom_id: str):
     - Can close any BOM except Closed
     - Typically used when a new version is certified
     """
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -419,7 +419,7 @@ def bom_by_item(item_no: str):
     
     Returns BOMs ordered by version_code, with Certified first.
     """
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     # Get all versions
@@ -436,7 +436,7 @@ def bom_by_item(item_no: str):
 @require('read', get_lab=_get_lab)
 def bom_certified(item_no: str):
     """Get the certified (active) BOM for an item"""
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     bom = BOM.objects(tenant_id=str(lab.id), item_no=item_no, status="Certified").first()

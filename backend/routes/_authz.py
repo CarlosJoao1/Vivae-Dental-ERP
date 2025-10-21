@@ -1,4 +1,4 @@
-from flask import jsonify
+from flask import jsonify, g
 from functools import wraps
 from flask_jwt_extended import get_jwt_identity, get_jwt
 
@@ -54,6 +54,10 @@ def require(action: str, feature: str = 'production', get_lab=None):
         @wraps(fn)
         def _wrapped(*args, **kwargs):
             lab = get_lab() if callable(get_lab) else None
+            try:
+                g.lab = lab
+            except Exception:
+                pass
             resp = check_permission(lab, feature, action)
             if resp is not None:
                 return resp
