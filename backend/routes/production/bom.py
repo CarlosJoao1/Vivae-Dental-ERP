@@ -11,7 +11,7 @@ from typing import Tuple
 from models.production import BOM, BOMLine, Item
 from models.laboratory import Laboratory
 from models.user import User
-from .._authz import check_permission
+from .._authz import check_permission, require
 from services.production.bom_explosion import explode_bom
 
 bp = Blueprint("production_bom", __name__, url_prefix="/api/production/boms")
@@ -78,6 +78,7 @@ def _query() -> str:
 
 @bp.get("")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def bom_list():
     """
     List all BOMs with filters and pagination.
@@ -91,9 +92,7 @@ def bom_list():
     - version_code: Filter by version
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     page, size = _pagination()
     q = _query()
@@ -128,6 +127,7 @@ def bom_list():
 
 @bp.post("")
 @jwt_required()
+@require('create', get_lab=_get_lab)
 def bom_create():
     """
     Create a new BOM.
@@ -155,9 +155,7 @@ def bom_create():
     }
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'create')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     data = request.get_json()
     if not data:
@@ -232,12 +230,11 @@ def bom_create():
 
 @bp.get("/<bom_id>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def bom_get(bom_id: str):
     """Get a single BOM by ID"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         bom = BOM.objects.get(id=bom_id, tenant_id=str(lab.id))
@@ -247,6 +244,7 @@ def bom_get(bom_id: str):
 
 @bp.patch("/<bom_id>")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def bom_update(bom_id: str):
     """
     Update a BOM.
@@ -257,9 +255,7 @@ def bom_update(bom_id: str):
     - Cannot change item_no or version_code (immutable)
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         bom = BOM.objects.get(id=bom_id, tenant_id=str(lab.id))
@@ -328,6 +324,7 @@ def bom_update(bom_id: str):
 
 @bp.delete("/<bom_id>")
 @jwt_required()
+@require('delete', get_lab=_get_lab)
 def bom_delete(bom_id: str):
     """
     Delete a BOM.
@@ -337,9 +334,7 @@ def bom_delete(bom_id: str):
     - Cannot delete Under Development, Certified, or Closed BOMs
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'delete')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         bom = BOM.objects.get(id=bom_id, tenant_id=str(lab.id))
@@ -357,6 +352,7 @@ def bom_delete(bom_id: str):
 
 @bp.post("/<bom_id>/certify")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def bom_certify(bom_id: str):
     """
     Certify a BOM (make it active).
@@ -367,9 +363,7 @@ def bom_certify(bom_id: str):
     - Only one version can be Certified at a time
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         bom = BOM.objects.get(id=bom_id, tenant_id=str(lab.id))
@@ -391,6 +385,7 @@ def bom_certify(bom_id: str):
 
 @bp.post("/<bom_id>/close")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def bom_close(bom_id: str):
     """
     Close a BOM (archive).
@@ -400,9 +395,7 @@ def bom_close(bom_id: str):
     - Typically used when a new version is certified
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         bom = BOM.objects.get(id=bom_id, tenant_id=str(lab.id))
@@ -419,6 +412,7 @@ def bom_close(bom_id: str):
 
 @bp.get("/by-item/<item_no>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def bom_by_item(item_no: str):
     """
     Get all BOM versions for a specific item.
@@ -426,9 +420,7 @@ def bom_by_item(item_no: str):
     Returns BOMs ordered by version_code, with Certified first.
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     # Get all versions
     boms = BOM.objects(tenant_id=str(lab.id), item_no=item_no).order_by("-status", "version_code")
@@ -441,12 +433,11 @@ def bom_by_item(item_no: str):
 
 @bp.route('/certified/<item_no>', methods=['GET'])
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def bom_certified(item_no: str):
     """Get the certified (active) BOM for an item"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     bom = BOM.objects(tenant_id=str(lab.id), item_no=item_no, status="Certified").first()
     if not bom:
@@ -457,6 +448,7 @@ def bom_certified(item_no: str):
 
 @bp.route('/<bom_id>/explode', methods=['POST'])
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def explode_bom_endpoint(bom_id: str):
     """
     Explode BOM to show all components (multi-level).
@@ -483,9 +475,7 @@ def explode_bom_endpoint(bom_id: str):
         }
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     # Get BOM
     try:

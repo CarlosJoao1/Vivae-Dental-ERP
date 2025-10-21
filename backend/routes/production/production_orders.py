@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from models.production import ProductionOrder, ProductionOrderLine, ProductionOrderRouting, BOM, Routing, Item, Location
 from models.laboratory import Laboratory
 from models.user import User
-from .._authz import check_permission
+from .._authz import check_permission, require
 
 bp = Blueprint("production_orders", __name__, url_prefix="/api/production/production-orders")
 
@@ -152,6 +152,7 @@ def _explode_routing(routing: Routing, quantity: float) -> list:
 
 @bp.get("")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def production_order_list():
     """
     List all Production Orders with filters and pagination.
@@ -165,10 +166,7 @@ def production_order_list():
     - due_date_from: Filter by due date range (ISO format)
     - due_date_to: Filter by due date range (ISO format)
     """
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     page, size = _pagination()
     q = _query()
@@ -214,6 +212,7 @@ def production_order_list():
 
 @bp.post("")
 @jwt_required()
+@require('create', get_lab=_get_lab)
 def production_order_create():
     """
     Create a new Production Order with BOM/Routing explosion.
@@ -231,10 +230,7 @@ def production_order_create():
     
     Auto-explodes certified BOM and Routing if available.
     """
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'create')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     data = request.get_json()
     if not data:
@@ -339,12 +335,10 @@ def production_order_create():
 
 @bp.get("/<po_id>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def production_order_get(po_id: str):
     """Get a single Production Order by ID"""
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     try:
         po = ProductionOrder.objects.get(id=po_id, tenant_id=str(lab.id))
@@ -354,6 +348,7 @@ def production_order_get(po_id: str):
 
 @bp.patch("/<po_id>")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def production_order_update(po_id: str):
     """
     Update a Production Order.
@@ -362,10 +357,7 @@ def production_order_update(po_id: str):
     - Can only update if status is Simulated, Planned, or Firm Planned
     - Cannot update Released, Finished, or Cancelled orders
     """
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     try:
         po = ProductionOrder.objects.get(id=po_id, tenant_id=str(lab.id))
@@ -413,6 +405,7 @@ def production_order_update(po_id: str):
 
 @bp.delete("/<po_id>")
 @jwt_required()
+@require('delete', get_lab=_get_lab)
 def production_order_delete(po_id: str):
     """
     Delete a Production Order.
@@ -421,10 +414,7 @@ def production_order_delete(po_id: str):
     - Can only delete if status is Simulated or Planned
     - Cannot delete Firm Planned, Released, Finished, or Cancelled orders
     """
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'delete')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     try:
         po = ProductionOrder.objects.get(id=po_id, tenant_id=str(lab.id))
@@ -440,6 +430,7 @@ def production_order_delete(po_id: str):
 
 @bp.post("/<po_id>/release")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def production_order_release(po_id: str):
     """
     Release a Production Order (start production).
@@ -449,10 +440,7 @@ def production_order_release(po_id: str):
     - Creates component and capacity reservations
     - Changes status to Released
     """
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     try:
         po = ProductionOrder.objects.get(id=po_id, tenant_id=str(lab.id))
@@ -472,6 +460,7 @@ def production_order_release(po_id: str):
 
 @bp.post("/<po_id>/finish")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def production_order_finish(po_id: str):
     """
     Finish a Production Order (complete).
@@ -481,10 +470,7 @@ def production_order_finish(po_id: str):
     - Verifies all quantities are posted
     - Changes status to Finished
     """
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     try:
         po = ProductionOrder.objects.get(id=po_id, tenant_id=str(lab.id))
@@ -504,6 +490,7 @@ def production_order_finish(po_id: str):
 
 @bp.post("/<po_id>/reopen")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def production_order_reopen(po_id: str):
     """
     Reopen a Finished Production Order (for corrections).
@@ -512,10 +499,7 @@ def production_order_reopen(po_id: str):
     - Can only reopen from Finished status
     - Used for posting corrections
     """
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     try:
         po = ProductionOrder.objects.get(id=po_id, tenant_id=str(lab.id))
@@ -535,6 +519,7 @@ def production_order_reopen(po_id: str):
 
 @bp.post("/<po_id>/cancel")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def production_order_cancel(po_id: str):
     """
     Cancel a Production Order.
@@ -543,10 +528,7 @@ def production_order_cancel(po_id: str):
     - Cannot cancel if status is Finished
     - Releases all reservations
     """
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     try:
         po = ProductionOrder.objects.get(id=po_id, tenant_id=str(lab.id))
@@ -566,12 +548,10 @@ def production_order_cancel(po_id: str):
 
 @bp.get("/by-item/<item_no>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def production_orders_by_item(item_no: str):
     """Get all Production Orders for a specific item"""
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     orders = ProductionOrder.objects(tenant_id=str(lab.id), item_no=item_no).order_by("-due_date")
     
@@ -583,12 +563,10 @@ def production_orders_by_item(item_no: str):
 
 @bp.get("/by-status/<status>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def production_orders_by_status(status: str):
     """Get all Production Orders with specific status"""
-    lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    lab = _get_lab()  # permission enforced by decorator
     
     orders = ProductionOrder.objects(tenant_id=str(lab.id), status=status).order_by("-due_date")
     

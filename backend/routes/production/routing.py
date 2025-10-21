@@ -11,7 +11,7 @@ from typing import Tuple
 from models.production import Routing, RoutingOperation, Item, WorkCenter
 from models.laboratory import Laboratory
 from models.user import User
-from .._authz import check_permission
+from .._authz import check_permission, require
 
 bp = Blueprint("production_routing", __name__, url_prefix="/api/production/routings")
 
@@ -77,12 +77,11 @@ def _query() -> str:
 
 @bp.get("")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def routing_list():
     """List all Routings with filters and pagination"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     page, size = _pagination()
     q = _query()
@@ -117,12 +116,11 @@ def routing_list():
 
 @bp.post("")
 @jwt_required()
+@require('create', get_lab=_get_lab)
 def routing_create():
     """Create a new Routing"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'create')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     data = request.get_json()
     if not data:
@@ -195,12 +193,11 @@ def routing_create():
 
 @bp.get("/<routing_id>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def routing_get(routing_id: str):
     """Get a single Routing by ID"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         routing = Routing.objects.get(id=routing_id, tenant_id=str(lab.id))
@@ -210,12 +207,11 @@ def routing_get(routing_id: str):
 
 @bp.patch("/<routing_id>")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def routing_update(routing_id: str):
     """Update a Routing (only if New or Under Development)"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         routing = Routing.objects.get(id=routing_id, tenant_id=str(lab.id))
@@ -278,12 +274,11 @@ def routing_update(routing_id: str):
 
 @bp.delete("/<routing_id>")
 @jwt_required()
+@require('delete', get_lab=_get_lab)
 def routing_delete(routing_id: str):
     """Delete a Routing (only if New)"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'delete')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         routing = Routing.objects.get(id=routing_id, tenant_id=str(lab.id))
@@ -299,12 +294,11 @@ def routing_delete(routing_id: str):
 
 @bp.post("/<routing_id>/certify")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def routing_certify(routing_id: str):
     """Certify a Routing (make it active)"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         routing = Routing.objects.get(id=routing_id, tenant_id=str(lab.id))
@@ -326,12 +320,11 @@ def routing_certify(routing_id: str):
 
 @bp.post("/<routing_id>/close")
 @jwt_required()
+@require('update', get_lab=_get_lab)
 def routing_close(routing_id: str):
     """Close a Routing (archive)"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'update')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         routing = Routing.objects.get(id=routing_id, tenant_id=str(lab.id))
@@ -348,6 +341,7 @@ def routing_close(routing_id: str):
 
 @bp.post("/<routing_id>/calculate-time")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def routing_calculate_time(routing_id: str):
     """
     Calculate total production time for a given quantity.
@@ -365,9 +359,7 @@ def routing_calculate_time(routing_id: str):
     }
     """
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     try:
         routing = Routing.objects.get(id=routing_id, tenant_id=str(lab.id))
@@ -390,12 +382,11 @@ def routing_calculate_time(routing_id: str):
 
 @bp.get("/by-item/<item_no>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def routing_by_item(item_no: str):
     """Get all Routing versions for a specific item"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     # Get all versions
     routings = Routing.objects(tenant_id=str(lab.id), item_no=item_no).order_by("-status", "version_code")
@@ -408,12 +399,11 @@ def routing_by_item(item_no: str):
 
 @bp.get("/certified/<item_no>")
 @jwt_required()
+@require('read', get_lab=_get_lab)
 def routing_certified(item_no: str):
     """Get the certified (active) Routing for an item"""
     lab = _get_lab()
-    perm_err = check_permission(lab, 'production', 'read')
-    if perm_err:
-        return perm_err
+    # permission enforced by decorator
     
     routing = Routing.objects(tenant_id=str(lab.id), item_no=item_no, status="Certified").first()
     if not routing:
