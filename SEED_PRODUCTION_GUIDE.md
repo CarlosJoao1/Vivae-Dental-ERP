@@ -1,5 +1,15 @@
 # 🚀 Guia para Seed de Dados em Produção (Render)
 
+## 🔐 AVISO DE SEGURANÇA
+
+**NUNCA compartilhe ou commite credenciais reais!**
+
+- ❌ Não inclua URIs reais do MongoDB em commits
+- ❌ Não compartilhe senhas ou tokens de acesso
+- ✅ Use variáveis de ambiente para credenciais
+- ✅ Mantenha `.env` no `.gitignore`
+- ✅ Use placeholders genéricos em documentação (ex: `<USERNAME>:<PASSWORD>`)
+
 ## ⚠️ IMPORTANTE - Leia Antes de Executar
 
 Este processo irá criar dados de exemplo no seu ambiente de **PRODUÇÃO** no Render. Certifique-se de que:
@@ -18,10 +28,12 @@ No painel do Render (https://dashboard.render.com):
 2. Vá para **Environment**
 3. Copie o valor de `MONGO_URI`
 
-Exemplo:
+Exemplo (formato genérico):
 ```
-mongodb+srv://username:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority
+mongodb+srv://<USERNAME>:<PASSWORD>@<CLUSTER>.mongodb.net/<DATABASE>?retryWrites=true&w=majority
 ```
+
+⚠️ **IMPORTANTE**: Nunca compartilhe sua URI real com credenciais!
 
 ### 2. Obter Laboratory ID
 
@@ -52,20 +64,20 @@ db.laboratory.find({}, {_id: 1, name: 1})
 
 **Windows (PowerShell):**
 ```powershell
-# Definir MongoDB URI de produção
-$env:MONGO_URI_PRODUCTION = "mongodb+srv://username:password@cluster.mongodb.net/dbname"
+# Definir MongoDB URI de produção (substitua com sua URI real do Render)
+$env:MONGO_URI_PRODUCTION = "mongodb+srv://<YOUR_USER>:<YOUR_PASSWORD>@<YOUR_CLUSTER>.mongodb.net/<YOUR_DB>"
 
 # Definir Laboratory ID (opcional - será solicitado se não definido)
-$env:PRODUCTION_LAB_ID = "seu_laboratory_id_aqui"
+$env:PRODUCTION_LAB_ID = "<YOUR_LAB_ID>"
 ```
 
 **Linux/Mac (Bash):**
 ```bash
-# Definir MongoDB URI de produção
-export MONGO_URI_PRODUCTION="mongodb+srv://username:password@cluster.mongodb.net/dbname"
+# Definir MongoDB URI de produção (substitua com sua URI real do Render)
+export MONGO_URI_PRODUCTION="mongodb+srv://<YOUR_USER>:<YOUR_PASSWORD>@<YOUR_CLUSTER>.mongodb.net/<YOUR_DB>"
 
 # Definir Laboratory ID (opcional)
-export PRODUCTION_LAB_ID="seu_laboratory_id_aqui"
+export PRODUCTION_LAB_ID="<YOUR_LAB_ID>"
 ```
 
 ### 2. Instalar Dependências (se necessário)
@@ -88,15 +100,15 @@ python seed_production_remote.py
 
 **Windows PowerShell:**
 ```powershell
-$env:MONGO_URI_PRODUCTION="sua_uri_aqui"; `
-$env:PRODUCTION_LAB_ID="seu_lab_id"; `
+$env:MONGO_URI_PRODUCTION="<YOUR_MONGODB_URI>"; `
+$env:PRODUCTION_LAB_ID="<YOUR_LAB_ID>"; `
 python backend/scripts/seed_production_remote.py
 ```
 
 **Linux/Mac:**
 ```bash
-MONGO_URI_PRODUCTION="sua_uri_aqui" \
-PRODUCTION_LAB_ID="seu_lab_id" \
+MONGO_URI_PRODUCTION="<YOUR_MONGODB_URI>" \
+PRODUCTION_LAB_ID="<YOUR_LAB_ID>" \
 python backend/scripts/seed_production_remote.py
 ```
 
@@ -221,9 +233,9 @@ Se encontrar problemas:
 ## ⚡ Exemplo de Execução Completa
 
 ```powershell
-# 1. Definir variáveis
-$env:MONGO_URI_PRODUCTION = "mongodb+srv://user:pass@cluster.mongodb.net/vivae"
-$env:PRODUCTION_LAB_ID = "507f1f77bcf86cd799439011"
+# 1. Definir variáveis (substitua com seus valores reais)
+$env:MONGO_URI_PRODUCTION = "mongodb+srv://<USER>:<PASS>@<CLUSTER>.mongodb.net/<DB>"
+$env:PRODUCTION_LAB_ID = "<YOUR_LABORATORY_ID>"
 
 # 2. Executar seed
 cd c:\Python\scripts\Pessoal\dental_lab_erp_starter\Vivae-Dental-ERP\backend\scripts
@@ -232,8 +244,8 @@ python seed_production_remote.py
 # 3. Output esperado:
 # 🌱 VIVAE ERP - Production Data Seed (Remote)
 # ============================================================
-# 🏥 Target Laboratory: 507f1f77bcf86cd799439011
-# 🔗 MongoDB URI: mongodb+srv://user:pass@clust...
+# 🏥 Target Laboratory: <YOUR_LABORATORY_ID>
+# 🔗 MongoDB URI: mongodb+srv://<USER>:<PASS>@...
 # 
 # ⚠️  WARNING: PRODUCTION SEED OPERATION
 # ============================================================
