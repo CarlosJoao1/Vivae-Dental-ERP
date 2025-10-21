@@ -3,7 +3,7 @@
 Routing Routes - NAV/BC-style
 Endpoints for managing Routings with versioning and certification workflow
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from mongoengine.errors import ValidationError, DoesNotExist, NotUniqueError
 from typing import Tuple
@@ -80,7 +80,7 @@ def _query() -> str:
 @require('read', get_lab=_get_lab)
 def routing_list():
     """List all Routings with filters and pagination"""
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     page, size = _pagination()
@@ -119,7 +119,7 @@ def routing_list():
 @require('create', get_lab=_get_lab)
 def routing_create():
     """Create a new Routing"""
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     data = request.get_json()
@@ -196,7 +196,7 @@ def routing_create():
 @require('read', get_lab=_get_lab)
 def routing_get(routing_id: str):
     """Get a single Routing by ID"""
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -210,7 +210,7 @@ def routing_get(routing_id: str):
 @require('update', get_lab=_get_lab)
 def routing_update(routing_id: str):
     """Update a Routing (only if New or Under Development)"""
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -277,7 +277,7 @@ def routing_update(routing_id: str):
 @require('delete', get_lab=_get_lab)
 def routing_delete(routing_id: str):
     """Delete a Routing (only if New)"""
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -297,7 +297,7 @@ def routing_delete(routing_id: str):
 @require('update', get_lab=_get_lab)
 def routing_certify(routing_id: str):
     """Certify a Routing (make it active)"""
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -323,7 +323,7 @@ def routing_certify(routing_id: str):
 @require('update', get_lab=_get_lab)
 def routing_close(routing_id: str):
     """Close a Routing (archive)"""
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -358,7 +358,7 @@ def routing_calculate_time(routing_id: str):
         "operations": [...]
     }
     """
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     try:
@@ -385,7 +385,7 @@ def routing_calculate_time(routing_id: str):
 @require('read', get_lab=_get_lab)
 def routing_by_item(item_no: str):
     """Get all Routing versions for a specific item"""
-    lab = _get_lab()
+    lab = g.lab
     # permission enforced by decorator
     
     # Get all versions
